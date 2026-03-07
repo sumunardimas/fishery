@@ -1,6 +1,5 @@
 <nav class="sidebar sidebar-offcanvas" id="sidebar">
     @php
-        use Illuminate\Support\Str;
         $menuItems = config('menu.items', []);
 
         /**
@@ -42,27 +41,23 @@
         @foreach ($menuItems as $item)
             @if($showItem($item))
                 @if(isset($item['children']) && is_array($item['children']))
-                    @php
-                        $collapseId = Str::slug($item['title']);
-                    @endphp
                     <li class="nav-item">
-                        <a class="nav-link collapsed" data-bs-toggle="collapse" href="#{{ $collapseId }}" aria-expanded="false" aria-controls="{{ $collapseId }}">
+                        <span class="nav-link" style="cursor: default;">
                             <i class="{{ $item['icon'] ?? '' }} menu-icon"></i>
                             <span class="menu-title">{{ $item['title'] }}</span>
-                            <i class="menu-arrow"></i>
-                        </a>
-                        <div class="collapse" id="{{ $collapseId }}">
-                            <ul class="nav flex-column sub-menu">
-                                @foreach($item['children'] as $child)
-                                    @if($showItem($child))
-                                        <li class="nav-item">
-                                            <a class="nav-link" href="{{ $itemUrl($child) }}">{{ $child['title'] }}</a>
-                                        </li>
-                                    @endif
-                                @endforeach
-                            </ul>
-                        </div>
+                        </span>
                     </li>
+
+                    @foreach($item['children'] as $child)
+                        @if($showItem($child))
+                            <li class="nav-item">
+                                <a class="nav-link" href="{{ $itemUrl($child) }}" style="padding-left: 3rem;">
+                                    <i class="ti-angle-right menu-icon"></i>
+                                    <span class="menu-title">{{ $child['title'] }}</span>
+                                </a>
+                            </li>
+                        @endif
+                    @endforeach
                 @else
                     <li class="nav-item">
                         <a class="nav-link" href="{{ $itemUrl($item) }}">
