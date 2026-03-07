@@ -52,7 +52,6 @@
   <script src="{{ asset('js/settings.js') }}"></script>
   <script src="{{ asset('js/todolist.js') }}"></script>
   <!-- Custom js for this page-->
-  <script src="{{ asset('js/dashboard.js') }}"></script>
   <script src="{{ asset('js/Chart.roundedBarCharts.js') }}"></script>
   <script>document.getElementById("year").textContent = new Date().getFullYear();</script>
   @vite(['resources/css/app.css','resources/js/app.js'])

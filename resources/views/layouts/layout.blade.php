@@ -65,7 +65,6 @@
     <script src="{{ asset('js/template.js') }}"></script>
     <script src="{{ asset('js/settings.js') }}"></script>
     <script src="{{ asset('js/todolist.js') }}"></script>
-    <script src="{{ asset('js/dashboard.js') }}"></script>
     <script src="{{ asset('js/Chart.roundedBarCharts.js') }}"></script>
     <script>
         document.getElementById("year").textContent = new Date().getFullYear();
