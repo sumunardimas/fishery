@@ -2,9 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use Carbon\CarbonPeriod;
 use App\Models\KasHarian;
 use App\Models\MasterCustomer;
 use App\Models\Penjualan;
+use Illuminate\Support\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -206,6 +208,91 @@ class PenjualanController extends Controller
             })->values();
 
         return view('penjualan.report', compact('sales', 'summary', 'startDate', 'endDate', 'groupByIkan'));
+    }
+
+    public function keuanganPenjualanSummary(Request $request): View
+    {
+        $validated = $request->validate([
+            'start_date' => ['nullable', 'date'],
+            'end_date' => ['nullable', 'date'],
+        ]);
+
+        $today = now()->toDateString();
+        $hasCustomRange = ! empty($validated['start_date']) || ! empty($validated['end_date']);
+
+        $startDate = $validated['start_date'] ?? $today;
+        $endDate = $validated['end_date'] ?? $today;
+
+        $startCarbon = Carbon::parse($startDate);
+        $endCarbon = Carbon::parse($endDate);
+
+        if ($startCarbon->gt($endCarbon)) {
+            [$startCarbon, $endCarbon] = [$endCarbon, $startCarbon];
+        }
+
+        $startDate = $startCarbon->toDateString();
+        $endDate = $endCarbon->toDateString();
+
+        $filteredSales = Penjualan::query()
+            ->whereBetween('tanggal_penjualan', [$startDate, $endDate])
+            ->get();
+
+        $filteredSummary = [
+            'total_transaksi' => $filteredSales->count(),
+            'total_berat' => (float) $filteredSales->sum('berat'),
+            'total_pendapatan' => (float) $filteredSales->sum('total_harga'),
+        ];
+
+        $todaySales = Penjualan::query()
+            ->whereDate('tanggal_penjualan', $today)
+            ->get();
+
+        $summaryToday = [
+            'total_transaksi' => $todaySales->count(),
+            'total_berat' => (float) $todaySales->sum('berat'),
+            'total_pendapatan' => (float) $todaySales->sum('total_harga'),
+        ];
+
+        $chartStart = $hasCustomRange
+            ? $startCarbon->copy()
+            : Carbon::today()->subDays(29);
+        $chartEnd = $hasCustomRange
+            ? $endCarbon->copy()
+            : Carbon::today();
+
+        $trendRows = Penjualan::query()
+            ->whereBetween('tanggal_penjualan', [$chartStart->toDateString(), $chartEnd->toDateString()])
+            ->selectRaw('DATE(tanggal_penjualan) as tanggal, COUNT(*) as total_transaksi, SUM(total_harga) as total_pendapatan')
+            ->groupBy('tanggal')
+            ->orderBy('tanggal')
+            ->get()
+            ->keyBy('tanggal');
+
+        $chartLabels = [];
+        $chartValues = [];
+
+        foreach (CarbonPeriod::create($chartStart, $chartEnd) as $date) {
+            $key = $date->toDateString();
+            $chartLabels[] = $date->format('d M');
+            $chartValues[] = (float) ($trendRows[$key]->total_pendapatan ?? 0);
+        }
+
+        $chartMeta = [
+            'start' => $chartStart->toDateString(),
+            'end' => $chartEnd->toDateString(),
+            'custom' => $hasCustomRange,
+        ];
+
+        return view('keuangan.penjualan.index', compact(
+            'today',
+            'startDate',
+            'endDate',
+            'filteredSummary',
+            'summaryToday',
+            'chartLabels',
+            'chartValues',
+            'chartMeta'
+        ));
     }
 
     private function resolveCustomer(array $validated): array

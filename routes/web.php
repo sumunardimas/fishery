@@ -90,6 +90,10 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/', [OperasionalController::class, 'store'])->name('store');
     });
 
+    Route::prefix('keuangan')->name('keuangan.')->group(function () {
+        Route::get('/lap-penjualan', [PenjualanController::class, 'keuanganPenjualanSummary'])->name('lap-penjualan.index');
+    });
+
     Route::prefix('pembelian')->name('pembelian.')->group(function () {
         Route::get('/', [PembelianController::class, 'index'])->name('index');
 
