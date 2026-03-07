@@ -86,15 +86,16 @@
                                 </tbody>
                             </table>
                         </div>
-
-                        <button type="submit" class="btn btn-primary">Simpan Biaya Operasional</button>
+                        <div class="mt-2">
+                            <button type="submit" class="btn btn-primary">Simpan Biaya Operasional</button>
+                        </div>
                     </form>
                 </div>
             </div>
 
             <div class="card">
                 <div class="card-body">
-                    <h5 class="card-title">Rekap Biaya Operasional per Sail</h5>
+                    <h5 class="card-title">Rekap Biaya Operasional per Pelayaran</h5>
                     <div class="table-responsive">
                         <table class="table table-striped">
                             <thead>
