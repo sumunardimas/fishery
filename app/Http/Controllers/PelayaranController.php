@@ -6,6 +6,7 @@ use App\Models\Kapal;
 use App\Models\Pelayaran;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 
@@ -38,8 +39,10 @@ class PelayaranController extends Controller
     public function create(): View
     {
         $kapals = Kapal::query()->orderBy('nama_kapal')->get();
+        $masterPerbekalan = DB::table('master_perbekalan')->orderBy('nama_barang')->get();
+        $selectedPerbekalan = [];
 
-        return view('pelayaran.create', compact('kapals'));
+        return view('pelayaran.create', compact('kapals', 'masterPerbekalan', 'selectedPerbekalan'));
     }
 
     /**
@@ -48,6 +51,7 @@ class PelayaranController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $data = $this->validatePayload($request);
+        $perbekalanQty = $this->extractPerbekalanQty($request);
 
         if ($this->hasScheduleConflict(
             (int) $data['id_kapal'],
@@ -59,7 +63,10 @@ class PelayaranController extends Controller
                 ->withErrors(['tanggal_berangkat' => 'Jadwal bentrok: kapal sudah dipakai di rentang tanggal tersebut.']);
         }
 
-        Pelayaran::create($data);
+        DB::transaction(function () use ($data, $perbekalanQty) {
+            $pelayaran = Pelayaran::create($data);
+            $this->syncPerbekalanPelayaran((int) $pelayaran->id_pelayaran, $perbekalanQty);
+        });
 
         return redirect()->route('pelayaran.index')->with('success', 'Rencana pelayaran berhasil ditambahkan.');
     }
@@ -70,8 +77,14 @@ class PelayaranController extends Controller
     public function edit(Pelayaran $pelayaran): View
     {
         $kapals = Kapal::query()->orderBy('nama_kapal')->get();
+        $masterPerbekalan = DB::table('master_perbekalan')->orderBy('nama_barang')->get();
+        $selectedPerbekalan = DB::table('perbekalan_pelayaran')
+            ->where('id_pelayaran', $pelayaran->id_pelayaran)
+            ->pluck('jumlah', 'id_barang')
+            ->map(fn ($value) => (float) $value)
+            ->toArray();
 
-        return view('pelayaran.edit', compact('pelayaran', 'kapals'));
+        return view('pelayaran.edit', compact('pelayaran', 'kapals', 'masterPerbekalan', 'selectedPerbekalan'));
     }
 
     /**
@@ -80,6 +93,7 @@ class PelayaranController extends Controller
     public function update(Request $request, Pelayaran $pelayaran): RedirectResponse
     {
         $data = $this->validatePayload($request);
+        $perbekalanQty = $this->extractPerbekalanQty($request);
 
         if ($this->hasScheduleConflict(
             (int) $data['id_kapal'],
@@ -92,7 +106,10 @@ class PelayaranController extends Controller
                 ->withErrors(['tanggal_berangkat' => 'Jadwal bentrok: kapal sudah dipakai di rentang tanggal tersebut.']);
         }
 
-        $pelayaran->update($data);
+        DB::transaction(function () use ($pelayaran, $data, $perbekalanQty) {
+            $pelayaran->update($data);
+            $this->syncPerbekalanPelayaran((int) $pelayaran->id_pelayaran, $perbekalanQty);
+        });
 
         return redirect()->route('pelayaran.index')->with('success', 'Rencana pelayaran berhasil diperbarui.');
     }
@@ -133,7 +150,57 @@ class PelayaranController extends Controller
             'pelabuhan_tujuan' => ['required', 'string', 'max:255'],
             'jumlah_trip' => ['required', 'integer', 'min:1'],
             'keterangan' => ['required', 'string'],
+            'perbekalan_qty' => ['nullable', 'array'],
+            'perbekalan_qty.*' => ['nullable', 'numeric', 'min:0'],
         ]);
+    }
+
+    /**
+     * Keep only filled perbekalan rows to keep storage efficient.
+     */
+    private function extractPerbekalanQty(Request $request): Collection
+    {
+        $qtyMap = collect($request->input('perbekalan_qty', []))
+            ->mapWithKeys(function ($jumlah, $idBarang) {
+                return [(int) $idBarang => (float) $jumlah];
+            })
+            ->filter(fn (float $jumlah) => $jumlah > 0);
+
+        if ($qtyMap->isEmpty()) {
+            return collect();
+        }
+
+        $validBarangIds = DB::table('master_perbekalan')
+            ->whereIn('id_barang', $qtyMap->keys()->all())
+            ->pluck('id_barang')
+            ->map(fn ($id) => (int) $id)
+            ->all();
+
+        return $qtyMap->only($validBarangIds);
+    }
+
+    private function syncPerbekalanPelayaran(int $idPelayaran, Collection $perbekalanQty): void
+    {
+        DB::table('perbekalan_pelayaran')
+            ->where('id_pelayaran', $idPelayaran)
+            ->delete();
+
+        if ($perbekalanQty->isEmpty()) {
+            return;
+        }
+
+        $now = now();
+        $rows = $perbekalanQty->map(function (float $jumlah, int $idBarang) use ($idPelayaran, $now) {
+            return [
+                'id_pelayaran' => $idPelayaran,
+                'id_barang' => $idBarang,
+                'jumlah' => $jumlah,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ];
+        })->values()->all();
+
+        DB::table('perbekalan_pelayaran')->insert($rows);
     }
 
     private function hasScheduleConflict(

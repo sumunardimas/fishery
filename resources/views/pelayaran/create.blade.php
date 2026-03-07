@@ -16,8 +16,10 @@
                     @csrf
                     @include('pelayaran.form-fillings')
 
-                    <button type="submit" class="btn btn-primary mr-2">Simpan Rencana</button>
-                    <a href="{{ route('pelayaran.index') }}" class="btn btn-light">Batal</a>
+                    <div class="mt-5">
+                        <button type="submit" class="btn btn-primary mr-2">Simpan Rencana</button>
+                        <a href="{{ route('pelayaran.index') }}" class="btn btn-light">Batal</a>
+                    </div>
                 </form>
             </div>
         </div>
