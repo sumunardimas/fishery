@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Kapal extends Model
 {
@@ -22,4 +23,9 @@ class Kapal extends Model
         'panjang_meter',
         'lebar_meter',
     ];
+
+    public function pelayaran(): HasMany
+    {
+        return $this->hasMany(Pelayaran::class, 'id_kapal', 'id_kapal');
+    }
 }
