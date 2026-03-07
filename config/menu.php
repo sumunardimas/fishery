@@ -116,6 +116,18 @@ return [
                     'type' => 'route',
                 ],
                 [
+                    'title' => 'Master Operasional',
+                    'icon' => 'ti-agenda',
+                    'route' => 'master.operasional.index',
+                    'type' => 'route',
+                ],
+                [
+                    'title' => 'Master Item Pembelian',
+                    'icon' => 'ti-layout-list-thumb',
+                    'route' => 'master.item-pembelian.index',
+                    'type' => 'route',
+                ],
+                [
                     'title' => 'Pengguna',
                     'icon' => 'ti-user',
                     'route' => 'users.index',   // will call route()

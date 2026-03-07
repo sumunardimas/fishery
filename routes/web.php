@@ -4,6 +4,8 @@ use App\Http\Controllers\HomeController;
 use App\Http\Controllers\KapalController;
 use App\Http\Controllers\MasterCustomerController;
 use App\Http\Controllers\MasterIkanController;
+use App\Http\Controllers\MasterItemPembelianController;
+use App\Http\Controllers\MasterOperasionalController;
 use App\Http\Controllers\MasterPerbekalanController;
 use App\Http\Controllers\OperasionalController;
 use App\Http\Controllers\PembelianController;
@@ -117,6 +119,20 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/', [MasterCustomerController::class, 'store'])->name('store');
         Route::put('/{customer}', [MasterCustomerController::class, 'update'])->name('update');
         Route::delete('/{customer}', [MasterCustomerController::class, 'destroy'])->name('destroy');
+    });
+
+    Route::prefix('master/operasional')->name('master.operasional.')->group(function () {
+        Route::get('/', [MasterOperasionalController::class, 'index'])->name('index');
+        Route::post('/', [MasterOperasionalController::class, 'store'])->name('store');
+        Route::put('/{operasional}', [MasterOperasionalController::class, 'update'])->name('update');
+        Route::delete('/{operasional}', [MasterOperasionalController::class, 'destroy'])->name('destroy');
+    });
+
+    Route::prefix('master/item-pembelian')->name('master.item-pembelian.')->group(function () {
+        Route::get('/', [MasterItemPembelianController::class, 'index'])->name('index');
+        Route::post('/', [MasterItemPembelianController::class, 'store'])->name('store');
+        Route::put('/{itemPembelian}', [MasterItemPembelianController::class, 'update'])->name('update');
+        Route::delete('/{itemPembelian}', [MasterItemPembelianController::class, 'destroy'])->name('destroy');
     });
 
     Route::get('/profile', [ProfileController::class, 'index'])->name('profile.index');
