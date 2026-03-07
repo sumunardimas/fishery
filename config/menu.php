@@ -69,14 +69,14 @@ return [
                 [
                     'title' => 'Stok Ikan',
                     'icon' => 'ti-fish',
-                    'route' => '/',
-                    'type' => 'url',
+                    'route' => 'stok.ikan.index',
+                    'type' => 'route',
                 ],
                 [
                     'title' => 'Stok Barang',
                     'icon' => 'ti-tag',
-                    'route' => '/',
-                    'type' => 'url',
+                    'route' => 'stok.barang.index',
+                    'type' => 'route',
                 ],
             ],
         ],

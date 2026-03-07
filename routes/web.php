@@ -13,6 +13,7 @@ use App\Http\Controllers\PelayaranController;
 use App\Http\Controllers\PelayaranSisaController;
 use App\Http\Controllers\PenjualanController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\StokController;
 use App\Http\Controllers\UpdateProfileController;
 use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
@@ -98,6 +99,11 @@ Route::middleware(['auth'])->group(function () {
 
         Route::post('/transactions', [PembelianController::class, 'storeTransaction'])->name('transactions.store');
         Route::delete('/transactions/{transaction}', [PembelianController::class, 'destroyTransaction'])->name('transactions.destroy');
+    });
+
+    Route::prefix('stok')->name('stok.')->group(function () {
+        Route::get('/ikan', [StokController::class, 'ikan'])->name('ikan.index');
+        Route::get('/barang', [StokController::class, 'barang'])->name('barang.index');
     });
 
     Route::prefix('master/perbekalan')->name('master.perbekalan.')->group(function () {
