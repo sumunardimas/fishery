@@ -77,6 +77,10 @@
 								<p class="text-muted small mb-3">{{ $item->keterangan }}</p>
 
 								<div class="d-flex gap-2 mt-auto">
+									<a href="{{ route('pelayaran.sisa.index', ['pelayaran_id' => $item->id_pelayaran]) }}"
+										class="btn btn-outline-success btn-sm w-100">
+										<i class="ti-check-box"></i> Selesaikan Trip
+									</a>
 									<a href="{{ route('pelayaran.edit', $item) }}" class="btn btn-outline-primary btn-sm w-100">
 										<i class="ti-pencil-alt"></i> Edit
 									</a>
@@ -107,6 +111,36 @@
 						</div>
 					</div>
 				@endforelse
+			</div>
+
+			<div class="card mb-4">
+				<div class="card-body">
+					<h4 class="card-title mb-1">Pelayaran Nonaktif / Selesai</h4>
+					<p class="card-description mb-3">Trip yang sudah ditutup melalui form Sisa Trip.</p>
+
+					<div class="row">
+						@forelse ($inactivePelayaran as $item)
+							<div class="col-xl-4 col-lg-6 mb-3">
+								<div class="card border h-100">
+									<div class="card-body">
+										<div class="d-flex justify-content-between align-items-start mb-2">
+											<h5 class="mb-0">{{ $item->kapal->nama_kapal ?? '-' }}</h5>
+											<span class="badge badge-secondary">Selesai</span>
+										</div>
+										<p class="text-muted mb-1">ID: #{{ $item->id_pelayaran }}</p>
+										<p class="mb-1">{{ $item->pelabuhan_asal }} -> {{ $item->pelabuhan_tujuan }}</p>
+										<p class="mb-1">Berangkat: {{ $item->tanggal_berangkat?->format('d M Y') }}</p>
+										<p class="mb-0">Selesai: {{ $item->tanggal_selesai?->format('d M Y') ?? '-' }}</p>
+									</div>
+								</div>
+							</div>
+						@empty
+							<div class="col-12">
+								<p class="text-muted mb-0">Belum ada pelayaran nonaktif.</p>
+							</div>
+						@endforelse
+					</div>
+				</div>
 			</div>
 
 			<div class="card">

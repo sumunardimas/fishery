@@ -3,6 +3,7 @@
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\KapalController;
 use App\Http\Controllers\PelayaranController;
+use App\Http\Controllers\PelayaranSisaController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\UpdateProfileController;
 use App\Http\Controllers\UserController;
@@ -60,6 +61,8 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/', [PelayaranController::class, 'index'])->name('index');
         Route::get('/create', [PelayaranController::class, 'create'])->name('create');
         Route::post('/', [PelayaranController::class, 'store'])->name('store');
+        Route::get('/sisa', [PelayaranSisaController::class, 'index'])->name('sisa.index');
+        Route::post('/sisa', [PelayaranSisaController::class, 'store'])->name('sisa.store');
         Route::get('/{pelayaran}/edit', [PelayaranController::class, 'edit'])->name('edit');
         Route::put('/{pelayaran}', [PelayaranController::class, 'update'])->name('update');
         Route::delete('/{pelayaran}', [PelayaranController::class, 'destroy'])->name('destroy');

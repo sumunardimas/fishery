@@ -23,11 +23,14 @@ class Pelayaran extends Model
         'pelabuhan_tujuan',
         'jumlah_trip',
         'keterangan',
+        'status_pelayaran',
+        'tanggal_selesai',
     ];
 
     protected $casts = [
         'tanggal_berangkat' => 'date',
         'tanggal_tiba' => 'date',
+        'tanggal_selesai' => 'date',
     ];
 
     public function kapal(): BelongsTo

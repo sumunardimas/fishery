@@ -17,20 +17,21 @@ class PelayaranController extends Controller
      */
     public function index(): View
     {
-        $today = now()->toDateString();
-
         $kapals = Kapal::query()->orderBy('nama_kapal')->get();
         $pelayaran = Pelayaran::query()
             ->with('kapal')
             ->orderByDesc('tanggal_berangkat')
             ->get();
 
-        $activePelayaran = $pelayaran->filter(function (Pelayaran $item) use ($today) {
-            return $item->tanggal_berangkat?->toDateString() <= $today
-                && $item->tanggal_tiba?->toDateString() >= $today;
-        })->values();
+        $activePelayaran = $pelayaran
+            ->where('status_pelayaran', 'aktif')
+            ->values();
 
-        return view('pelayaran.index', compact('kapals', 'pelayaran', 'activePelayaran'));
+        $inactivePelayaran = $pelayaran
+            ->where('status_pelayaran', 'selesai')
+            ->values();
+
+        return view('pelayaran.index', compact('kapals', 'pelayaran', 'activePelayaran', 'inactivePelayaran'));
     }
 
     /**
@@ -64,6 +65,8 @@ class PelayaranController extends Controller
         }
 
         DB::transaction(function () use ($data, $perbekalanQty) {
+            $data['status_pelayaran'] = 'aktif';
+            $data['tanggal_selesai'] = null;
             $pelayaran = Pelayaran::create($data);
             $this->syncPerbekalanPelayaran((int) $pelayaran->id_pelayaran, $perbekalanQty);
         });
@@ -107,6 +110,8 @@ class PelayaranController extends Controller
         }
 
         DB::transaction(function () use ($pelayaran, $data, $perbekalanQty) {
+            // Editing route keeps trip as active planning unless closed via /pelayaran/sisa.
+            $data['status_pelayaran'] = $pelayaran->status_pelayaran;
             $pelayaran->update($data);
             $this->syncPerbekalanPelayaran((int) $pelayaran->id_pelayaran, $perbekalanQty);
         });
