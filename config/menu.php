@@ -62,6 +62,25 @@ return [
             'type' => 'route',
         ],
         [
+            'title' => 'Stok',
+            'icon' => 'ti-layers',
+            'route' => '#',
+            'children' => [
+                [
+                    'title' => 'Stok Ikan',
+                    'icon' => 'ti-fish',
+                    'route' => '/',
+                    'type' => 'url',
+                ],
+                [
+                    'title' => 'Stok Barang',
+                    'icon' => 'ti-tag',
+                    'route' => '/',
+                    'type' => 'url',
+                ],
+            ],
+        ],
+        [
             'title' => 'Keuangan',
             'icon' => 'ti-briefcase',
             'route' => '#',
@@ -82,12 +101,6 @@ return [
                     'title' => 'Lap Selisih Bongkaran',
                     'icon' => 'ti-arrows-diff',
                     'route' => '/operasional/lap-selisih-bongkaran',
-                    'type' => 'url',
-                ],
-                [
-                    'title' => 'Stok Gudang',
-                    'icon' => 'ti-building-warehouse',
-                    'route' => '/operasional/stok-gudang',
                     'type' => 'url',
                 ],
             ],
