@@ -26,13 +26,6 @@ return [
             'type' => 'url',
         ],
         [
-            'title' => 'Pengguna',
-            'icon' => 'ti-user',
-            'route' => 'users.index',   // will call route()
-            'type' => 'route',
-            'permission' => 'read user',
-        ],
-        [
             'title' => 'Daftar Kapal',
             'icon' => 'ti-anchor',
             'route' => '/kapal',
@@ -51,6 +44,12 @@ return [
             'type' => 'url',
         ],
         [
+            'title' => 'Operasional',
+            'icon' => 'ti-agenda',
+            'route' => '/operasional',
+            'type' => 'url',
+        ],
+        [
             'title' => 'Penjualan',
             'icon' => 'ti-bag',
             'route' => '/penjualan',
@@ -63,7 +62,7 @@ return [
             'type' => 'route',
         ],
         [
-            'title' => 'Operasional',
+            'title' => 'Keuangan',
             'icon' => 'ti-briefcase',
             'route' => '#',
             'children' => [
@@ -118,9 +117,10 @@ return [
                 ],
                 [
                     'title' => 'Pengguna',
-                    'icon' => 'ti-users',
-                    'route' => '/pengaturan/pengguna',
-                    'type' => 'url',
+                    'icon' => 'ti-user',
+                    'route' => 'users.index',   // will call route()
+                    'type' => 'route',
+                    'permission' => 'read user',
                 ],
                 [
                     'title' => 'Pengaturan',
