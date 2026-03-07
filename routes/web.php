@@ -9,9 +9,9 @@ use App\Http\Controllers\MasterItemPembelianController;
 use App\Http\Controllers\MasterOperasionalController;
 use App\Http\Controllers\MasterPerbekalanController;
 use App\Http\Controllers\OperasionalController;
-use App\Http\Controllers\PembelianController;
 use App\Http\Controllers\PelayaranController;
 use App\Http\Controllers\PelayaranSisaController;
+use App\Http\Controllers\PembelianController;
 use App\Http\Controllers\PenjualanController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\StokController;
@@ -94,6 +94,7 @@ Route::middleware(['auth'])->group(function () {
     Route::prefix('keuangan')->name('keuangan.')->group(function () {
         Route::get('/lap-penjualan', [PenjualanController::class, 'keuanganPenjualanSummary'])->name('lap-penjualan.index');
         Route::get('/arus-kas', [KeuanganController::class, 'arusKas'])->name('arus-kas.index');
+        Route::get('/laba', [KeuanganController::class, 'labaRugi'])->name('laba.index');
     });
 
     Route::prefix('pembelian')->name('pembelian.')->group(function () {
