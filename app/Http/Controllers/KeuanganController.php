@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use Carbon\CarbonPeriod;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -124,5 +125,125 @@ class KeuanganController extends Controller
             'endDate',
             'profitLoss'
         ));
+    }
+
+    public function selisihBongkar(Request $request): View
+    {
+        $validated = $request->validate([
+            'start_date' => ['nullable', 'date'],
+            'end_date' => ['nullable', 'date'],
+        ]);
+
+        $today = Carbon::today();
+
+        $start = ! empty($validated['start_date'])
+            ? Carbon::parse($validated['start_date'])
+            : $today->copy()->subDays(29);
+
+        $end = ! empty($validated['end_date'])
+            ? Carbon::parse($validated['end_date'])
+            : $today->copy();
+
+        if ($start->gt($end)) {
+            [$start, $end] = [$end, $start];
+        }
+
+        $startDate = $start->toDateString();
+        $endDate = $end->toDateString();
+
+        $salesByDate = DB::table('penjualan')
+            ->whereBetween('tanggal_penjualan', [$startDate, $endDate])
+            ->selectRaw('DATE(tanggal_penjualan) as tanggal, SUM(berat) as berat_penjualan')
+            ->groupBy('tanggal')
+            ->orderBy('tanggal')
+            ->get()
+            ->keyBy('tanggal');
+
+        $auctionByDate = DB::table('lelang_ikan_harian')
+            ->whereBetween('tanggal', [$startDate, $endDate])
+            ->selectRaw('DATE(tanggal) as tanggal, SUM(berat_lelang) as berat_lelang')
+            ->groupBy('tanggal')
+            ->orderBy('tanggal')
+            ->get()
+            ->keyBy('tanggal');
+
+        $rows = collect();
+        $chartLabels = [];
+        $chartSales = [];
+        $chartAuction = [];
+
+        foreach (CarbonPeriod::create($startDate, $endDate) as $date) {
+            $key = $date->toDateString();
+
+            $salesWeight = (float) ($salesByDate[$key]->berat_penjualan ?? 0);
+            $auctionWeight = (float) ($auctionByDate[$key]->berat_lelang ?? 0);
+            $selisih = $salesWeight - $auctionWeight;
+
+            $rows->push((object) [
+                'tanggal' => $key,
+                'berat_penjualan' => $salesWeight,
+                'berat_lelang' => $auctionWeight,
+                'selisih' => $selisih,
+            ]);
+
+            $chartLabels[] = $date->format('d M');
+            $chartSales[] = $salesWeight;
+            $chartAuction[] = $auctionWeight;
+        }
+
+        $summary = [
+            'total_penjualan' => (float) $rows->sum('berat_penjualan'),
+            'total_lelang' => (float) $rows->sum('berat_lelang'),
+            'total_selisih' => (float) $rows->sum('selisih'),
+        ];
+
+        return view('keuangan.selisih_bongkar.index', compact(
+            'rows',
+            'startDate',
+            'endDate',
+            'summary',
+            'chartLabels',
+            'chartSales',
+            'chartAuction',
+            'today'
+        ));
+    }
+
+    public function storeBeratLelang(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'tanggal' => ['required', 'date'],
+            'berat_lelang' => ['required', 'numeric', 'min:0'],
+            'keterangan' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        $existing = DB::table('lelang_ikan_harian')
+            ->whereDate('tanggal', $validated['tanggal'])
+            ->first();
+
+        if ($existing) {
+            DB::table('lelang_ikan_harian')
+                ->where('id_lelang_harian', $existing->id_lelang_harian)
+                ->update([
+                    'berat_lelang' => (float) $validated['berat_lelang'],
+                    'keterangan' => $validated['keterangan'] ?? null,
+                    'updated_at' => now(),
+                ]);
+        } else {
+            DB::table('lelang_ikan_harian')->insert([
+                'tanggal' => $validated['tanggal'],
+                'berat_lelang' => (float) $validated['berat_lelang'],
+                'keterangan' => $validated['keterangan'] ?? null,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
+
+        return redirect()
+            ->route('keuangan.lap-selisih-bongkaran.index', [
+                'start_date' => $request->input('start_date'),
+                'end_date' => $request->input('end_date'),
+            ])
+            ->with('success', 'Berat lelang ikan berhasil disimpan.');
     }
 }
