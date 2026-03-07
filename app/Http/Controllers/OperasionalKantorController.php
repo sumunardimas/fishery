@@ -18,7 +18,7 @@ class OperasionalKantorController extends Controller
         $validated = $request->validate([
             'start_date' => ['nullable', 'date'],
             'end_date' => ['nullable', 'date'],
-            'detail_date' => ['nullable', 'date'],
+            'detail_date' => ['nullable', 'string'],
         ]);
 
         $today = Carbon::today();
@@ -54,7 +54,11 @@ class OperasionalKantorController extends Controller
 
         $detailDate = null;
         if (! empty($validated['detail_date'])) {
-            $detailDate = Carbon::parse($validated['detail_date'])->toDateString();
+            try {
+                $detailDate = Carbon::parse($validated['detail_date'])->toDateString();
+            } catch (\Throwable $th) {
+                $detailDate = null;
+            }
         }
 
         $detailRows = collect();

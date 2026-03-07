@@ -155,7 +155,7 @@
 									<input type="date" id="end_date" name="end_date" class="form-control" value="{{ $endDate }}">
 								</div>
 							</div>
-							<div class="col-md-6 d-flex align-items-end mb-3">
+							<div class="col-md-6 d-flex align-items-center mb-3">
 								<button type="submit" class="btn btn-primary mr-2">Terapkan</button>
 								<a href="{{ route('operasional-kantor.index') }}" class="btn btn-light">Reset</a>
 							</div>
@@ -176,13 +176,16 @@
 							</thead>
 							<tbody>
 								@forelse ($dailySummary as $row)
+									@php
+										$detailDateParam = \Carbon\Carbon::parse($row->tanggal)->toDateString();
+									@endphp
 									<tr>
 										<td>{{ \Carbon\Carbon::parse($row->tanggal)->format('d-m-Y') }}</td>
 										<td>{{ $row->total_item }}</td>
 										<td>Rp {{ number_format((float) $row->grand_total, 2, ',', '.') }}</td>
 										<td class="text-right">
 											<a
-												href="{{ route('operasional-kantor.index', ['start_date' => $startDate, 'end_date' => $endDate, 'detail_date' => $row->tanggal]) }}"
+												href="{{ route('operasional-kantor.index', ['start_date' => $startDate, 'end_date' => $endDate, 'detail_date' => $detailDateParam]) }}#detail-operasional-kantor"
 												class="btn btn-outline-info btn-sm">
 												Lihat Detail
 											</a>
@@ -199,7 +202,7 @@
 				</div>
 			</div>
 
-			<div class="card">
+			<div class="card" id="detail-operasional-kantor">
 				<div class="card-body">
 					<h4 class="card-title mb-1">Detail Operasional Kantor</h4>
 					@if ($detailDate)
