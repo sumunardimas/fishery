@@ -91,7 +91,7 @@
                 </div>
             </div>
 
-            <div class="card mb-4">
+            {{-- <div class="card mb-4">
                 <div class="card-body">
                     <h4 class="card-title mb-1">Master Item Pembelian</h4>
                     <p class="card-description mb-4">Tambah item barang kantor yang akan dikelola stoknya.</p>
@@ -123,7 +123,7 @@
                         <button type="submit" class="btn btn-success">Tambah Master Item</button>
                     </form>
                 </div>
-            </div>
+            </div> --}}
 
             <div class="card">
                 <div class="card-body">

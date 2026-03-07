@@ -137,7 +137,7 @@
 							<small class="text-muted">Stok tersedia saat ini: <strong x-text="Number(stokTersedia()).toFixed(2)"></strong> kg</small>
 						</div>
 
-						<div class="form-group form-check mb-3">
+						<div class="form-group form-check mb-3" style="padding-left: 1.5rem;">
 							<input type="checkbox" class="form-check-input" id="create_new_customer" name="create_new_customer" value="1"
 								x-model="createNewCustomer" {{ old('create_new_customer') ? 'checked' : '' }}>
 							<label class="form-check-label" for="create_new_customer">Tambah customer baru</label>
