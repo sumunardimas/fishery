@@ -4,6 +4,7 @@ use App\Http\Controllers\HomeController;
 use App\Http\Controllers\KapalController;
 use App\Http\Controllers\PelayaranController;
 use App\Http\Controllers\PelayaranSisaController;
+use App\Http\Controllers\PenjualanController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\UpdateProfileController;
 use App\Http\Controllers\UserController;
@@ -66,6 +67,14 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/{pelayaran}/edit', [PelayaranController::class, 'edit'])->name('edit');
         Route::put('/{pelayaran}', [PelayaranController::class, 'update'])->name('update');
         Route::delete('/{pelayaran}', [PelayaranController::class, 'destroy'])->name('destroy');
+    });
+
+    Route::prefix('penjualan')->name('penjualan.')->group(function () {
+        Route::get('/', [PenjualanController::class, 'index'])->name('index');
+        Route::post('/', [PenjualanController::class, 'store'])->name('store');
+        Route::post('/open-kas', [PenjualanController::class, 'openKas'])->name('open-kas');
+        Route::post('/close-kas', [PenjualanController::class, 'closeKas'])->name('close-kas');
+        Route::get('/report', [PenjualanController::class, 'report'])->name('report');
     });
 
     Route::get('/profile', [ProfileController::class, 'index'])->name('profile.index');

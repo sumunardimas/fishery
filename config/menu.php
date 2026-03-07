@@ -47,7 +47,7 @@ return [
         [
             'title' => 'Sisa Trip',
             'icon' => 'ti-calendar',
-            'route' => 'pelayaran/sisa',
+            'route' => '/pelayaran/sisa',
             'type' => 'url',
         ],
         [
