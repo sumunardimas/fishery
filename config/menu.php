@@ -99,10 +99,22 @@ return [
             'route' => '#',
             'children' => [
                 [
-                    'title' => 'Master Data',
-                    'icon' => 'ti-database',
-                    'route' => '/pengaturan/master-data',
-                    'type' => 'url',
+                    'title' => 'Master Perbekalan',
+                    'icon' => 'ti-package',
+                    'route' => 'master.perbekalan.index',
+                    'type' => 'route',
+                ],
+                [
+                    'title' => 'Master Ikan',
+                    'icon' => 'ti-layout-list-thumb',
+                    'route' => 'master.ikan.index',
+                    'type' => 'route',
+                ],
+                [
+                    'title' => 'Master Customer',
+                    'icon' => 'ti-id-badge',
+                    'route' => 'master.customer.index',
+                    'type' => 'route',
                 ],
                 [
                     'title' => 'Pengguna',

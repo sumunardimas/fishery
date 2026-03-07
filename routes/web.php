@@ -2,6 +2,9 @@
 
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\KapalController;
+use App\Http\Controllers\MasterCustomerController;
+use App\Http\Controllers\MasterIkanController;
+use App\Http\Controllers\MasterPerbekalanController;
 use App\Http\Controllers\PelayaranController;
 use App\Http\Controllers\PelayaranSisaController;
 use App\Http\Controllers\PenjualanController;
@@ -75,6 +78,27 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/open-kas', [PenjualanController::class, 'openKas'])->name('open-kas');
         Route::post('/close-kas', [PenjualanController::class, 'closeKas'])->name('close-kas');
         Route::get('/report', [PenjualanController::class, 'report'])->name('report');
+    });
+
+    Route::prefix('master/perbekalan')->name('master.perbekalan.')->group(function () {
+        Route::get('/', [MasterPerbekalanController::class, 'index'])->name('index');
+        Route::post('/', [MasterPerbekalanController::class, 'store'])->name('store');
+        Route::put('/{perbekalan}', [MasterPerbekalanController::class, 'update'])->name('update');
+        Route::delete('/{perbekalan}', [MasterPerbekalanController::class, 'destroy'])->name('destroy');
+    });
+
+    Route::prefix('master/ikan')->name('master.ikan.')->group(function () {
+        Route::get('/', [MasterIkanController::class, 'index'])->name('index');
+        Route::post('/', [MasterIkanController::class, 'store'])->name('store');
+        Route::put('/{ikan}', [MasterIkanController::class, 'update'])->name('update');
+        Route::delete('/{ikan}', [MasterIkanController::class, 'destroy'])->name('destroy');
+    });
+
+    Route::prefix('master/customer')->name('master.customer.')->group(function () {
+        Route::get('/', [MasterCustomerController::class, 'index'])->name('index');
+        Route::post('/', [MasterCustomerController::class, 'store'])->name('store');
+        Route::put('/{customer}', [MasterCustomerController::class, 'update'])->name('update');
+        Route::delete('/{customer}', [MasterCustomerController::class, 'destroy'])->name('destroy');
     });
 
     Route::get('/profile', [ProfileController::class, 'index'])->name('profile.index');
