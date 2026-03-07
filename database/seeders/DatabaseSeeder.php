@@ -15,6 +15,7 @@ class DatabaseSeeder extends Seeder
             PermissionSeeder::class,
             AdminSeeder::class,
             InstitusiSeeder::class,
+            FisherySeeder::class,
         ]);
     }
 }
