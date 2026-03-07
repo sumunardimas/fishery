@@ -5,6 +5,7 @@ use App\Http\Controllers\KapalController;
 use App\Http\Controllers\MasterCustomerController;
 use App\Http\Controllers\MasterIkanController;
 use App\Http\Controllers\MasterPerbekalanController;
+use App\Http\Controllers\OperasionalController;
 use App\Http\Controllers\PembelianController;
 use App\Http\Controllers\PelayaranController;
 use App\Http\Controllers\PelayaranSisaController;
@@ -79,6 +80,11 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/open-kas', [PenjualanController::class, 'openKas'])->name('open-kas');
         Route::post('/close-kas', [PenjualanController::class, 'closeKas'])->name('close-kas');
         Route::get('/report', [PenjualanController::class, 'report'])->name('report');
+    });
+
+    Route::prefix('operasional')->name('operasional.')->group(function () {
+        Route::get('/', [OperasionalController::class, 'index'])->name('index');
+        Route::post('/', [OperasionalController::class, 'store'])->name('store');
     });
 
     Route::prefix('pembelian')->name('pembelian.')->group(function () {
