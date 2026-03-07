@@ -5,6 +5,7 @@ use App\Http\Controllers\KapalController;
 use App\Http\Controllers\MasterCustomerController;
 use App\Http\Controllers\MasterIkanController;
 use App\Http\Controllers\MasterPerbekalanController;
+use App\Http\Controllers\PembelianController;
 use App\Http\Controllers\PelayaranController;
 use App\Http\Controllers\PelayaranSisaController;
 use App\Http\Controllers\PenjualanController;
@@ -78,6 +79,17 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/open-kas', [PenjualanController::class, 'openKas'])->name('open-kas');
         Route::post('/close-kas', [PenjualanController::class, 'closeKas'])->name('close-kas');
         Route::get('/report', [PenjualanController::class, 'report'])->name('report');
+    });
+
+    Route::prefix('pembelian')->name('pembelian.')->group(function () {
+        Route::get('/', [PembelianController::class, 'index'])->name('index');
+
+        Route::post('/items', [PembelianController::class, 'storeItem'])->name('items.store');
+        Route::put('/items/{item}', [PembelianController::class, 'updateItem'])->name('items.update');
+        Route::delete('/items/{item}', [PembelianController::class, 'destroyItem'])->name('items.destroy');
+
+        Route::post('/transactions', [PembelianController::class, 'storeTransaction'])->name('transactions.store');
+        Route::delete('/transactions/{transaction}', [PembelianController::class, 'destroyTransaction'])->name('transactions.destroy');
     });
 
     Route::prefix('master/perbekalan')->name('master.perbekalan.')->group(function () {

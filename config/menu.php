@@ -59,8 +59,8 @@ return [
         [
             'title' => 'Pembelian Barang',
             'icon' => 'ti-package',
-            'route' => '/pembelian',
-            'type' => 'url',
+            'route' => 'pembelian.index',
+            'type' => 'route',
         ],
         [
             'title' => 'Operasional',
