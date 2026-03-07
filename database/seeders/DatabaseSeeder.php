@@ -18,6 +18,7 @@ class DatabaseSeeder extends Seeder
             FisherySeeder::class,
             MasterCustomerSeeder::class,
             MasterOperasionalSeeder::class,
+            MasterOperasionalKantorSeeder::class,
         ]);
     }
 }

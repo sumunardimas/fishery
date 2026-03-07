@@ -44,7 +44,7 @@ return [
             'type' => 'url',
         ],
         [
-            'title' => 'Operasional',
+            'title' => 'Operasional Trip',
             'icon' => 'ti-agenda',
             'route' => '/operasional',
             'type' => 'url',
@@ -60,6 +60,12 @@ return [
             'icon' => 'ti-package',
             'route' => 'pembelian.index',
             'type' => 'route',
+        ],
+        [
+            'title' => 'Operasional Kantor',
+            'icon' => 'ti-clipboard',
+            'route' => '/operasional-kantor',
+            'type' => 'url',
         ],
         [
             'title' => 'Stok',

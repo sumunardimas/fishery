@@ -9,6 +9,7 @@ use App\Http\Controllers\MasterItemPembelianController;
 use App\Http\Controllers\MasterOperasionalController;
 use App\Http\Controllers\MasterPerbekalanController;
 use App\Http\Controllers\OperasionalController;
+use App\Http\Controllers\OperasionalKantorController;
 use App\Http\Controllers\PelayaranController;
 use App\Http\Controllers\PelayaranSisaController;
 use App\Http\Controllers\PembelianController;
@@ -89,6 +90,11 @@ Route::middleware(['auth'])->group(function () {
     Route::prefix('operasional')->name('operasional.')->group(function () {
         Route::get('/', [OperasionalController::class, 'index'])->name('index');
         Route::post('/', [OperasionalController::class, 'store'])->name('store');
+    });
+
+    Route::prefix('operasional-kantor')->name('operasional-kantor.')->group(function () {
+        Route::get('/', [OperasionalKantorController::class, 'index'])->name('index');
+        Route::post('/', [OperasionalKantorController::class, 'store'])->name('store');
     });
 
     Route::prefix('keuangan')->name('keuangan.')->group(function () {
