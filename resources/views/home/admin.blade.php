@@ -13,7 +13,7 @@
             <div class="row">
                 <div class="col-12 col-xl-8 mb-4 mb-xl-0">
                     <h3 class="font-weight-bold">Selamat datang <span
-                            class="text-info">{{ ucwords($user->getRoleNames()->first() ?? '-') }}</span> di <br> Fisherya</h3>
+                            class="text-info">{{ ucwords($user->getRoleNames()->first() ?? '-') }}</span> di <br> Perikanan</h3>
                     <h6 class="font-weight-normal mb-0">Ringkasan operasional dan keuangan perusahaan per {{ $overview['today_label'] }}.</h6>
                 </div>
                 <div class="col-12 col-xl-4">

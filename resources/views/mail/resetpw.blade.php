@@ -3,8 +3,8 @@
 
 <head>
     <meta content="text/html; charset=utf-8" http-equiv="Content-Type" />
-    <title>Penggantian Kata Sandi Sistem Fisherya</title>
-    <meta name="description" content="Notifikasi Sistem Fisherya">
+    <title>Penggantian Kata Sandi Sistem Perikanan</title>
+    <meta name="description" content="Notifikasi Sistem Perikanan">
     <style type="text/css">
         a:hover {
             text-decoration: underline !important;

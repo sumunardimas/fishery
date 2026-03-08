@@ -1,6 +1,6 @@
 @extends('layouts.layout-hless')
 
-@section('title', 'Ubah Password Sistem Fisherya')
+@section('title', 'Ubah Password Sistem Perikanan')
 
 @section('content')
 
