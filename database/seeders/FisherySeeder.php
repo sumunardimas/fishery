@@ -81,6 +81,20 @@ class FisherySeeder extends Seeder
             'updated_at' => $now,
         ], 'id_gudang');
 
+        $idIkanTuna = (int) (DB::table('master_ikan')
+            ->whereRaw('LOWER(nama_ikan) LIKE ?', ['tuna%'])
+            ->orderBy('id_ikan')
+            ->value('id_ikan') ?? 0);
+
+        $idIkanTongkol = (int) (DB::table('master_ikan')
+            ->whereRaw('LOWER(nama_ikan) LIKE ?', ['tongkol%'])
+            ->orderBy('id_ikan')
+            ->value('id_ikan') ?? 0);
+
+        if ($idIkanTuna <= 0 || $idIkanTongkol <= 0) {
+            throw new \RuntimeException('MasterIkanSeeder belum menyediakan data tuna/tongkol yang diperlukan FisherySeeder.');
+        }
+
         // 2) Pelayaran depends on kapal.
         $idPelayaranA = DB::table('pelayaran')->insertGetId([
             'id_kapal' => $idKapalA,
