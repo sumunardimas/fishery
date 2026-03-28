@@ -55,25 +55,31 @@ class FisherySeeder extends Seeder
             'updated_at' => $now,
         ], 'id_ikan');
 
-        $idBarangSolar = DB::table('master_perbekalan')->insertGetId([
-            'nama_barang' => 'Solar',
-            'kategori' => 'Bahan Bakar',
-            'satuan' => 'liter',
-            'harga_default' => 11800.00,
-            'keterangan' => 'Kebutuhan bahan bakar utama',
-            'created_at' => $now,
-            'updated_at' => $now,
-        ], 'id_barang');
+        $idBarangSolar = (int) (DB::table('master_perbekalan')
+            ->whereRaw('LOWER(nama_barang) = ?', ['solar'])
+            ->value('id_barang') ?? 0);
 
-        $idBarangEs = DB::table('master_perbekalan')->insertGetId([
-            'nama_barang' => 'Es Balok',
-            'kategori' => 'Pendingin',
-            'satuan' => 'balok',
-            'harga_default' => 25000.00,
-            'keterangan' => 'Menjaga kualitas hasil tangkap',
-            'created_at' => $now,
-            'updated_at' => $now,
-        ], 'id_barang');
+        if ($idBarangSolar <= 0) {
+            $idBarangSolar = DB::table('master_perbekalan')->insertGetId([
+                'nama_barang' => 'Solar',
+                'satuan' => 'liter',
+                'created_at' => $now,
+                'updated_at' => $now,
+            ], 'id_barang');
+        }
+
+        $idBarangEs = (int) (DB::table('master_perbekalan')
+            ->whereRaw('LOWER(nama_barang) = ?', ['es'])
+            ->value('id_barang') ?? 0);
+
+        if ($idBarangEs <= 0) {
+            $idBarangEs = DB::table('master_perbekalan')->insertGetId([
+                'nama_barang' => 'Es Balok',
+                'satuan' => 'balok',
+                'created_at' => $now,
+                'updated_at' => $now,
+            ], 'id_barang');
+        }
 
         $idGudangUtama = DB::table('master_gudang')->insertGetId([
             'nama_gudang' => 'Gudang Utama Pelabuhan',

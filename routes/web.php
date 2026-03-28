@@ -126,6 +126,8 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/', [MasterPerbekalanController::class, 'store'])->name('store');
         Route::put('/{perbekalan}', [MasterPerbekalanController::class, 'update'])->name('update');
         Route::delete('/{perbekalan}', [MasterPerbekalanController::class, 'destroy'])->name('destroy');
+        Route::post('/transactions', [MasterPerbekalanController::class, 'storeTransaction'])->name('transactions.store');
+        Route::delete('/transactions/{transaction}', [MasterPerbekalanController::class, 'destroyTransaction'])->name('transactions.destroy');
     });
 
     Route::prefix('master/ikan')->name('master.ikan.')->group(function () {

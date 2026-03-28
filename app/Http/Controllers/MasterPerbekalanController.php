@@ -3,28 +3,60 @@
 namespace App\Http\Controllers;
 
 use App\Models\MasterPerbekalan;
+use App\Models\PerbekalanStock;
+use App\Models\PerbekalanTransaction;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
 class MasterPerbekalanController extends Controller
 {
-    public function index(): View
+    public function index(Request $request): View
     {
-        $items = MasterPerbekalan::query()->orderByDesc('created_at')->get();
+        $selectedItemId = $request->integer('show_item');
 
-        return view('master.perbekalan.index', compact('items'));
+        $items = DB::table('master_perbekalan as mp')
+            ->leftJoin('perbekalan_stock as ps', 'ps.id_barang', '=', 'mp.id_barang')
+            ->select(
+                'mp.id_barang',
+                'mp.nama_barang',
+                'mp.satuan',
+                DB::raw('COALESCE(ps.stok_aktual, 0) as stok_aktual')
+            )
+            ->orderBy('mp.nama_barang')
+            ->get();
+
+        $selectedItem = null;
+        $transactions = collect();
+
+        if ($selectedItemId > 0) {
+            $selectedItem = MasterPerbekalan::query()->find($selectedItemId);
+
+            if ($selectedItem) {
+                $transactions = PerbekalanTransaction::query()
+                    ->where('id_barang', (int) $selectedItem->id_barang)
+                    ->orderByDesc('tanggal_transaksi')
+                    ->orderByDesc('id_transaction')
+                    ->get();
+            }
+        }
+
+        return view('master.perbekalan.index', compact(
+            'items',
+            'selectedItem',
+            'transactions',
+            'selectedItemId'
+        ));
     }
 
     public function store(Request $request): RedirectResponse
     {
         $data = $request->validate([
-            'nama_barang' => ['required', 'string', 'max:255'],
-            'kategori' => ['required', 'string', 'max:255'],
+            'nama_barang' => ['required', 'string', 'max:255', 'unique:master_perbekalan,nama_barang'],
             'satuan' => ['required', 'string', 'max:100'],
-            'harga_default' => ['required', 'numeric', 'min:0'],
-            'keterangan' => ['required', 'string'],
         ]);
 
         MasterPerbekalan::create($data);
@@ -35,11 +67,13 @@ class MasterPerbekalanController extends Controller
     public function update(Request $request, MasterPerbekalan $perbekalan): RedirectResponse
     {
         $data = $request->validate([
-            'nama_barang' => ['required', 'string', 'max:255'],
-            'kategori' => ['required', 'string', 'max:255'],
+            'nama_barang' => [
+                'required',
+                'string',
+                'max:255',
+                Rule::unique('master_perbekalan', 'nama_barang')->ignore($perbekalan->id_barang, 'id_barang'),
+            ],
             'satuan' => ['required', 'string', 'max:100'],
-            'harga_default' => ['required', 'numeric', 'min:0'],
-            'keterangan' => ['required', 'string'],
         ]);
 
         $perbekalan->update($data);
@@ -53,6 +87,7 @@ class MasterPerbekalanController extends Controller
 
         $usageMap = [
             'perbekalan' => 'perbekalan',
+            'perbekalan_transaction' => 'transaksi perbekalan',
             'pembelian_barang' => 'pembelian barang',
             'pemakaian_barang_kantor' => 'pemakaian barang kantor',
             'sisa_trip' => 'sisa trip',
@@ -73,8 +108,118 @@ class MasterPerbekalanController extends Controller
             ]);
         }
 
+        DB::table('perbekalan_stock')->where('id_barang', $idBarang)->delete();
+
         $perbekalan->delete();
 
         return redirect()->route('master.perbekalan.index')->with('success', 'Master perbekalan berhasil dihapus.');
+    }
+
+    public function storeTransaction(Request $request): RedirectResponse
+    {
+        $data = $request->validate([
+            'tanggal_transaksi' => ['required', 'date'],
+            'id_barang' => ['required', 'integer', 'exists:master_perbekalan,id_barang'],
+            'jenis_transaksi' => ['required', 'in:in,out'],
+            'jumlah' => ['required', 'numeric', 'gt:0'],
+            'harga_satuan' => ['nullable', 'numeric', 'min:0', 'required_if:jenis_transaksi,in'],
+            'sumber_tujuan' => ['nullable', 'string', 'max:255'],
+            'keterangan' => ['nullable', 'string'],
+        ]);
+
+        DB::transaction(function () use ($data) {
+            $jumlah = (float) $data['jumlah'];
+            $idBarang = (int) $data['id_barang'];
+
+            $stock = PerbekalanStock::query()
+                ->where('id_barang', $idBarang)
+                ->lockForUpdate()
+                ->first();
+
+            if (! $stock) {
+                $stock = PerbekalanStock::create([
+                    'id_barang' => $idBarang,
+                    'stok_aktual' => 0,
+                ]);
+            }
+
+            $stokSaatIni = (float) $stock->stok_aktual;
+
+            if ($data['jenis_transaksi'] === 'out' && $stokSaatIni < $jumlah) {
+                throw ValidationException::withMessages([
+                    'jumlah' => 'Stok tidak mencukupi. Stok tersedia: '
+                        .number_format($stokSaatIni, 2, ',', '.')
+                        .' '
+                        .$this->getPerbekalanUnit($idBarang)
+                        .'.',
+                ]);
+            }
+
+            $stock->stok_aktual = $data['jenis_transaksi'] === 'in'
+                ? $stokSaatIni + $jumlah
+                : $stokSaatIni - $jumlah;
+            $stock->save();
+
+            $hargaSatuan = $data['harga_satuan'] ?? null;
+            $totalHarga = $hargaSatuan !== null ? $jumlah * (float) $hargaSatuan : 0;
+
+            PerbekalanTransaction::create([
+                'tanggal_transaksi' => $data['tanggal_transaksi'],
+                'id_barang' => $idBarang,
+                'jenis_transaksi' => $data['jenis_transaksi'],
+                'jumlah' => $jumlah,
+                'harga_satuan' => $hargaSatuan,
+                'total_harga' => $totalHarga,
+                'sumber_tujuan' => $data['sumber_tujuan'] ?? null,
+                'keterangan' => $data['keterangan'] ?? null,
+            ]);
+        });
+
+        return redirect()->route('master.perbekalan.index', ['show_item' => (int) $data['id_barang']])
+            ->with('success', 'Transaksi perbekalan berhasil disimpan.');
+    }
+
+    public function destroyTransaction(PerbekalanTransaction $transaction): RedirectResponse
+    {
+        DB::transaction(function () use ($transaction) {
+            $stock = PerbekalanStock::query()
+                ->where('id_barang', (int) $transaction->id_barang)
+                ->lockForUpdate()
+                ->first();
+
+            if (! $stock) {
+                throw ValidationException::withMessages([
+                    'message' => 'Stok perbekalan tidak ditemukan. Tidak bisa membatalkan transaksi.',
+                ]);
+            }
+
+            $stokSaatIni = (float) $stock->stok_aktual;
+            $jumlah = (float) $transaction->jumlah;
+
+            if ($transaction->jenis_transaksi === 'in') {
+                if ($stokSaatIni < $jumlah) {
+                    throw ValidationException::withMessages([
+                        'message' => 'Transaksi tidak bisa dihapus karena akan membuat stok negatif.',
+                    ]);
+                }
+
+                $stock->stok_aktual = $stokSaatIni - $jumlah;
+            } else {
+                $stock->stok_aktual = $stokSaatIni + $jumlah;
+            }
+
+            $stock->save();
+            $transaction->delete();
+        });
+
+        return redirect()->route('master.perbekalan.index', ['show_item' => (int) $transaction->id_barang])
+            ->with('success', 'Transaksi berhasil dihapus dan stok telah disesuaikan.');
+    }
+
+    private function getPerbekalanUnit(int $idBarang): string
+    {
+        return (string) DB::table('master_perbekalan')
+            ->where('id_barang', $idBarang)
+            ->value('satuan');
     }
 }

@@ -4,18 +4,18 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
-class MasterPerbekalan extends Model
+class PerbekalanStock extends Model
 {
-    protected $table = 'master_perbekalan';
+    protected $table = 'perbekalan_stock';
 
-    protected $primaryKey = 'id_barang';
+    protected $primaryKey = 'id_stok_perbekalan';
 
     public $incrementing = true;
 
     protected $keyType = 'int';
 
     protected $fillable = [
-        'nama_barang',
-        'satuan',
+        'id_barang',
+        'stok_aktual',
     ];
 }

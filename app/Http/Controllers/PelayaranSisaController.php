@@ -37,7 +37,7 @@ class PelayaranSisaController extends Controller
                 ->join('master_perbekalan as mp', 'mp.id_barang', '=', 'pp.id_barang')
                 ->where('pp.id_pelayaran', $selectedPelayaran->id_pelayaran)
                 ->orderBy('mp.nama_barang')
-                ->select('pp.id_barang', 'mp.nama_barang', 'mp.kategori', 'mp.satuan', 'pp.jumlah as jumlah_awal')
+                ->select('pp.id_barang', 'mp.nama_barang', 'mp.satuan', 'pp.jumlah as jumlah_awal')
                 ->get();
 
             $existingSisa = DB::table('sisa_trip')

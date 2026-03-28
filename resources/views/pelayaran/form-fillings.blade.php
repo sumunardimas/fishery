@@ -15,14 +15,16 @@
 <div class="form-group">
     <label class="required-asterisk" for="tanggal_berangkat">Tanggal Berangkat</label>
     <input type="date" name="tanggal_berangkat" id="tanggal_berangkat" class="form-control"
-        value="{{ old('tanggal_berangkat', isset($pelayaran) ? $pelayaran->tanggal_berangkat?->format('Y-m-d') : null) }}" required>
+        value="{{ old('tanggal_berangkat', isset($pelayaran) ? $pelayaran->tanggal_berangkat?->format('Y-m-d') : null) }}"
+        required>
     <x-input-error :message="$errors->first('tanggal_berangkat')" />
 </div>
 
 <div class="form-group">
     <label class="required-asterisk" for="tanggal_tiba">Tanggal Tiba</label>
     <input type="date" name="tanggal_tiba" id="tanggal_tiba" class="form-control"
-        value="{{ old('tanggal_tiba', isset($pelayaran) ? $pelayaran->tanggal_tiba?->format('Y-m-d') : null) }}" required>
+        value="{{ old('tanggal_tiba', isset($pelayaran) ? $pelayaran->tanggal_tiba?->format('Y-m-d') : null) }}"
+        required>
     <x-input-error :message="$errors->first('tanggal_tiba')" />
 </div>
 
@@ -36,7 +38,8 @@
 <div class="form-group">
     <label class="required-asterisk" for="pelabuhan_tujuan">Pelabuhan Tujuan</label>
     <input type="text" name="pelabuhan_tujuan" id="pelabuhan_tujuan" class="form-control" maxlength="255"
-        value="{{ old('pelabuhan_tujuan', $pelayaran->pelabuhan_tujuan ?? null) }}" placeholder="Contoh: Sabang" required>
+        value="{{ old('pelabuhan_tujuan', $pelayaran->pelabuhan_tujuan ?? null) }}" placeholder="Contoh: Sabang"
+        required>
     <x-input-error :message="$errors->first('pelabuhan_tujuan')" />
 </div>
 
@@ -55,18 +58,17 @@
 </div>
 
 <div class="card mt-4 border">
-    <div class="card-body"
-        x-data="{
-            tick: 0,
-            hitungTerisi() {
-                return Array.from(this.$el.querySelectorAll('input[data-perbekalan-qty]')).filter((el) => Number(el.value) > 0).length;
-            }
-        }"
-        x-on:input="tick++">
+    <div class="card-body" x-data="{
+        tick: 0,
+        hitungTerisi() {
+            return Array.from(this.$el.querySelectorAll('input[data-perbekalan-qty]')).filter((el) => Number(el.value) > 0).length;
+        }
+    }" x-on:input="tick++">
         <div class="d-flex justify-content-between align-items-center mb-3">
             <div>
                 <h5 class="mb-1">Perbekalan Saat Berlayar</h5>
-                <p class="text-muted mb-0">Isi jumlah hanya untuk barang yang dibawa. Barang yang kosong/0 tidak disimpan ke database.</p>
+                <p class="text-muted mb-0">Isi jumlah hanya untuk barang yang dibawa. Barang yang kosong/0 tidak
+                    disimpan ke database.</p>
             </div>
             <span class="badge badge-info" x-text="hitungTerisi() + ' item diisi'"></span>
         </div>
@@ -75,10 +77,9 @@
             <table class="table table-bordered align-middle">
                 <thead>
                     <tr>
-                        <th style="width: 40%;">Nama Barang</th>
-                        <th style="width: 20%;">Kategori</th>
-                        <th style="width: 15%;">Satuan</th>
-                        <th style="width: 25%;">Jumlah Dibawa</th>
+                        <th style="width: 45%;">Nama Barang</th>
+                        <th style="width: 20%;">Satuan</th>
+                        <th style="width: 35%;">Jumlah Dibawa</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -89,24 +90,16 @@
                         @endphp
                         <tr>
                             <td>{{ $barang->nama_barang }}</td>
-                            <td>{{ $barang->kategori }}</td>
                             <td>{{ $barang->satuan }}</td>
                             <td>
-                                <input
-                                    type="number"
-                                    data-perbekalan-qty
-                                    @input="$dispatch('input')"
-                                    name="perbekalan_qty[{{ $barang->id_barang }}]"
-                                    class="form-control"
-                                    step="0.01"
-                                    min="0"
-                                    placeholder="0"
-                                    value="{{ $value }}">
+                                <input type="number" data-perbekalan-qty @input="$dispatch('input')"
+                                    name="perbekalan_qty[{{ $barang->id_barang }}]" class="form-control" step="0.01"
+                                    min="0" placeholder="0" value="{{ $value }}">
                             </td>
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="4" class="text-center text-muted">Master perbekalan belum tersedia.</td>
+                            <td colspan="3" class="text-center text-muted">Master perbekalan belum tersedia.</td>
                         </tr>
                     @endforelse
                 </tbody>
