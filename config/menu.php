@@ -205,6 +205,12 @@ return [
                     'route' => '/keuangan/lap-selisih-bongkaran',
                     'type' => 'url',
                 ],
+                [
+                    'title' => 'Piutang',
+                    'icon' => 'ti-alert',
+                    'route' => '/keuangan/piutang',
+                    'type' => 'url',
+                ],
             ],
         ],
         [

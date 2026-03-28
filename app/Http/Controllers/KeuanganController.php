@@ -254,4 +254,78 @@ class KeuanganController extends Controller
             ])
             ->with('success', 'Berat lelang ikan berhasil disimpan.');
     }
+
+    public function piutang(Request $request): View
+    {
+        $validated = $request->validate([
+            'start_date' => ['nullable', 'date'],
+            'end_date'   => ['nullable', 'date'],
+            'status'     => ['nullable', 'in:semua,piutang'],
+        ]);
+
+        $today = Carbon::today();
+
+        $start = ! empty($validated['start_date'])
+            ? Carbon::parse($validated['start_date'])
+            : $today->copy()->subDays(89);
+
+        $end = ! empty($validated['end_date'])
+            ? Carbon::parse($validated['end_date'])
+            : $today->copy();
+
+        if ($start->gt($end)) {
+            [$start, $end] = [$end, $start];
+        }
+
+        $startDate = $start->toDateString();
+        $endDate   = $end->toDateString();
+        $status    = $validated['status'] ?? 'piutang';
+
+        $query = DB::table('penjualan as p')
+            ->leftJoin('master_customer as mc', 'p.id_customer', '=', 'mc.id_customer')
+            ->whereBetween('p.tanggal_penjualan', [$startDate, $endDate])
+            ->select([
+                'p.id_penjualan',
+                'p.tanggal_penjualan',
+                'p.total_harga',
+                DB::raw('COALESCE(p.bayar_tunai, 0) + COALESCE(p.bayar_transfer, 0) as total_diterima'),
+                'p.piutang',
+                'p.status_pembayaran',
+                DB::raw('COALESCE(mc.nama_customer, p.pembeli) as nama_customer_display'),
+            ])
+            ->orderByDesc('p.tanggal_penjualan')
+            ->orderByDesc('p.id_penjualan');
+
+        if ($status === 'piutang') {
+            $query->where('p.piutang', '>', 0);
+        }
+
+        $rows = $query->get();
+
+        $summary = [
+            'total_piutang'    => (float) $rows->sum('piutang'),
+            'jumlah_transaksi' => $rows->count(),
+            'total_tagihan'    => (float) $rows->sum('total_harga'),
+            'total_diterima'   => (float) $rows->sum('total_diterima'),
+        ];
+
+        $byCustomer = $rows
+            ->groupBy('nama_customer_display')
+            ->map(fn ($items) => (object) [
+                'nama'          => $items->first()->nama_customer_display,
+                'jumlah'        => $items->count(),
+                'total_piutang' => (float) $items->sum('piutang'),
+            ])
+            ->sortByDesc('total_piutang')
+            ->values();
+
+        return view('keuangan.piutang.index', compact(
+            'rows',
+            'startDate',
+            'endDate',
+            'status',
+            'summary',
+            'byCustomer',
+        ));
+    }
 }

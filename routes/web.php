@@ -113,6 +113,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/laba', [KeuanganController::class, 'labaRugi'])->name('laba.index');
         Route::get('/lap-selisih-bongkaran', [KeuanganController::class, 'selisihBongkar'])->name('lap-selisih-bongkaran.index');
         Route::post('/lap-selisih-bongkaran/berat-lelang', [KeuanganController::class, 'storeBeratLelang'])->name('lap-selisih-bongkaran.store');
+        Route::get('/piutang', [KeuanganController::class, 'piutang'])->name('piutang.index');
     });
 
     Route::prefix('pembelian')->name('pembelian.')->group(function () {

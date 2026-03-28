@@ -102,11 +102,12 @@ class PenjualanController extends Controller
 
             if ($totalPenerimaan > 0) {
                 $lastSaldoKas = (float) (DB::table('arus_kas')->orderByDesc('id_kas')->value('saldo') ?? 0);
+                $namaCustomer = $customer?->nama_customer ?? '-';
                 DB::table('arus_kas')->insert([
                     'tanggal' => $today,
                     'jenis_transaksi' => 'Masuk',
                     'kategori' => 'Penjualan Ikan',
-                    'deskripsi' => 'Transaksi POS penjualan ikan. Kas/Bank diterima Rp '.number_format($totalPenerimaan, 2, ',', '.').'; Piutang Rp '.number_format($piutang, 2, ',', '.'),
+                    'deskripsi' => 'Penjualan kepada '.$namaCustomer.'. Kas/Bank diterima Rp '.number_format($totalPenerimaan, 2, ',', '.').'; Piutang Rp '.number_format($piutang, 2, ',', '.'),
                     'uang_masuk' => $totalPenerimaan,
                     'uang_keluar' => 0,
                     'saldo' => $lastSaldoKas + $totalPenerimaan,
