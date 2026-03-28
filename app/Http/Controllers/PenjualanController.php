@@ -20,7 +20,6 @@ class PenjualanController extends Controller
 
         $ikanStock = $this->getIkanStockMap();
         $customers = MasterCustomer::query()->orderBy('nama_customer')->get();
-        $kasHarian = KasHarian::query()->whereDate('tanggal', $today)->first();
 
         $todaySales = Penjualan::query()
             ->leftJoin('master_ikan as mi', 'mi.id_ikan', '=', 'penjualan.id_ikan')
@@ -40,7 +39,7 @@ class PenjualanController extends Controller
             'total_pendapatan' => (float) $todaySales->sum('total_harga'),
         ];
 
-        return view('penjualan.index', compact('ikanStock', 'customers', 'kasHarian', 'todaySales', 'summaryToday', 'today'));
+        return view('penjualan.index', compact('ikanStock', 'customers', 'todaySales', 'summaryToday', 'today'));
     }
 
     public function store(Request $request): RedirectResponse
@@ -58,19 +57,6 @@ class PenjualanController extends Controller
         ]);
 
         $today = now()->toDateString();
-        $kasHarian = KasHarian::query()->whereDate('tanggal', $today)->first();
-
-        if (!$kasHarian) {
-            return back()->withInput()->withErrors([
-                'message' => 'Saldo awal hari ini belum dibuka. Silakan isi saldo awal terlebih dahulu.',
-            ]);
-        }
-
-        if ($kasHarian->status_tutup) {
-            return back()->withInput()->withErrors([
-                'message' => 'Kas hari ini sudah ditutup. Tidak bisa menambah transaksi.',
-            ]);
-        }
 
         [$customer, $customerError] = $this->resolveCustomer($validated);
         if ($customerError !== null) {
@@ -340,8 +326,6 @@ class PenjualanController extends Controller
             return (object) [
                 'id_ikan' => $ikan->id_ikan,
                 'nama_ikan' => $ikan->nama_ikan,
-                'jenis_ikan' => $ikan->jenis_ikan,
-                'harga_default' => (float) $ikan->harga_default,
                 'stok_tersedia' => max(0, $totalTangkapan - $totalPenjualan),
             ];
         });
