@@ -24,3 +24,8 @@
     background-color: #FF474720 !important;
     color: #FF4747 !important;
 }
+
+.sidebar .nav .nav-item .nav-link {
+    padding-top: 0.45rem;
+    padding-bottom: 0.45rem;
+}

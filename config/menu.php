@@ -164,7 +164,7 @@ return [
             ],
         ],
         [
-            'title' => 'Keuangan',
+            'title' => 'Laporan',
             'icon' => 'ti-briefcase',
             'route' => '#',
             'children' => [
@@ -175,7 +175,7 @@ return [
                     'type' => 'url',
                 ],
                 [
-                    'title' => 'Arus Kas',
+                    'title' => 'Lap Arus Kas',
                     'icon' => 'ti-money',
                     'route' => '/keuangan/arus-kas',
                     'type' => 'url',
