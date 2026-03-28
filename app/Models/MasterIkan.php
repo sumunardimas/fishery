@@ -16,8 +16,5 @@ class MasterIkan extends Model
 
     protected $fillable = [
         'nama_ikan',
-        'jenis_ikan',
-        'harga_default',
-        'keterangan',
     ];
 }

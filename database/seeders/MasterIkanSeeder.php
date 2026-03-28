@@ -1,0 +1,118 @@
+<?php
+
+namespace Database\Seeders;
+
+use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\DB;
+
+class MasterIkanSeeder extends Seeder
+{
+    public function run(): void
+    {
+        $now = now();
+
+        $names = [
+            'BABY TUNA 1 MINI',
+            'BABY TUNA 1 MINI SEMI',
+            'BABY TUNA 1 MINI PP',
+            'BABY TUNA 1 MINI BS',
+            'BABY TUNA 1 DOWN',
+            'BABY TUNA 1 DOWN SEMI',
+            'BABY TUNA 1 DOWN PP',
+            'BABY TUNA 1 DOWN BS',
+            'BABY TUNA 1 UP',
+            'BABY TUNA 1 UP SEMI',
+            'BABY TUNA 1 UP PP',
+            'BABY TUNA 1 UP BS',
+            'BABY TUNA 5 UP',
+            'BABY TUNA 5 UP SEMI',
+            'BABY TUNA 5 UP PP',
+            'BABY TUNA 5 UP BS',
+            'TUNA 10 UP',
+            'TUNA 10 UP SEMI',
+            'TUNA 10 UP PP',
+            'TUNA 10 UP BS',
+            'TUNA 20 UP',
+            'TUNA 20 UP SEMI',
+            'TUNA 20 UP PP',
+            'TUNA 20 UP BS',
+            'CAKALANG MINI',
+            'CAKALANG MINI SEMI',
+            'CAKALANG MINI PP',
+            'CAKALANG MINI BS',
+            'CAKALANG 1 DOWN',
+            'CAKALANG 1 DOWN SEMI',
+            'CAKALANG 1 DOWN PP',
+            'CAKALANG 1 DOWN BS',
+            'CAKALANG 1 UP',
+            'CAKALANG 1 UP SEMI',
+            'CAKALANG 1 UP PP',
+            'CAKALANG 1 UP BS',
+            'LAYANG KECIL',
+            'LAYANG KECIL SEMI',
+            'LAYANG KECIL PP',
+            'LAYANG KECIL BS',
+            'LAYANG',
+            'LAYANG SEMI',
+            'LAYANG PP',
+            'LAYANG BS',
+            'LAYANG BESAR',
+            'LAYANG BESAR SEMI',
+            'LAYANG BESAR PP',
+            'LAYANG BESAR BS',
+            'TONGKOL KECIL',
+            'TONGKOL KECIL SEMI',
+            'TONGKOL KECIL PP',
+            'TONGKOL KECIL BS',
+            'TONGKOL',
+            'TONGKOL SEMI',
+            'TONGKOL PP',
+            'TONGKOL BS',
+            'LAURA',
+            'LAURA SEMI',
+            'LAURA PP',
+            'LAURA BS',
+            'LAURA BESAR',
+            'LAURA BESAR SEMI',
+            'LAURA BESAR PP',
+            'LAURA BESAR BS',
+            'TENGGIRI',
+            'TENGGIRI SEMI',
+            'TENGGIRI PP',
+            'TENGGIRI BS',
+            'CUMI KECIL',
+            'CUMI KECIL SEMI',
+            'CUMI KECIL BS',
+            'CUMI BESAR',
+            'CUMI BESAR SEMI',
+            'CUMI BESAR BS',
+            'LEMADANG 4 UP',
+            'LEMADANG 4 UP SEMI',
+            'LEMADANG 4 UP BS',
+            'LEMADANG 2 UP',
+            'LEMADANG 2 UP SEMI',
+            'LEMADANG 2 UP BS',
+            'LEMADANG 2 DOWN',
+            'LEMADANG 2 DOWN SEMI',
+            'LEMADANG 2 DOWN BS',
+            'BARAKUDA',
+            'HIU',
+            'KAKAP',
+            'KANANG',
+            'MARLIN',
+            'MARLIN GEPENG',
+            'POGOT',
+            'TEPUNGAN',
+            'BS CAMPUR',
+            'BS PARAH',
+        ];
+
+        $records = array_map(fn (string $name) => [
+            'nama_ikan'  => $name,
+            'created_at' => $now,
+            'updated_at' => $now,
+        ], $names);
+
+        DB::table('master_ikan')->insert($records);
+    }
+}

@@ -37,24 +37,6 @@ class FisherySeeder extends Seeder
             'updated_at' => $now,
         ], 'id_kapal');
 
-        $idIkanTuna = DB::table('master_ikan')->insertGetId([
-            'nama_ikan' => 'Tuna Sirip Kuning',
-            'jenis_ikan' => 'Pelagis',
-            'harga_default' => 42000.00,
-            'keterangan' => 'Ikan target ekspor',
-            'created_at' => $now,
-            'updated_at' => $now,
-        ], 'id_ikan');
-
-        $idIkanTongkol = DB::table('master_ikan')->insertGetId([
-            'nama_ikan' => 'Tongkol',
-            'jenis_ikan' => 'Pelagis',
-            'harga_default' => 28000.00,
-            'keterangan' => 'Hasil tangkapan harian',
-            'created_at' => $now,
-            'updated_at' => $now,
-        ], 'id_ikan');
-
         $idBarangSolar = (int) (DB::table('master_perbekalan')
             ->whereRaw('LOWER(nama_barang) = ?', ['solar'])
             ->value('id_barang') ?? 0);

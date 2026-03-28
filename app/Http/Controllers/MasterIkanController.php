@@ -21,9 +21,6 @@ class MasterIkanController extends Controller
     {
         $data = $request->validate([
             'nama_ikan' => ['required', 'string', 'max:255'],
-            'jenis_ikan' => ['required', 'string', 'max:255'],
-            'harga_default' => ['required', 'numeric', 'min:0'],
-            'keterangan' => ['required', 'string'],
         ]);
 
         MasterIkan::create($data);
@@ -35,9 +32,6 @@ class MasterIkanController extends Controller
     {
         $data = $request->validate([
             'nama_ikan' => ['required', 'string', 'max:255'],
-            'jenis_ikan' => ['required', 'string', 'max:255'],
-            'harga_default' => ['required', 'numeric', 'min:0'],
-            'keterangan' => ['required', 'string'],
         ]);
 
         $ikan->update($data);
