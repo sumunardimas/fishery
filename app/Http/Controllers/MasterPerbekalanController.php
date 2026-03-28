@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\MasterPerbekalan;
 use App\Models\PerbekalanStock;
 use App\Models\PerbekalanTransaction;
+use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -33,19 +34,26 @@ class MasterPerbekalanController extends Controller
         $items = $this->getPerbekalanItems();
 
         $selectedItem = null;
-        $transactions = collect();
+        $startDate = Carbon::today()->subDays(2)->toDateString();
+
+        $transactionsQuery = DB::table('perbekalan_transaction as pt')
+            ->join('master_perbekalan as mp', 'mp.id_barang', '=', 'pt.id_barang')
+            ->whereDate('pt.tanggal_transaksi', '>=', $startDate)
+            ->select('pt.*', 'mp.nama_barang', 'mp.satuan')
+            ->orderByDesc('pt.tanggal_transaksi')
+            ->orderByDesc('pt.id_transaction');
 
         if ($selectedItemId > 0) {
             $selectedItem = MasterPerbekalan::query()->find($selectedItemId);
 
             if ($selectedItem) {
-                $transactions = PerbekalanTransaction::query()
-                    ->where('id_barang', (int) $selectedItem->id_barang)
-                    ->orderByDesc('tanggal_transaksi')
-                    ->orderByDesc('id_transaction')
-                    ->get();
+                $transactionsQuery->where('pt.id_barang', (int) $selectedItem->id_barang);
+            } else {
+                $selectedItemId = 0;
             }
         }
+
+        $transactions = $transactionsQuery->get();
 
         return view('master.perbekalan.history', compact(
             'items',
@@ -196,8 +204,10 @@ class MasterPerbekalanController extends Controller
             ->with('success', 'Transaksi perbekalan berhasil disimpan.');
     }
 
-    public function destroyTransaction(PerbekalanTransaction $transaction): RedirectResponse
+    public function destroyTransaction(Request $request, PerbekalanTransaction $transaction): RedirectResponse
     {
+        $selectedItemId = $request->integer('show_item');
+
         DB::transaction(function () use ($transaction) {
             $stock = PerbekalanStock::query()
                 ->where('id_barang', (int) $transaction->id_barang)
@@ -229,7 +239,12 @@ class MasterPerbekalanController extends Controller
             $transaction->delete();
         });
 
-        return redirect()->route('master.perbekalan.history', ['show_item' => (int) $transaction->id_barang])
+        $redirectParams = [];
+        if ($selectedItemId > 0) {
+            $redirectParams['show_item'] = $selectedItemId;
+        }
+
+        return redirect()->route('master.perbekalan.history', $redirectParams)
             ->with('success', 'Transaksi berhasil dihapus dan stok telah disesuaikan.');
     }
 

@@ -29,9 +29,9 @@
 
                     <form method="GET" action="{{ route('master.perbekalan.history') }}" class="form-row align-items-end">
                         <div class="form-group col-md-8">
-                            <label for="show_item">Pilih Perbekalan</label>
-                            <select id="show_item" name="show_item" class="form-control" required>
-                                <option value="">Pilih perbekalan</option>
+                            <label for="show_item">Filter Perbekalan</label>
+                            <select id="show_item" name="show_item" class="form-control">
+                                <option value="">Semua perbekalan (default 3 hari terakhir)</option>
                                 @foreach ($items as $item)
                                     <option value="{{ $item->id_barang }}" @selected((int) $selectedItemId === (int) $item->id_barang)>
                                         {{ $item->nama_barang }} ({{ $item->satuan }}) - Stok
@@ -47,69 +47,84 @@
                 </div>
             </div>
 
-            @if ($selectedItem)
-                <div class="card">
-                    <div class="card-body">
-                        <h5 class="card-title">Riwayat IN/OUT: {{ $selectedItem->nama_barang }}</h5>
-                        <div class="table-responsive">
-                            <table class="table table-bordered">
-                                <thead>
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">
+                        Riwayat IN/OUT:
+                        @if ($selectedItem)
+                            {{ $selectedItem->nama_barang }}
+                        @else
+                            Semua Perbekalan (3 Hari Terakhir)
+                        @endif
+                    </h5>
+                    <div class="table-responsive">
+                        <table class="table table-bordered">
+                            <thead>
+                                <tr>
+                                    <th>Tanggal</th>
+                                    <th>Barang</th>
+                                    <th>Jenis</th>
+                                    <th>Jumlah</th>
+                                    <th>Harga Satuan</th>
+                                    <th>Total</th>
+                                    <th>Sumber/Tujuan</th>
+                                    <th>Keterangan</th>
+                                    <th class="text-right">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @forelse ($transactions as $trx)
                                     <tr>
-                                        <th>Tanggal</th>
-                                        <th>Jenis</th>
-                                        <th>Jumlah</th>
-                                        <th>Harga Satuan</th>
-                                        <th>Total</th>
-                                        <th>Sumber/Tujuan</th>
-                                        <th>Keterangan</th>
-                                        <th class="text-right">Aksi</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @forelse ($transactions as $trx)
-                                        <tr>
-                                            <td>{{ \Carbon\Carbon::parse($trx->tanggal_transaksi)->format('d-m-Y') }}</td>
-                                            <td>
-                                                <span
-                                                    class="badge {{ $trx->jenis_transaksi === 'in' ? 'badge-success' : 'badge-danger' }}">
-                                                    {{ strtoupper($trx->jenis_transaksi) }}
-                                                </span>
-                                            </td>
-                                            <td>{{ number_format((float) $trx->jumlah, 2, ',', '.') }}</td>
-                                            <td>
-                                                @if ($trx->harga_satuan !== null)
-                                                    Rp {{ number_format((float) $trx->harga_satuan, 2, ',', '.') }}
-                                                @else
-                                                    -
+                                        <td>{{ \Carbon\Carbon::parse($trx->tanggal_transaksi)->format('d-m-Y') }}</td>
+                                        <td>{{ $trx->nama_barang }} <small class="text-muted">({{ $trx->satuan }})</small>
+                                        </td>
+                                        <td>
+                                            <span
+                                                class="badge {{ $trx->jenis_transaksi === 'in' ? 'badge-success' : 'badge-danger' }}">
+                                                {{ strtoupper($trx->jenis_transaksi) }}
+                                            </span>
+                                        </td>
+                                        <td>{{ number_format((float) $trx->jumlah, 2, ',', '.') }}</td>
+                                        <td>
+                                            @if ($trx->harga_satuan !== null)
+                                                Rp {{ number_format((float) $trx->harga_satuan, 2, ',', '.') }}
+                                            @else
+                                                -
+                                            @endif
+                                        </td>
+                                        <td>Rp {{ number_format((float) $trx->total_harga, 2, ',', '.') }}</td>
+                                        <td>{{ $trx->sumber_tujuan ?: '-' }}</td>
+                                        <td>{{ $trx->keterangan ?: '-' }}</td>
+                                        <td class="text-right">
+                                            <form
+                                                action="{{ route('master.perbekalan.transactions.destroy', $trx->id_transaction) }}"
+                                                method="POST"
+                                                onsubmit="return confirm('Hapus transaksi ini? Stok akan disesuaikan otomatis.')">
+                                                @csrf
+                                                @method('DELETE')
+                                                @if ($selectedItemId)
+                                                    <input type="hidden" name="show_item" value="{{ $selectedItemId }}">
                                                 @endif
-                                            </td>
-                                            <td>Rp {{ number_format((float) $trx->total_harga, 2, ',', '.') }}</td>
-                                            <td>{{ $trx->sumber_tujuan ?: '-' }}</td>
-                                            <td>{{ $trx->keterangan ?: '-' }}</td>
-                                            <td class="text-right">
-                                                <form
-                                                    action="{{ route('master.perbekalan.transactions.destroy', $trx->id_transaction) }}"
-                                                    method="POST"
-                                                    onsubmit="return confirm('Hapus transaksi ini? Stok akan disesuaikan otomatis.')">
-                                                    @csrf
-                                                    @method('DELETE')
-                                                    <button type="submit"
-                                                        class="btn btn-outline-danger btn-sm">Hapus</button>
-                                                </form>
-                                            </td>
-                                        </tr>
-                                    @empty
-                                        <tr>
-                                            <td colspan="8" class="text-center text-muted">Belum ada transaksi untuk
-                                                perbekalan ini.</td>
-                                        </tr>
-                                    @endforelse
-                                </tbody>
-                            </table>
-                        </div>
+                                                <button type="submit" class="btn btn-outline-danger btn-sm">Hapus</button>
+                                            </form>
+                                        </td>
+                                    </tr>
+                                @empty
+                                    <tr>
+                                        <td colspan="9" class="text-center text-muted">
+                                            @if ($selectedItem)
+                                                Belum ada transaksi untuk perbekalan ini dalam 3 hari terakhir.
+                                            @else
+                                                Belum ada transaksi perbekalan dalam 3 hari terakhir.
+                                            @endif
+                                        </td>
+                                    </tr>
+                                @endforelse
+                            </tbody>
+                        </table>
                     </div>
                 </div>
-            @endif
+            </div>
         </div>
     </div>
 @endsection
