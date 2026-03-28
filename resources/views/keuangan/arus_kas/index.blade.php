@@ -43,7 +43,8 @@
             <div class="card">
                 <div class="card-body">
                     <h4 class="card-title mb-3">Current Balance</h4>
-                    <p class="card-description mb-4">Saldo kas terbaru berdasarkan transaksi terakhir.</p>
+                    <p class="card-description mb-4">Saldo total terkini (Kas + Bank) berdasarkan transaksi terakhir per
+                        akun.</p>
 
                     <div class="border rounded p-4 text-center">
                         <p class="text-muted mb-2">Saldo Terkini</p>
@@ -68,6 +69,7 @@
                                 <tr>
                                     <th>ID</th>
                                     <th>Tanggal</th>
+                                    <th>Akun</th>
                                     <th>Jenis</th>
                                     <th>Kategori</th>
                                     <th>Deskripsi</th>
@@ -81,6 +83,7 @@
                                     <tr>
                                         <td>{{ $row->id_kas }}</td>
                                         <td>{{ $row->tanggal }}</td>
+                                        <td>{{ strtoupper($row->akun ?? 'kas') }}</td>
                                         <td>{{ $row->jenis_transaksi }}</td>
                                         <td>{{ $row->kategori }}</td>
                                         <td>{{ $row->deskripsi }}</td>

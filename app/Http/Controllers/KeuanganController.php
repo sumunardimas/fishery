@@ -47,7 +47,7 @@ class KeuanganController extends Controller
             'net' => (float) $rows->sum('uang_masuk') - (float) $rows->sum('uang_keluar'),
         ];
 
-        $currentBalance = (float) (DB::table('arus_kas')->orderByDesc('id_kas')->value('saldo') ?? 0);
+        $currentBalance = $this->getLastSaldoByAkun('kas') + $this->getLastSaldoByAkun('bank');
 
         return view('keuangan.arus_kas.index', compact(
             'rows',
@@ -307,7 +307,8 @@ class KeuanganController extends Controller
 
         DB::transaction(function () use (
             $idPenjualan, $penjualan, $invNo,
-            $newBayarTunai, $newBayarTransfer, $newPayment, $newPiutang, $statusPembayaran
+            $newBayarTunai, $newBayarTransfer, $newPayment, $newPiutang, $statusPembayaran,
+            $newKas, $newTransfer
         ) {
             DB::table('penjualan')->where('id_penjualan', $idPenjualan)->update([
                 'bayar_tunai'       => $newBayarTunai,
@@ -317,23 +318,27 @@ class KeuanganController extends Controller
                 'updated_at'        => now(),
             ]);
 
-            $lastSaldo = (float) (DB::table('arus_kas')->orderByDesc('id_kas')->value('saldo') ?? 0);
-            $deskripsi = 'Pelunasan piutang ' . $penjualan->nama_customer_display
-                . ' (' . $invNo . ').'
-                . ' Kas/Bank diterima Rp ' . number_format($newPayment, 2, ',', '.')
-                . '; Sisa Piutang Rp ' . number_format($newPiutang, 2, ',', '.');
+            if ($newKas > 0) {
+                $this->postArusKas(
+                    akun: 'kas',
+                    tanggal: Carbon::today()->toDateString(),
+                    kategori: 'Pelunasan Piutang',
+                    deskripsi: 'Pelunasan piutang '.$penjualan->nama_customer_display.' ('.$invNo.'). Diterima kas Rp '.number_format($newKas, 2, ',', '.').'; Sisa Piutang Rp '.number_format($newPiutang, 2, ',', '.'),
+                    debit: $newKas,
+                    kredit: 0
+                );
+            }
 
-            DB::table('arus_kas')->insert([
-                'tanggal'         => Carbon::today()->toDateString(),
-                'jenis_transaksi' => 'Masuk',
-                'kategori'        => 'Pelunasan Piutang',
-                'deskripsi'       => $deskripsi,
-                'uang_masuk'      => $newPayment,
-                'uang_keluar'     => 0,
-                'saldo'           => $lastSaldo + $newPayment,
-                'created_at'      => now(),
-                'updated_at'      => now(),
-            ]);
+            if ($newTransfer > 0) {
+                $this->postArusKas(
+                    akun: 'bank',
+                    tanggal: Carbon::today()->toDateString(),
+                    kategori: 'Pelunasan Piutang',
+                    deskripsi: 'Pelunasan piutang '.$penjualan->nama_customer_display.' ('.$invNo.'). Diterima transfer Rp '.number_format($newTransfer, 2, ',', '.').'; Sisa Piutang Rp '.number_format($newPiutang, 2, ',', '.'),
+                    debit: $newTransfer,
+                    kredit: 0
+                );
+            }
         });
 
         return response()->json([
@@ -343,6 +348,50 @@ class KeuanganController extends Controller
             'new_diterima'           => $newDiterima,
             'new_diterima_formatted' => number_format($newDiterima, 2, ',', '.'),
         ]);
+    }
+
+    public function kas(Request $request): View
+    {
+        return $this->renderCashLedger($request, 'kas', 'cash.kas', 'Kas');
+    }
+
+    public function bank(Request $request): View
+    {
+        return $this->renderCashLedger($request, 'bank', 'cash.bank', 'Bank');
+    }
+
+    public function storeCashTransaction(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'akun' => ['required', 'in:kas,bank'],
+            'tanggal' => ['required', 'date'],
+            'kategori' => ['required', 'string', 'max:120'],
+            'deskripsi' => ['nullable', 'string', 'max:255'],
+            'debit' => ['nullable', 'numeric', 'min:0'],
+            'kredit' => ['nullable', 'numeric', 'min:0'],
+        ]);
+
+        $debit = (float) ($validated['debit'] ?? 0);
+        $kredit = (float) ($validated['kredit'] ?? 0);
+
+        if (($debit <= 0 && $kredit <= 0) || ($debit > 0 && $kredit > 0)) {
+            return back()
+                ->withInput()
+                ->withErrors(['nominal' => 'Isi salah satu: Debit atau Kredit (tidak boleh keduanya).']);
+        }
+
+        DB::transaction(function () use ($validated, $debit, $kredit) {
+            $this->postArusKas(
+                akun: $validated['akun'],
+                tanggal: $validated['tanggal'],
+                kategori: $validated['kategori'],
+                deskripsi: $validated['deskripsi'] ?? '-',
+                debit: $debit,
+                kredit: $kredit
+            );
+        });
+
+        return back()->with('success', 'Transaksi '.strtoupper($validated['akun']).' berhasil disimpan.');
     }
 
     public function piutang(Request $request): View
@@ -417,5 +466,73 @@ class KeuanganController extends Controller
             'summary',
             'byCustomer',
         ));
+    }
+
+    private function renderCashLedger(Request $request, string $akun, string $view, string $title): View
+    {
+        $validated = $request->validate([
+            'start_date' => ['nullable', 'date'],
+            'end_date' => ['nullable', 'date'],
+        ]);
+
+        $today = Carbon::today();
+
+        $start = ! empty($validated['start_date'])
+            ? Carbon::parse($validated['start_date'])
+            : $today->copy()->subDays(29);
+
+        $end = ! empty($validated['end_date'])
+            ? Carbon::parse($validated['end_date'])
+            : $today->copy();
+
+        if ($start->gt($end)) {
+            [$start, $end] = [$end, $start];
+        }
+
+        $startDate = $start->toDateString();
+        $endDate = $end->toDateString();
+
+        $rows = DB::table('arus_kas')
+            ->where('akun', $akun)
+            ->whereBetween('tanggal', [$startDate, $endDate])
+            ->orderByDesc('tanggal')
+            ->orderByDesc('id_kas')
+            ->get();
+
+        $summary = [
+            'total_debit' => (float) $rows->sum('uang_masuk'),
+            'total_kredit' => (float) $rows->sum('uang_keluar'),
+            'net' => (float) $rows->sum('uang_masuk') - (float) $rows->sum('uang_keluar'),
+            'saldo_terkini' => $this->getLastSaldoByAkun($akun),
+        ];
+
+        return view($view, compact('rows', 'startDate', 'endDate', 'summary', 'akun', 'title'));
+    }
+
+    private function getLastSaldoByAkun(string $akun): float
+    {
+        return (float) (DB::table('arus_kas')
+            ->where('akun', $akun)
+            ->orderByDesc('id_kas')
+            ->value('saldo') ?? 0);
+    }
+
+    private function postArusKas(string $akun, string $tanggal, string $kategori, string $deskripsi, float $debit, float $kredit): void
+    {
+        $lastSaldo = $this->getLastSaldoByAkun($akun);
+        $saldoBaru = $lastSaldo + $debit - $kredit;
+
+        DB::table('arus_kas')->insert([
+            'akun' => $akun,
+            'tanggal' => $tanggal,
+            'jenis_transaksi' => $debit > 0 ? 'Masuk' : 'Keluar',
+            'kategori' => $kategori,
+            'deskripsi' => $deskripsi,
+            'uang_masuk' => $debit,
+            'uang_keluar' => $kredit,
+            'saldo' => $saldoBaru,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
     }
 }

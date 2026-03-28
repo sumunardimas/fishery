@@ -78,13 +78,16 @@ class HomeController extends Controller
             'users' => (int) DB::table('users')->count(),
         ];
 
+        $saldoKas = (float) (DB::table('arus_kas')->where('akun', 'kas')->orderByDesc('id_kas')->value('saldo') ?? 0);
+        $saldoBank = (float) (DB::table('arus_kas')->where('akun', 'bank')->orderByDesc('id_kas')->value('saldo') ?? 0);
+
         return [
             'today_label' => $today->translatedFormat('d M Y'),
             'month_label' => Carbon::parse($monthStart)->translatedFormat('d M').' - '.Carbon::parse($monthEnd)->translatedFormat('d M Y'),
             'sales_today' => $salesToday,
             'sales_month' => $salesMonth,
             'cash_today' => $cashToday,
-            'current_balance' => (float) (DB::table('arus_kas')->orderByDesc('id_kas')->value('saldo') ?? 0),
+            'current_balance' => $saldoKas + $saldoBank,
             'kas_harian_today' => [
                 'is_open' => $kasHarianToday ? ! (bool) $kasHarianToday->status_tutup : false,
                 'exists' => (bool) $kasHarianToday,

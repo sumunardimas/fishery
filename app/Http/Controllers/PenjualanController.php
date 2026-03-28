@@ -101,19 +101,39 @@ class PenjualanController extends Controller
             }
 
             if ($totalPenerimaan > 0) {
-                $lastSaldoKas = (float) (DB::table('arus_kas')->orderByDesc('id_kas')->value('saldo') ?? 0);
                 $namaCustomer = $customer?->nama_customer ?? '-';
-                DB::table('arus_kas')->insert([
-                    'tanggal' => $today,
-                    'jenis_transaksi' => 'Masuk',
-                    'kategori' => 'Penjualan Ikan',
-                    'deskripsi' => 'Penjualan kepada '.$namaCustomer.'. Kas/Bank diterima Rp '.number_format($totalPenerimaan, 2, ',', '.').'; Piutang Rp '.number_format($piutang, 2, ',', '.'),
-                    'uang_masuk' => $totalPenerimaan,
-                    'uang_keluar' => 0,
-                    'saldo' => $lastSaldoKas + $totalPenerimaan,
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ]);
+
+                if ($bayarTunai > 0) {
+                    $lastSaldoKas = (float) (DB::table('arus_kas')->where('akun', 'kas')->orderByDesc('id_kas')->value('saldo') ?? 0);
+                    DB::table('arus_kas')->insert([
+                        'akun' => 'kas',
+                        'tanggal' => $today,
+                        'jenis_transaksi' => 'Masuk',
+                        'kategori' => 'Penjualan Ikan',
+                        'deskripsi' => 'Penjualan kepada '.$namaCustomer.'. Diterima kas Rp '.number_format($bayarTunai, 2, ',', '.').'; Piutang Rp '.number_format($piutang, 2, ',', '.'),
+                        'uang_masuk' => $bayarTunai,
+                        'uang_keluar' => 0,
+                        'saldo' => $lastSaldoKas + $bayarTunai,
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]);
+                }
+
+                if ($bayarTransfer > 0) {
+                    $lastSaldoBank = (float) (DB::table('arus_kas')->where('akun', 'bank')->orderByDesc('id_kas')->value('saldo') ?? 0);
+                    DB::table('arus_kas')->insert([
+                        'akun' => 'bank',
+                        'tanggal' => $today,
+                        'jenis_transaksi' => 'Masuk',
+                        'kategori' => 'Penjualan Ikan',
+                        'deskripsi' => 'Penjualan kepada '.$namaCustomer.'. Diterima transfer Rp '.number_format($bayarTransfer, 2, ',', '.').'; Piutang Rp '.number_format($piutang, 2, ',', '.'),
+                        'uang_masuk' => $bayarTransfer,
+                        'uang_keluar' => 0,
+                        'saldo' => $lastSaldoBank + $bayarTransfer,
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]);
+                }
             }
 
             $this->recalculateStokIkan(now()->format('Y-m'), array_keys($requestedByIkan));

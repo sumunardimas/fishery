@@ -221,6 +221,7 @@ class OperasionalKantorController extends Controller
             ];
 
             $arusKasRows[] = [
+                'akun' => 'kas',
                 'tanggal' => $tanggal,
                 'jenis_transaksi' => 'Keluar',
                 'kategori' => 'Operasional Kantor - '.$master->kategori,
@@ -244,7 +245,7 @@ class OperasionalKantorController extends Controller
         DB::transaction(function () use ($operasionalRows, $arusKasRows) {
             OperasionalKantor::query()->insert($operasionalRows);
 
-            $lastSaldoKas = (float) (DB::table('arus_kas')->orderByDesc('id_kas')->value('saldo') ?? 0);
+            $lastSaldoKas = (float) (DB::table('arus_kas')->where('akun', 'kas')->orderByDesc('id_kas')->value('saldo') ?? 0);
 
             foreach ($arusKasRows as $row) {
                 $lastSaldoKas -= (float) $row['uang_keluar'];

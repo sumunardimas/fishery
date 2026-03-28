@@ -110,6 +110,9 @@ Route::middleware(['auth'])->group(function () {
     Route::prefix('keuangan')->name('keuangan.')->group(function () {
         Route::get('/lap-penjualan', [PenjualanController::class, 'keuanganPenjualanSummary'])->name('lap-penjualan.index');
         Route::get('/arus-kas', [KeuanganController::class, 'arusKas'])->name('arus-kas.index');
+        Route::get('/kas', [KeuanganController::class, 'kas'])->name('kas.index');
+        Route::get('/bank', [KeuanganController::class, 'bank'])->name('bank.index');
+        Route::post('/cash/transactions', [KeuanganController::class, 'storeCashTransaction'])->name('cash.store');
         Route::get('/laba', [KeuanganController::class, 'labaRugi'])->name('laba.index');
         Route::get('/lap-selisih-bongkaran', [KeuanganController::class, 'selisihBongkar'])->name('lap-selisih-bongkaran.index');
         Route::post('/lap-selisih-bongkaran/berat-lelang', [KeuanganController::class, 'storeBeratLelang'])->name('lap-selisih-bongkaran.store');

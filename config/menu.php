@@ -194,6 +194,18 @@ return [
                     'type' => 'url',
                 ],
                 [
+                    'title' => 'Kas',
+                    'icon' => 'ti-wallet',
+                    'route' => '/keuangan/kas',
+                    'type' => 'url',
+                ],
+                [
+                    'title' => 'Bank',
+                    'icon' => 'ti-credit-card',
+                    'route' => '/keuangan/bank',
+                    'type' => 'url',
+                ],
+                [
                     'title' => 'Laba Rugi',
                     'icon' => 'ti-cash',
                     'route' => '/keuangan/laba',
