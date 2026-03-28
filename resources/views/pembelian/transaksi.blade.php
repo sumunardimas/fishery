@@ -28,7 +28,7 @@
                                 <input type="date" id="tanggal_transaksi" name="tanggal_transaksi" class="form-control"
                                     value="{{ old('tanggal_transaksi', now()->toDateString()) }}" required>
                             </div>
-                            <div class="form-group col-md-3">
+                            <div class="form-group col-md-2">
                                 <label for="id_item_pembelian">Item</label>
                                 <select id="id_item_pembelian" name="id_item_pembelian" class="form-control" required>
                                     <option value="">Pilih item</option>
@@ -67,6 +67,14 @@
                                 <input type="number" step="0.01" min="0" id="harga_satuan" name="harga_satuan"
                                     class="form-control" value="{{ old('harga_satuan') }}" placeholder="Opsional">
                             </div>
+                            <div class="form-group col-md-1">
+                                <label for="akun_pembayaran">Bayar Dari</label>
+                                <select id="akun_pembayaran" name="akun_pembayaran" class="form-control">
+                                    <option value="">-</option>
+                                    <option value="kas" @selected(old('akun_pembayaran', 'kas') === 'kas')>Kas</option>
+                                    <option value="bank" @selected(old('akun_pembayaran') === 'bank')>Bank</option>
+                                </select>
+                            </div>
                         </div>
 
                         <div class="form-row">
@@ -86,8 +94,37 @@
                             </div>
                         </div>
                     </form>
+
+                    <small class="text-muted d-block mt-2">
+                        Untuk transaksi <strong>IN</strong>, pembelian akan memotong saldo akun yang dipilih (Kas/Bank).
+                        Untuk <strong>OUT</strong>, akun pembayaran diabaikan.
+                    </small>
                 </div>
             </div>
         </div>
     </div>
 @endsection
+
+@push('scripts')
+    <script>
+        (function() {
+            const jenis = document.getElementById('jenis_transaksi');
+            const akun = document.getElementById('akun_pembayaran');
+
+            if (!jenis || !akun) return;
+
+            const syncAkunState = () => {
+                const isIn = jenis.value === 'in';
+                akun.disabled = !isIn;
+                if (!isIn) {
+                    akun.value = '';
+                } else if (!akun.value) {
+                    akun.value = 'kas';
+                }
+            };
+
+            jenis.addEventListener('change', syncAkunState);
+            syncAkunState();
+        })();
+    </script>
+@endpush

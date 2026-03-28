@@ -129,6 +129,7 @@
                                         <th>Tanggal</th>
                                         <th>Gudang</th>
                                         <th>Jenis</th>
+                                        <th>Akun Bayar</th>
                                         <th>Jumlah</th>
                                         <th>Harga Satuan</th>
                                         <th>Total</th>
@@ -147,6 +148,14 @@
                                                     class="badge {{ $trx->jenis_transaksi === 'in' ? 'badge-success' : 'badge-danger' }}">
                                                     {{ strtoupper($trx->jenis_transaksi) }}
                                                 </span>
+                                            </td>
+                                            <td>
+                                                @if ($trx->akun_pembayaran)
+                                                    <span
+                                                        class="badge badge-info">{{ strtoupper($trx->akun_pembayaran) }}</span>
+                                                @else
+                                                    <span class="text-muted">-</span>
+                                                @endif
                                             </td>
                                             <td>{{ number_format((float) $trx->jumlah, 2, ',', '.') }}</td>
                                             <td>
@@ -173,7 +182,7 @@
                                         </tr>
                                     @empty
                                         <tr>
-                                            <td colspan="9" class="text-center text-muted">Belum ada transaksi untuk item
+                                            <td colspan="10" class="text-center text-muted">Belum ada transaksi untuk item
                                                 ini.</td>
                                         </tr>
                                     @endforelse

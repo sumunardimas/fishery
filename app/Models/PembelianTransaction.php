@@ -19,6 +19,7 @@ class PembelianTransaction extends Model
         'id_item_pembelian',
         'id_gudang',
         'jenis_transaksi',
+        'akun_pembayaran',
         'jumlah',
         'harga_satuan',
         'total_harga',

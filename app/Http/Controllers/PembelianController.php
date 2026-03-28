@@ -138,11 +138,18 @@ class PembelianController extends Controller
             'id_item_pembelian' => ['required', 'integer', 'exists:master_item_pembelian,id_item_pembelian'],
             'id_gudang' => ['required', 'integer', 'exists:master_gudang,id_gudang'],
             'jenis_transaksi' => ['required', 'in:in,out'],
+            'akun_pembayaran' => ['nullable', 'in:kas,bank', 'required_if:jenis_transaksi,in'],
             'jumlah' => ['required', 'numeric', 'gt:0'],
             'harga_satuan' => ['nullable', 'numeric', 'min:0'],
             'sumber_tujuan' => ['nullable', 'string', 'max:255'],
             'keterangan' => ['nullable', 'string'],
         ]);
+
+        if (($data['jenis_transaksi'] ?? null) === 'in' && (float) ($data['harga_satuan'] ?? 0) <= 0) {
+            throw ValidationException::withMessages([
+                'harga_satuan' => 'Harga satuan wajib diisi dan harus lebih dari 0 untuk transaksi IN.',
+            ]);
+        }
 
         DB::transaction(function () use ($data) {
             $jumlah = (float) $data['jumlah'];
@@ -181,12 +188,29 @@ class PembelianController extends Controller
                 'id_item_pembelian' => (int) $data['id_item_pembelian'],
                 'id_gudang' => (int) $data['id_gudang'],
                 'jenis_transaksi' => $data['jenis_transaksi'],
+                'akun_pembayaran' => $data['akun_pembayaran'] ?? null,
                 'jumlah' => $jumlah,
                 'harga_satuan' => $hargaSatuan,
                 'total_harga' => $totalHarga,
                 'sumber_tujuan' => $data['sumber_tujuan'] ?? null,
                 'keterangan' => $data['keterangan'] ?? null,
             ]);
+
+            // Purchase IN with price will reduce selected account balance.
+            if ($data['jenis_transaksi'] === 'in' && $totalHarga > 0 && !empty($data['akun_pembayaran'])) {
+                $itemName = (string) DB::table('master_item_pembelian')
+                    ->where('id_item_pembelian', (int) $data['id_item_pembelian'])
+                    ->value('nama_item');
+
+                $this->postArusKas(
+                    akun: $data['akun_pembayaran'],
+                    tanggal: $data['tanggal_transaksi'],
+                    kategori: 'Pembelian Barang',
+                    deskripsi: 'Pembelian '.$itemName.' ('.number_format($jumlah, 2, ',', '.').' '.$this->getItemUnit((int) $data['id_item_pembelian']).')'.($data['sumber_tujuan'] ? ' dari '.$data['sumber_tujuan'] : ''),
+                    debit: 0,
+                    kredit: (float) $totalHarga
+                );
+            }
         });
 
         return redirect()->route('pembelian.riwayat', ['show_item' => (int) $data['id_item_pembelian']])
@@ -225,6 +249,22 @@ class PembelianController extends Controller
             }
 
             $stock->save();
+
+            if (
+                $transaction->jenis_transaksi === 'in'
+                && (float) $transaction->total_harga > 0
+                && in_array((string) $transaction->akun_pembayaran, ['kas', 'bank'], true)
+            ) {
+                $this->postArusKas(
+                    akun: (string) $transaction->akun_pembayaran,
+                    tanggal: now()->toDateString(),
+                    kategori: 'Pembatalan Pembelian Barang',
+                    deskripsi: 'Pembatalan transaksi pembelian #'.$transaction->id_transaction,
+                    debit: (float) $transaction->total_harga,
+                    kredit: 0
+                );
+            }
+
             $transaction->delete();
         });
 
@@ -237,5 +277,32 @@ class PembelianController extends Controller
         return (string) DB::table('master_item_pembelian')
             ->where('id_item_pembelian', $itemId)
             ->value('satuan');
+    }
+
+    private function getLastSaldoByAkun(string $akun): float
+    {
+        return (float) (DB::table('arus_kas')
+            ->where('akun', $akun)
+            ->orderByDesc('id_kas')
+            ->value('saldo') ?? 0);
+    }
+
+    private function postArusKas(string $akun, string $tanggal, string $kategori, string $deskripsi, float $debit, float $kredit): void
+    {
+        $lastSaldo = $this->getLastSaldoByAkun($akun);
+        $saldoBaru = $lastSaldo + $debit - $kredit;
+
+        DB::table('arus_kas')->insert([
+            'akun' => $akun,
+            'tanggal' => $tanggal,
+            'jenis_transaksi' => $debit > 0 ? 'Masuk' : 'Keluar',
+            'kategori' => $kategori,
+            'deskripsi' => $deskripsi,
+            'uang_masuk' => $debit,
+            'uang_keluar' => $kredit,
+            'saldo' => $saldoBaru,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
     }
 }

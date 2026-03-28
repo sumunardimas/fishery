@@ -20,6 +20,7 @@ class DatabaseSeeder extends Seeder
             FisherySeeder::class,
             StokIkanSeeder::class,
             MasterCustomerSeeder::class,
+            MasterItemPembelianSeeder::class,
             MasterOperasionalSeeder::class,
             MasterOperasionalKantorSeeder::class,
         ]);
