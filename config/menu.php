@@ -49,12 +49,6 @@ return [
             'route' => '#',
             'children' => [
                 [
-                    'title' => 'Master',
-                    'icon' => 'ti-layout-list-thumb',
-                    'route' => 'operasional.master',
-                    'type' => 'route',
-                ],
-                [
                     'title' => 'Transaksi',
                     'icon' => 'ti-write',
                     'route' => 'operasional.transaksi',
@@ -64,6 +58,12 @@ return [
                     'title' => 'Rekap',
                     'icon' => 'ti-bar-chart',
                     'route' => 'operasional.index',
+                    'type' => 'route',
+                ],
+                [
+                    'title' => 'Master',
+                    'icon' => 'ti-layout-list-thumb',
+                    'route' => 'operasional.master',
                     'type' => 'route',
                 ],
             ],
@@ -79,12 +79,7 @@ return [
             'icon' => 'ti-package',
             'route' => '#',
             'children' => [
-                [
-                    'title' => 'Master',
-                    'icon' => 'ti-layout-list-thumb',
-                    'route' => 'master.item-pembelian.index',
-                    'type' => 'route',
-                ],
+
                 [
                     'title' => 'Transaksi',
                     'icon' => 'ti-write',
@@ -97,6 +92,12 @@ return [
                     'route' => 'pembelian.riwayat',
                     'type' => 'route',
                 ],
+                [
+                    'title' => 'Master',
+                    'icon' => 'ti-layout-list-thumb',
+                    'route' => 'master.item-pembelian.index',
+                    'type' => 'route',
+                ],
             ],
         ],
         [
@@ -104,12 +105,6 @@ return [
             'icon' => 'ti-package',
             'route' => '#',
             'children' => [
-                [
-                    'title' => 'Master',
-                    'icon' => 'ti-layout-list-thumb',
-                    'route' => 'master.perbekalan.index',
-                    'type' => 'route',
-                ],
                 [
                     'title' => 'Transaksi',
                     'icon' => 'ti-write',
@@ -122,6 +117,12 @@ return [
                     'route' => 'master.perbekalan.history',
                     'type' => 'route',
                 ],
+                [
+                    'title' => 'Master',
+                    'icon' => 'ti-layout-list-thumb',
+                    'route' => 'master.perbekalan.index',
+                    'type' => 'route',
+                ],
             ],
         ],
         [
@@ -129,12 +130,6 @@ return [
             'icon' => 'ti-clipboard',
             'route' => '#',
             'children' => [
-                [
-                    'title' => 'Master',
-                    'icon' => 'ti-layout-list-thumb',
-                    'route' => 'operasional-kantor.index',
-                    'type' => 'route',
-                ],
                 [
                     'title' => 'Transaksi',
                     'icon' => 'ti-write',
@@ -145,6 +140,12 @@ return [
                     'title' => 'Riwayat In Out',
                     'icon' => 'ti-exchange-vertical',
                     'route' => 'operasional-kantor.history',
+                    'type' => 'route',
+                ],
+                [
+                    'title' => 'Master',
+                    'icon' => 'ti-layout-list-thumb',
+                    'route' => 'operasional-kantor.index',
                     'type' => 'route',
                 ],
             ],
@@ -214,12 +215,6 @@ return [
                     'title' => 'Master Customer',
                     'icon' => 'ti-id-badge',
                     'route' => 'master.customer.index',
-                    'type' => 'route',
-                ],
-                [
-                    'title' => 'Master Operasional',
-                    'icon' => 'ti-agenda',
-                    'route' => 'master.operasional.index',
                     'type' => 'route',
                 ],
                 [
