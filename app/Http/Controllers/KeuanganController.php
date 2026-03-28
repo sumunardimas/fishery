@@ -160,8 +160,9 @@ class KeuanganController extends Controller
         $endDate = $end->toDateString();
 
         $salesByDate = DB::table('penjualan')
-            ->whereBetween('tanggal_penjualan', [$startDate, $endDate])
-            ->selectRaw('DATE(tanggal_penjualan) as tanggal, SUM(berat) as berat_penjualan')
+            ->join('penjualan_items', 'penjualan.id_penjualan', '=', 'penjualan_items.id_penjualan')
+            ->whereBetween('penjualan.tanggal_penjualan', [$startDate, $endDate])
+            ->selectRaw('DATE(penjualan.tanggal_penjualan) as tanggal, SUM(penjualan_items.berat) as berat_penjualan')
             ->groupBy('tanggal')
             ->orderBy('tanggal')
             ->get()
