@@ -89,8 +89,27 @@ return [
         [
             'title' => 'Operasional Kantor',
             'icon' => 'ti-clipboard',
-            'route' => '/operasional-kantor',
-            'type' => 'url',
+            'route' => '#',
+            'children' => [
+                [
+                    'title' => 'Master',
+                    'icon' => 'ti-layout-list-thumb',
+                    'route' => 'operasional-kantor.index',
+                    'type' => 'route',
+                ],
+                [
+                    'title' => 'Transaksi',
+                    'icon' => 'ti-write',
+                    'route' => 'operasional-kantor.transaksi',
+                    'type' => 'route',
+                ],
+                [
+                    'title' => 'Riwayat In Out',
+                    'icon' => 'ti-exchange-vertical',
+                    'route' => 'operasional-kantor.history',
+                    'type' => 'route',
+                ],
+            ],
         ],
         [
             'title' => 'Stok',

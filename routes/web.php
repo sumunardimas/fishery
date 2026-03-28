@@ -94,6 +94,8 @@ Route::middleware(['auth'])->group(function () {
 
     Route::prefix('operasional-kantor')->name('operasional-kantor.')->group(function () {
         Route::get('/', [OperasionalKantorController::class, 'index'])->name('index');
+        Route::get('/transaksi', [OperasionalKantorController::class, 'transaksi'])->name('transaksi');
+        Route::get('/history', [OperasionalKantorController::class, 'history'])->name('history');
         Route::post('/', [OperasionalKantorController::class, 'store'])->name('store');
     });
 

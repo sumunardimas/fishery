@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\MasterOperasional;
 use App\Models\MasterOperasionalKantor;
 use App\Models\OperasionalKantor;
 use Illuminate\Http\RedirectResponse;
@@ -13,7 +14,27 @@ use Illuminate\View\View;
 
 class OperasionalKantorController extends Controller
 {
-    public function index(Request $request): View
+    public function index(): View
+    {
+        $items = MasterOperasional::query()->orderByDesc('created_at')->get();
+
+        return view('operasional-kantor.index', compact('items'));
+    }
+
+    public function transaksi(): View
+    {
+        $masterItems = MasterOperasionalKantor::query()
+            ->orderBy('kategori')
+            ->orderBy('item')
+            ->get();
+
+        return view('operasional-kantor.transaksi', [
+            'masterItems' => $masterItems,
+            'transaksiOnly' => true,
+        ]);
+    }
+
+    public function history(Request $request): View
     {
         $validated = $request->validate([
             'start_date' => ['nullable', 'date'],
@@ -75,7 +96,7 @@ class OperasionalKantorController extends Controller
             });
         }
 
-        return view('operasional-kantor.index', compact(
+        return view('operasional-kantor.history', compact(
             'masterItems',
             'startDate',
             'endDate',
@@ -183,6 +204,6 @@ class OperasionalKantorController extends Controller
             }
         });
 
-        return redirect()->route('operasional-kantor.index')->with('success', 'Biaya operasional kantor berhasil disimpan. Grand total: Rp '.number_format($grandTotal, 2, ',', '.'));
+        return redirect()->route('operasional-kantor.transaksi')->with('success', 'Biaya operasional kantor berhasil disimpan. Grand total: Rp '.number_format($grandTotal, 2, ',', '.'));
     }
 }

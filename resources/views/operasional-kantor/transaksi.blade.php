@@ -1,0 +1,297 @@
+@extends('layouts.layout')
+
+@section('title', 'Operasional Kantor')
+
+@section('content')
+    <div class="row">
+        <div class="col-12">
+            @if ($errors->has('message'))
+                <x-alert type="danger" :message="$errors->first('message') ?? null" />
+            @elseif (session('success'))
+                <x-alert type="success" :message="session('success')" />
+            @endif
+
+            @if ($errors->any() && !$errors->has('message'))
+                <x-alert type="danger" :message="$errors->first()" />
+            @endif
+
+            <div class="card mb-4" id="form-operasional-kantor">
+                <div class="card-body">
+                    <h4 class="card-title mb-1">Form Operasional Kantor</h4>
+                    <p class="card-description mb-4">
+                        Isi item biaya operasional kantor. Total per baris dan grand total dihitung otomatis.
+                    </p>
+
+                    <form action="{{ route('operasional-kantor.store') }}" method="POST" id="operasional-kantor-form">
+                        @csrf
+
+                        <div class="form-group">
+                            <label for="tanggal">Tanggal</label>
+                            <input type="date" class="form-control" id="tanggal" name="tanggal"
+                                value="{{ old('tanggal', now()->toDateString()) }}" required>
+                        </div>
+
+                        @php
+                            $oldRows = old('rows', [
+                                [
+                                    'id_master_operasional_kantor' => '',
+                                    'harga_satuan' => '',
+                                    'qty' => '',
+                                    'keterangan' => '',
+                                ],
+                            ]);
+                        @endphp
+
+                        <div class="table-responsive mt-4">
+                            <table class="table table-bordered" id="operasional-kantor-table">
+                                <thead>
+                                    <tr>
+                                        <th style="min-width: 240px;">Item</th>
+                                        <th style="min-width: 160px;">Kategori</th>
+                                        <th style="min-width: 170px;">Harga Satuan</th>
+                                        <th style="min-width: 120px;">Qty</th>
+                                        <th style="min-width: 170px;">Total</th>
+                                        <th style="min-width: 220px;">Keterangan</th>
+                                        <th style="width: 90px;">Aksi</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="operasional-kantor-rows">
+                                    @foreach ($oldRows as $index => $row)
+                                        @php
+                                            $selectedMaster = $masterItems->firstWhere(
+                                                'id_master_operasional_kantor',
+                                                (int) ($row['id_master_operasional_kantor'] ?? 0),
+                                            );
+                                            $kategori = $selectedMaster->kategori ?? '';
+                                            $hargaSatuan = (float) ($row['harga_satuan'] ?? 0);
+                                            $qty = (float) ($row['qty'] ?? 0);
+                                            $total = $hargaSatuan * $qty;
+                                        @endphp
+                                        <tr class="operasional-row">
+                                            <td>
+                                                <select name="rows[{{ $index }}][id_master_operasional_kantor]"
+                                                    class="form-control js-item" required>
+                                                    <option value="">Pilih item</option>
+                                                    @foreach ($masterItems as $master)
+                                                        <option value="{{ $master->id_master_operasional_kantor }}"
+                                                            data-category="{{ $master->kategori }}"
+                                                            @selected((int) ($row['id_master_operasional_kantor'] ?? 0) === (int) $master->id_master_operasional_kantor)>
+                                                            {{ $master->item }}
+                                                        </option>
+                                                    @endforeach
+                                                </select>
+                                            </td>
+                                            <td>
+                                                <input type="text" class="form-control js-category"
+                                                    value="{{ $kategori }}" readonly>
+                                            </td>
+                                            <td>
+                                                <input type="number" step="0.01" min="0"
+                                                    name="rows[{{ $index }}][harga_satuan]"
+                                                    class="form-control js-unit-cost"
+                                                    value="{{ $row['harga_satuan'] ?? '' }}" required>
+                                            </td>
+                                            <td>
+                                                <input type="number" step="0.01" min="0.01"
+                                                    name="rows[{{ $index }}][qty]" class="form-control js-qty"
+                                                    value="{{ $row['qty'] ?? '' }}" required>
+                                            </td>
+                                            <td>
+                                                <input type="text" class="form-control js-line-total"
+                                                    value="Rp {{ number_format($total, 2, ',', '.') }}" readonly>
+                                            </td>
+                                            <td>
+                                                <input type="text" name="rows[{{ $index }}][keterangan]"
+                                                    class="form-control" value="{{ $row['keterangan'] ?? '' }}"
+                                                    placeholder="Opsional">
+                                            </td>
+                                            <td>
+                                                <button type="button"
+                                                    class="btn btn-outline-danger btn-sm js-remove-row">Hapus</button>
+                                            </td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                                <tfoot>
+                                    <tr>
+                                        <th colspan="4" class="text-right">Grand Total</th>
+                                        <th>
+                                            <input type="text" class="form-control" id="grand-total" value="Rp 0,00"
+                                                readonly>
+                                        </th>
+                                        <th colspan="2"></th>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+
+                        <div class="d-flex align-items-center mt-3">
+                            <button type="button" class="btn btn-outline-primary mr-2" id="add-row">Tambah Baris</button>
+                            <button type="submit" class="btn btn-primary">Simpan</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+@endsection
+
+@push('scripts')
+    <script>
+        (function() {
+            const rowsContainer = document.getElementById('operasional-kantor-rows');
+            const addRowButton = document.getElementById('add-row');
+            const grandTotalInput = document.getElementById('grand-total');
+
+            if (!rowsContainer || !addRowButton || !grandTotalInput) {
+                return;
+            }
+
+            let rowIndex = rowsContainer.querySelectorAll('tr').length;
+
+            const itemOptions = `
+                <option value="">Pilih item</option>
+                @foreach ($masterItems as $master)
+                    <option value="{{ $master->id_master_operasional_kantor }}" data-category="{{ $master->kategori }}">{{ $master->item }}</option>
+                @endforeach
+            `;
+
+            const formatCurrency = (value) => {
+                const amount = Number(value || 0);
+                return 'Rp ' + amount.toLocaleString('id-ID', {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                });
+            };
+
+            const recalculateRow = (row) => {
+                const unitCost = Number(row.querySelector('.js-unit-cost')?.value || 0);
+                const qty = Number(row.querySelector('.js-qty')?.value || 0);
+                const total = unitCost * qty;
+                const totalInput = row.querySelector('.js-line-total');
+
+                if (totalInput) {
+                    totalInput.value = formatCurrency(total);
+                }
+            };
+
+            const recalculateGrandTotal = () => {
+                let grandTotal = 0;
+
+                rowsContainer.querySelectorAll('tr').forEach((row) => {
+                    const unitCost = Number(row.querySelector('.js-unit-cost')?.value || 0);
+                    const qty = Number(row.querySelector('.js-qty')?.value || 0);
+                    grandTotal += unitCost * qty;
+                });
+
+                grandTotalInput.value = formatCurrency(grandTotal);
+            };
+
+            const refreshRemoveButtons = () => {
+                const rows = rowsContainer.querySelectorAll('tr');
+                rows.forEach((row) => {
+                    const button = row.querySelector('.js-remove-row');
+                    if (button) {
+                        button.disabled = rows.length === 1;
+                    }
+                });
+            };
+
+            const updateCategoryFromSelect = (selectEl) => {
+                const row = selectEl.closest('tr');
+                if (!row) {
+                    return;
+                }
+
+                const selectedOption = selectEl.options[selectEl.selectedIndex];
+                const category = selectedOption?.dataset?.category || '';
+                const categoryInput = row.querySelector('.js-category');
+                if (categoryInput) {
+                    categoryInput.value = category;
+                }
+            };
+
+            const buildRow = (index) => {
+                const tr = document.createElement('tr');
+                tr.className = 'operasional-row';
+                tr.innerHTML = `
+                    <td>
+                        <select name="rows[${index}][id_master_operasional_kantor]" class="form-control js-item" required>
+                            ${itemOptions}
+                        </select>
+                    </td>
+                    <td>
+                        <input type="text" class="form-control js-category" value="" readonly>
+                    </td>
+                    <td>
+                        <input type="number" step="0.01" min="0" name="rows[${index}][harga_satuan]" class="form-control js-unit-cost" value="" required>
+                    </td>
+                    <td>
+                        <input type="number" step="0.01" min="0.01" name="rows[${index}][qty]" class="form-control js-qty" value="" required>
+                    </td>
+                    <td>
+                        <input type="text" class="form-control js-line-total" value="${formatCurrency(0)}" readonly>
+                    </td>
+                    <td>
+                        <input type="text" name="rows[${index}][keterangan]" class="form-control" value="" placeholder="Opsional">
+                    </td>
+                    <td>
+                        <button type="button" class="btn btn-outline-danger btn-sm js-remove-row">Hapus</button>
+                    </td>
+                `;
+
+                return tr;
+            };
+
+            addRowButton.addEventListener('click', () => {
+                rowsContainer.appendChild(buildRow(rowIndex));
+                rowIndex += 1;
+                refreshRemoveButtons();
+                recalculateGrandTotal();
+            });
+
+            rowsContainer.addEventListener('input', (event) => {
+                const target = event.target;
+                if (!target.closest('tr')) {
+                    return;
+                }
+
+                if (target.classList.contains('js-unit-cost') || target.classList.contains('js-qty')) {
+                    const row = target.closest('tr');
+                    recalculateRow(row);
+                    recalculateGrandTotal();
+                }
+            });
+
+            rowsContainer.addEventListener('change', (event) => {
+                const target = event.target;
+                if (target.classList.contains('js-item')) {
+                    updateCategoryFromSelect(target);
+                }
+            });
+
+            rowsContainer.addEventListener('click', (event) => {
+                const target = event.target;
+                if (!target.classList.contains('js-remove-row')) {
+                    return;
+                }
+
+                const row = target.closest('tr');
+                if (!row) {
+                    return;
+                }
+
+                if (rowsContainer.querySelectorAll('tr').length > 1) {
+                    row.remove();
+                    refreshRemoveButtons();
+                    recalculateGrandTotal();
+                }
+            });
+
+            rowsContainer.querySelectorAll('.js-item').forEach((select) => updateCategoryFromSelect(select));
+            rowsContainer.querySelectorAll('tr').forEach((row) => recalculateRow(row));
+            refreshRemoveButtons();
+            recalculateGrandTotal();
+        })();
+    </script>
+@endpush
