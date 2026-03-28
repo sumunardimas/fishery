@@ -119,73 +119,87 @@
             </div>
 
             @if ($selectedItem)
-                <div class="card mt-4">
-                    <div class="card-body">
-                        <h5 class="card-title">Riwayat Transaksi: {{ $selectedItem->nama_item }}</h5>
-                        <div class="table-responsive">
-                            <table class="table table-bordered">
-                                <thead>
-                                    <tr>
-                                        <th>Tanggal</th>
-                                        <th>Jenis</th>
-                                        <th>Akun Bayar</th>
-                                        <th>Jumlah</th>
-                                        <th>Harga Satuan</th>
-                                        <th>Total</th>
-                                        <th>Sumber/Tujuan</th>
-                                        <th>Keterangan</th>
-                                        <th class="text-right">Aksi</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @forelse ($transactions as $trx)
-                                        <tr>
-                                            <td>{{ \Carbon\Carbon::parse($trx->tanggal_transaksi)->format('d-m-Y') }}</td>
-                                            <td>
-                                                <span
-                                                    class="badge {{ $trx->jenis_transaksi === 'in' ? 'badge-success' : 'badge-danger' }}">
-                                                    {{ strtoupper($trx->jenis_transaksi) }}
-                                                </span>
-                                            </td>
-                                            <td>
-                                                @if ($trx->akun_pembayaran)
-                                                    <span
-                                                        class="badge badge-info">{{ strtoupper($trx->akun_pembayaran) }}</span>
-                                                @else
-                                                    <span class="text-muted">-</span>
-                                                @endif
-                                            </td>
-                                            <td>{{ number_format((float) $trx->jumlah, 2, ',', '.') }}</td>
-                                            <td>
-                                                @if ($trx->harga_satuan !== null)
-                                                    Rp {{ number_format((float) $trx->harga_satuan, 2, ',', '.') }}
-                                                @else
-                                                    -
-                                                @endif
-                                            </td>
-                                            <td>Rp {{ number_format((float) $trx->total_harga, 2, ',', '.') }}</td>
-                                            <td>{{ $trx->sumber_tujuan ?: '-' }}</td>
-                                            <td>{{ $trx->keterangan ?: '-' }}</td>
-                                            <td class="text-right">
-                                                <form
-                                                    action="{{ route('pembelian.transactions.destroy', $trx->id_transaction) }}"
-                                                    method="POST"
-                                                    onsubmit="return confirm('Hapus transaksi ini? Stok akan disesuaikan otomatis.')">
-                                                    @csrf
-                                                    @method('DELETE')
-                                                    <button type="submit"
-                                                        class="btn btn-outline-danger btn-sm">Hapus</button>
-                                                </form>
-                                            </td>
-                                        </tr>
-                                    @empty
-                                        <tr>
-                                            <td colspan="9" class="text-center text-muted">Belum ada transaksi untuk item
-                                                ini.</td>
-                                        </tr>
-                                    @endforelse
-                                </tbody>
-                            </table>
+                <div class="modal fade" id="riwayatTransaksiModal" tabindex="-1" role="dialog" aria-hidden="true">
+                    <div class="modal-dialog modal-xl" role="document">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title">Riwayat Transaksi: {{ $selectedItem->nama_item }}</h5>
+                                <a href="{{ route('pembelian.riwayat') }}" class="close" aria-label="Close">
+                                    <span aria-hidden="true">&times;</span>
+                                </a>
+                            </div>
+                            <div class="modal-body">
+                                <div class="table-responsive">
+                                    <table class="table table-bordered">
+                                        <thead>
+                                            <tr>
+                                                <th>Tanggal</th>
+                                                <th>Jenis</th>
+                                                <th>Akun Bayar</th>
+                                                <th>Jumlah</th>
+                                                <th>Harga Satuan</th>
+                                                <th>Total</th>
+                                                <th>Sumber/Tujuan</th>
+                                                <th>Keterangan</th>
+                                                <th class="text-right">Aksi</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @forelse ($transactions as $trx)
+                                                <tr>
+                                                    <td>{{ \Carbon\Carbon::parse($trx->tanggal_transaksi)->format('d-m-Y') }}
+                                                    </td>
+                                                    <td>
+                                                        <span
+                                                            class="badge {{ $trx->jenis_transaksi === 'in' ? 'badge-success' : 'badge-danger' }}">
+                                                            {{ strtoupper($trx->jenis_transaksi) }}
+                                                        </span>
+                                                    </td>
+                                                    <td>
+                                                        @if ($trx->akun_pembayaran)
+                                                            <span
+                                                                class="badge badge-info">{{ strtoupper($trx->akun_pembayaran) }}</span>
+                                                        @else
+                                                            <span class="text-muted">-</span>
+                                                        @endif
+                                                    </td>
+                                                    <td>{{ number_format((float) $trx->jumlah, 2, ',', '.') }}</td>
+                                                    <td>
+                                                        @if ($trx->harga_satuan !== null)
+                                                            Rp {{ number_format((float) $trx->harga_satuan, 2, ',', '.') }}
+                                                        @else
+                                                            -
+                                                        @endif
+                                                    </td>
+                                                    <td>Rp {{ number_format((float) $trx->total_harga, 2, ',', '.') }}</td>
+                                                    <td>{{ $trx->sumber_tujuan ?: '-' }}</td>
+                                                    <td>{{ $trx->keterangan ?: '-' }}</td>
+                                                    <td class="text-right">
+                                                        <form
+                                                            action="{{ route('pembelian.transactions.destroy', $trx->id_transaction) }}"
+                                                            method="POST"
+                                                            onsubmit="return confirm('Hapus transaksi ini? Stok akan disesuaikan otomatis.')">
+                                                            @csrf
+                                                            @method('DELETE')
+                                                            <button type="submit"
+                                                                class="btn btn-outline-danger btn-sm">Hapus</button>
+                                                        </form>
+                                                    </td>
+                                                </tr>
+                                            @empty
+                                                <tr>
+                                                    <td colspan="9" class="text-center text-muted">Belum ada transaksi
+                                                        untuk item
+                                                        ini.</td>
+                                                </tr>
+                                            @endforelse
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                            <div class="modal-footer">
+                                <a href="{{ route('pembelian.riwayat') }}" class="btn btn-light">Tutup</a>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -193,3 +207,16 @@
         </div>
     </div>
 @endsection
+
+@if ($selectedItem)
+    @push('scripts')
+        <script>
+            (function() {
+                $('#riwayatTransaksiModal').modal('show');
+                $('#riwayatTransaksiModal').on('hidden.bs.modal', function() {
+                    window.location.href = @json(route('pembelian.riwayat'));
+                });
+            })();
+        </script>
+    @endpush
+@endif
