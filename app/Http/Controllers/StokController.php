@@ -36,7 +36,7 @@ class StokController extends Controller
     public function barang(): View
     {
         $items = DB::table('master_item_pembelian as mip')
-            ->leftJoin('gudang_item_pembelian_stock as s', 's.id_item_pembelian', '=', 'mip.id_item_pembelian')
+            ->leftJoin('item_pembelian_stock as s', 's.id_item_pembelian', '=', 'mip.id_item_pembelian')
             ->select(
                 'mip.id_item_pembelian',
                 'mip.nama_item',

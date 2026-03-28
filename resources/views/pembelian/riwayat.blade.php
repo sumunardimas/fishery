@@ -127,7 +127,6 @@
                                 <thead>
                                     <tr>
                                         <th>Tanggal</th>
-                                        <th>Gudang</th>
                                         <th>Jenis</th>
                                         <th>Akun Bayar</th>
                                         <th>Jumlah</th>
@@ -142,7 +141,6 @@
                                     @forelse ($transactions as $trx)
                                         <tr>
                                             <td>{{ \Carbon\Carbon::parse($trx->tanggal_transaksi)->format('d-m-Y') }}</td>
-                                            <td>{{ $trx->nama_gudang }}</td>
                                             <td>
                                                 <span
                                                     class="badge {{ $trx->jenis_transaksi === 'in' ? 'badge-success' : 'badge-danger' }}">
@@ -182,7 +180,7 @@
                                         </tr>
                                     @empty
                                         <tr>
-                                            <td colspan="10" class="text-center text-muted">Belum ada transaksi untuk item
+                                            <td colspan="9" class="text-center text-muted">Belum ada transaksi untuk item
                                                 ini.</td>
                                         </tr>
                                     @endforelse

@@ -17,7 +17,6 @@ class PembelianTransaction extends Model
     protected $fillable = [
         'tanggal_transaksi',
         'id_item_pembelian',
-        'id_gudang',
         'jenis_transaksi',
         'akun_pembayaran',
         'jumlah',

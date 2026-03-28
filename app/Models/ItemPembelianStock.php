@@ -4,18 +4,17 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
-class GudangItemPembelianStock extends Model
+class ItemPembelianStock extends Model
 {
-    protected $table = 'gudang_item_pembelian_stock';
+    protected $table = 'item_pembelian_stock';
 
-    protected $primaryKey = 'id_stok_gudang_item';
+    protected $primaryKey = 'id_stok_item_pembelian';
 
     public $incrementing = true;
 
     protected $keyType = 'int';
 
     protected $fillable = [
-        'id_gudang',
         'id_item_pembelian',
         'stok_aktual',
     ];

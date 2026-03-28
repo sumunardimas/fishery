@@ -57,7 +57,7 @@ class MasterItemPembelianController extends Controller
 
         $usageMap = [
             'pembelian_transaction' => 'transaksi pembelian',
-            'gudang_item_pembelian_stock' => 'stok gudang',
+            'item_pembelian_stock' => 'stok item pembelian',
         ];
 
         $usedIn = [];

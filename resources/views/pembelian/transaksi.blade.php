@@ -28,24 +28,13 @@
                                 <input type="date" id="tanggal_transaksi" name="tanggal_transaksi" class="form-control"
                                     value="{{ old('tanggal_transaksi', now()->toDateString()) }}" required>
                             </div>
-                            <div class="form-group col-md-2">
+                            <div class="form-group col-md-3">
                                 <label for="id_item_pembelian">Item</label>
                                 <select id="id_item_pembelian" name="id_item_pembelian" class="form-control" required>
                                     <option value="">Pilih item</option>
                                     @foreach ($items as $item)
                                         <option value="{{ $item->id_item_pembelian }}" @selected((int) old('id_item_pembelian') === (int) $item->id_item_pembelian)>
                                             {{ $item->nama_item }} ({{ $item->satuan }})
-                                        </option>
-                                    @endforeach
-                                </select>
-                            </div>
-                            <div class="form-group col-md-2">
-                                <label for="id_gudang">Gudang</label>
-                                <select id="id_gudang" name="id_gudang" class="form-control" required>
-                                    <option value="">Pilih gudang</option>
-                                    @foreach ($gudangs as $gudang)
-                                        <option value="{{ $gudang->id_gudang }}" @selected((int) old('id_gudang') === (int) $gudang->id_gudang)>
-                                            {{ $gudang->nama_gudang }}
                                         </option>
                                     @endforeach
                                 </select>
@@ -62,7 +51,7 @@
                                 <input type="number" step="0.01" min="0.01" id="jumlah" name="jumlah"
                                     class="form-control" value="{{ old('jumlah') }}" required>
                             </div>
-                            <div class="form-group col-md-2">
+                            <div class="form-group col-md-3">
                                 <label for="harga_satuan">Harga Satuan</label>
                                 <input type="number" step="0.01" min="0" id="harga_satuan" name="harga_satuan"
                                     class="form-control" value="{{ old('harga_satuan') }}" placeholder="Opsional">

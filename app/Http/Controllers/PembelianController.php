@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\GudangItemPembelianStock;
+use App\Models\ItemPembelianStock;
 use App\Models\MasterItemPembelian;
 use App\Models\PembelianTransaction;
 use Illuminate\Http\RedirectResponse;
@@ -22,7 +22,7 @@ class PembelianController extends Controller
     public function transaksi(): View
     {
         $items = DB::table('master_item_pembelian as mip')
-            ->leftJoin('gudang_item_pembelian_stock as s', 's.id_item_pembelian', '=', 'mip.id_item_pembelian')
+            ->leftJoin('item_pembelian_stock as s', 's.id_item_pembelian', '=', 'mip.id_item_pembelian')
             ->select(
                 'mip.id_item_pembelian',
                 'mip.nama_item',
@@ -35,9 +35,7 @@ class PembelianController extends Controller
             ->orderBy('mip.nama_item')
             ->get();
 
-        $gudangs = DB::table('master_gudang')->orderBy('nama_gudang')->get();
-
-        return view('pembelian.transaksi', compact('items', 'gudangs'));
+        return view('pembelian.transaksi', compact('items'));
     }
 
     public function riwayat(Request $request): View
@@ -45,7 +43,7 @@ class PembelianController extends Controller
         $selectedItemId = $request->integer('show_item');
 
         $items = DB::table('master_item_pembelian as mip')
-            ->leftJoin('gudang_item_pembelian_stock as s', 's.id_item_pembelian', '=', 'mip.id_item_pembelian')
+            ->leftJoin('item_pembelian_stock as s', 's.id_item_pembelian', '=', 'mip.id_item_pembelian')
             ->select(
                 'mip.id_item_pembelian',
                 'mip.nama_item',
@@ -65,11 +63,10 @@ class PembelianController extends Controller
             $selectedItem = MasterItemPembelian::query()->find($selectedItemId);
             if ($selectedItem) {
                 $transactions = DB::table('pembelian_transaction as t')
-                    ->join('master_gudang as g', 'g.id_gudang', '=', 't.id_gudang')
                     ->where('t.id_item_pembelian', $selectedItem->id_item_pembelian)
                     ->orderByDesc('t.tanggal_transaksi')
                     ->orderByDesc('t.id_transaction')
-                    ->select('t.*', 'g.nama_gudang')
+                    ->select('t.*')
                     ->get();
             }
         }
@@ -122,7 +119,7 @@ class PembelianController extends Controller
             ]);
         }
 
-        DB::table('gudang_item_pembelian_stock')
+        DB::table('item_pembelian_stock')
             ->where('id_item_pembelian', $item->id_item_pembelian)
             ->delete();
 
@@ -136,7 +133,6 @@ class PembelianController extends Controller
         $data = $request->validate([
             'tanggal_transaksi' => ['required', 'date'],
             'id_item_pembelian' => ['required', 'integer', 'exists:master_item_pembelian,id_item_pembelian'],
-            'id_gudang' => ['required', 'integer', 'exists:master_gudang,id_gudang'],
             'jenis_transaksi' => ['required', 'in:in,out'],
             'akun_pembayaran' => ['nullable', 'in:kas,bank', 'required_if:jenis_transaksi,in'],
             'jumlah' => ['required', 'numeric', 'gt:0'],
@@ -154,15 +150,13 @@ class PembelianController extends Controller
         DB::transaction(function () use ($data) {
             $jumlah = (float) $data['jumlah'];
 
-            $stock = GudangItemPembelianStock::query()
-                ->where('id_gudang', (int) $data['id_gudang'])
+            $stock = ItemPembelianStock::query()
                 ->where('id_item_pembelian', (int) $data['id_item_pembelian'])
                 ->lockForUpdate()
                 ->first();
 
             if (! $stock) {
-                $stock = GudangItemPembelianStock::create([
-                    'id_gudang' => (int) $data['id_gudang'],
+                $stock = ItemPembelianStock::create([
                     'id_item_pembelian' => (int) $data['id_item_pembelian'],
                     'stok_aktual' => 0,
                 ]);
@@ -186,7 +180,6 @@ class PembelianController extends Controller
             PembelianTransaction::create([
                 'tanggal_transaksi' => $data['tanggal_transaksi'],
                 'id_item_pembelian' => (int) $data['id_item_pembelian'],
-                'id_gudang' => (int) $data['id_gudang'],
                 'jenis_transaksi' => $data['jenis_transaksi'],
                 'akun_pembayaran' => $data['akun_pembayaran'] ?? null,
                 'jumlah' => $jumlah,
@@ -220,8 +213,7 @@ class PembelianController extends Controller
     public function destroyTransaction(PembelianTransaction $transaction): RedirectResponse
     {
         DB::transaction(function () use ($transaction) {
-            $stock = GudangItemPembelianStock::query()
-                ->where('id_gudang', (int) $transaction->id_gudang)
+            $stock = ItemPembelianStock::query()
                 ->where('id_item_pembelian', (int) $transaction->id_item_pembelian)
                 ->lockForUpdate()
                 ->first();
