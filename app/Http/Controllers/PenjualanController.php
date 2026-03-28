@@ -48,6 +48,8 @@ class PenjualanController extends Controller
             'id_ikan' => ['required', 'integer', 'exists:master_ikan,id_ikan'],
             'berat' => ['required', 'numeric', 'gt:0'],
             'harga_per_kg' => ['required', 'numeric', 'gt:0'],
+            'bayar_tunai' => ['nullable', 'numeric', 'min:0'],
+            'bayar_transfer' => ['nullable', 'numeric', 'min:0'],
             'keterangan' => ['nullable', 'string'],
             'id_customer' => ['nullable', 'integer', 'exists:master_customer,id_customer'],
             'create_new_customer' => ['nullable', 'boolean'],
@@ -76,8 +78,12 @@ class PenjualanController extends Controller
 
         $hargaPerKg = (float) $validated['harga_per_kg'];
         $totalHarga = $berat * $hargaPerKg;
+        $bayarTunai = (float) ($validated['bayar_tunai'] ?? 0);
+        $bayarTransfer = (float) ($validated['bayar_transfer'] ?? 0);
+        $piutang = max(0, $totalHarga - $bayarTunai - $bayarTransfer);
+        $statusPembayaran = $piutang <= 0 ? 'lunas' : 'piutang';
 
-        DB::transaction(function () use ($today, $idIkan, $customer, $berat, $hargaPerKg, $totalHarga, $validated) {
+        DB::transaction(function () use ($today, $idIkan, $customer, $berat, $hargaPerKg, $totalHarga, $bayarTunai, $bayarTransfer, $piutang, $statusPembayaran, $validated) {
             Penjualan::create([
                 'tanggal_penjualan' => $today,
                 'id_ikan' => $idIkan,
@@ -85,6 +91,10 @@ class PenjualanController extends Controller
                 'berat' => $berat,
                 'harga_per_kg' => $hargaPerKg,
                 'total_harga' => $totalHarga,
+                'bayar_tunai' => $bayarTunai,
+                'bayar_transfer' => $bayarTransfer,
+                'piutang' => $piutang,
+                'status_pembayaran' => $statusPembayaran,
                 'pembeli' => $customer?->nama_customer ?? '-',
                 'keterangan' => $validated['keterangan'] ?? 'Transaksi POS penjualan ikan',
             ]);
@@ -101,11 +111,6 @@ class PenjualanController extends Controller
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);
-
-            $kasHarian = KasHarian::query()->whereDate('tanggal', $today)->lockForUpdate()->firstOrFail();
-            $kasHarian->total_masuk = (float) $kasHarian->total_masuk + $totalHarga;
-            $kasHarian->saldo_akhir = (float) $kasHarian->saldo_awal + (float) $kasHarian->total_masuk - (float) $kasHarian->total_keluar;
-            $kasHarian->save();
 
             $this->recalculateStokIkan(now()->format('Y-m'), [$idIkan]);
         });

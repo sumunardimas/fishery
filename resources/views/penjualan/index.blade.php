@@ -7,15 +7,24 @@
         createNewCustomer: false,
         ikanMap: {{ Js::from($ikanStock->keyBy('id_ikan')->map(fn($i) => ['stok_tersedia' => $i->stok_tersedia])) }},
         selectedIkan: '{{ old('id_ikan') }}',
-        hargaPerKg: '{{ old('harga_per_kg') }}',
-        updateHarga() {
-            if (!this.selectedIkan) return;
+        berat: {{ (float) old('berat', 0) }},
+        hargaPerKg: {{ (float) old('harga_per_kg', 0) }},
+        bayarTunai: {{ (float) old('bayar_tunai', 0) }},
+        bayarTransfer: {{ (float) old('bayar_transfer', 0) }},
+        totalHarga() {
+            return this.berat * this.hargaPerKg;
+        },
+        piutang() {
+            return Math.max(0, this.totalHarga() - this.bayarTunai - this.bayarTransfer);
+        },
+        statusPembayaran() {
+            return this.piutang() <= 0 ? 'Lunas' : 'Piutang';
         },
         stokTersedia() {
             if (!this.selectedIkan) return 0;
             return this.ikanMap[this.selectedIkan]?.stok_tersedia ?? 0;
         }
-    }" x-init="updateHarga()">
+    }">
         <div class="col-12">
             @if ($errors->has('message'))
                 <x-alert type="danger" :message="$errors->first('message') ?? null" />
@@ -38,50 +47,6 @@
                     <h5 class="mb-3">Transaksi Penjualan Baru</h5>
                     <form action="{{ route('penjualan.store') }}" method="POST">
                         @csrf
-
-                        <div class="row">
-                            <div class="col-md-6 form-group">
-                                <label class="required-asterisk" for="id_ikan">Pilih Ikan</label>
-                                <select class="form-control @error('id_ikan') is-invalid @enderror" name="id_ikan"
-                                    id="id_ikan" x-model="selectedIkan" @change="updateHarga()" required>
-                                    <option value="">Pilih ikan</option>
-                                    @foreach ($ikanStock as $ikan)
-                                        <option value="{{ $ikan->id_ikan }}"
-                                            {{ (string) old('id_ikan') === (string) $ikan->id_ikan ? 'selected' : '' }}>
-                                            {{ $ikan->nama_ikan }} - Stok: {{ number_format($ikan->stok_tersedia, 2) }} kg
-                                        </option>
-                                    @endforeach
-                                </select>
-                                @error('id_ikan')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                            </div>
-
-                            <div class="col-md-3 form-group">
-                                <label class="required-asterisk" for="berat">Jumlah (kg)</label>
-                                <input type="number" min="0.01" step="0.01"
-                                    class="form-control @error('berat') is-invalid @enderror" name="berat" id="berat"
-                                    value="{{ old('berat') }}" required>
-                                @error('berat')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                            </div>
-
-                            <div class="col-md-3 form-group">
-                                <label class="required-asterisk" for="harga_per_kg">Harga per kg</label>
-                                <input type="number" min="1" step="0.01" x-model="hargaPerKg"
-                                    class="form-control @error('harga_per_kg') is-invalid @enderror" name="harga_per_kg"
-                                    id="harga_per_kg" value="{{ old('harga_per_kg') }}" required>
-                                @error('harga_per_kg')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                            </div>
-                        </div>
-
-                        <div class="mb-3">
-                            <small class="text-muted">Stok tersedia saat ini: <strong
-                                    x-text="Number(stokTersedia()).toFixed(2)"></strong> kg</small>
-                        </div>
 
                         <div class="form-group form-check mb-3" style="padding-left: 1.5rem;">
                             <input type="checkbox" class="form-check-input" id="create_new_customer"
@@ -141,8 +106,97 @@
                             </div>
                         </div>
 
+                        <div class="row">
+                            <div class="col-md-6 form-group">
+                                <label class="required-asterisk" for="id_ikan">Pilih Ikan</label>
+                                <select class="form-control @error('id_ikan') is-invalid @enderror" name="id_ikan"
+                                    id="id_ikan" x-model="selectedIkan" @change="updateHarga()" required>
+                                    <option value="">Pilih ikan</option>
+                                    @foreach ($ikanStock as $ikan)
+                                        <option value="{{ $ikan->id_ikan }}"
+                                            {{ (string) old('id_ikan') === (string) $ikan->id_ikan ? 'selected' : '' }}>
+                                            {{ $ikan->nama_ikan }} - Stok: {{ number_format($ikan->stok_tersedia, 2) }} kg
+                                        </option>
+                                    @endforeach
+                                </select>
+                                @error('id_ikan')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                            </div>
+
+                            <div class="col-md-3 form-group">
+                                <label class="required-asterisk" for="berat">Jumlah (kg)</label>
+                                <input type="number" min="0.01" step="0.01" x-model.number="berat"
+                                    class="form-control @error('berat') is-invalid @enderror" name="berat" id="berat"
+                                    value="{{ old('berat') }}" required>
+                                @error('berat')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                            </div>
+
+                            <div class="col-md-3 form-group">
+                                <label class="required-asterisk" for="harga_per_kg">Harga per kg</label>
+                                <input type="number" min="1" step="0.01" x-model.number="hargaPerKg"
+                                    class="form-control @error('harga_per_kg') is-invalid @enderror" name="harga_per_kg"
+                                    id="harga_per_kg" value="{{ old('harga_per_kg') }}" required>
+                                @error('harga_per_kg')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <small class="text-muted">Stok tersedia saat ini: <strong
+                                    x-text="Number(stokTersedia()).toFixed(2)"></strong> kg</small>
+                        </div>
+
+                        <div class="card bg-light mb-3">
+                            <div class="card-body py-2">
+                                <div class="row align-items-center">
+                                    <div class="col-md-4">
+                                        <small class="text-muted d-block">Total Tagihan</small>
+                                        <strong
+                                            x-text="'Rp ' + totalHarga().toLocaleString('id-ID', {minimumFractionDigits: 2})"></strong>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <small class="text-muted d-block">Sisa Piutang</small>
+                                        <strong :class="piutang() > 0 ? 'text-danger' : 'text-success'"
+                                            x-text="'Rp ' + piutang().toLocaleString('id-ID', {minimumFractionDigits: 2})"></strong>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <small class="text-muted d-block">Status</small>
+                                        <span :class="piutang() > 0 ? 'badge badge-warning' : 'badge badge-success'"
+                                            x-text="statusPembayaran()"></span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 form-group">
+                                <label for="bayar_tunai">Bayar Tunai (Rp)</label>
+                                <input type="number" min="0" step="0.01" x-model.number="bayarTunai"
+                                    class="form-control @error('bayar_tunai') is-invalid @enderror" name="bayar_tunai"
+                                    id="bayar_tunai" value="{{ old('bayar_tunai', 0) }}">
+                                @error('bayar_tunai')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                            </div>
+                            <div class="col-md-6 form-group">
+                                <label for="bayar_transfer">Bayar Transfer (Rp)</label>
+                                <input type="number" min="0" step="0.01" x-model.number="bayarTransfer"
+                                    class="form-control @error('bayar_transfer') is-invalid @enderror"
+                                    name="bayar_transfer" id="bayar_transfer" value="{{ old('bayar_transfer', 0) }}">
+                                @error('bayar_transfer')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                            </div>
+                        </div>
+
+
+
                         <div class="form-group">
-                            <label for="keterangan">Keterangan</label>
+                            <label for="keterangan">Catatan Penjualan</label>
                             <textarea name="keterangan" id="keterangan" rows="2" class="form-control">{{ old('keterangan') }}</textarea>
                         </div>
 
@@ -189,7 +243,11 @@
                                     <th>Customer</th>
                                     <th>Berat</th>
                                     <th>Harga/kg</th>
-                                    <th>Total</th>
+                                    <th>Total Tagihan</th>
+                                    <th>Tunai</th>
+                                    <th>Transfer</th>
+                                    <th>Piutang</th>
+                                    <th>Status</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -201,10 +259,20 @@
                                         <td>{{ number_format($trx->berat, 2) }} kg</td>
                                         <td>Rp {{ number_format($trx->harga_per_kg, 2, ',', '.') }}</td>
                                         <td>Rp {{ number_format($trx->total_harga, 2, ',', '.') }}</td>
+                                        <td>Rp {{ number_format($trx->bayar_tunai ?? 0, 2, ',', '.') }}</td>
+                                        <td>Rp {{ number_format($trx->bayar_transfer ?? 0, 2, ',', '.') }}</td>
+                                        <td>Rp {{ number_format($trx->piutang ?? 0, 2, ',', '.') }}</td>
+                                        <td>
+                                            @if (($trx->status_pembayaran ?? 'lunas') === 'lunas')
+                                                <span class="badge badge-success">Lunas</span>
+                                            @else
+                                                <span class="badge badge-warning">Piutang</span>
+                                            @endif
+                                        </td>
                                     </tr>
                                 @empty
                                     <tr>
-                                        <td colspan="6" class="text-center text-muted">Belum ada transaksi hari ini.
+                                        <td colspan="10" class="text-center text-muted">Belum ada transaksi hari ini.
                                         </td>
                                     </tr>
                                 @endforelse

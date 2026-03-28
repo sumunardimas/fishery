@@ -22,6 +22,10 @@ class Penjualan extends Model
         'berat',
         'harga_per_kg',
         'total_harga',
+        'bayar_tunai',
+        'bayar_transfer',
+        'piutang',
+        'status_pembayaran',
         'pembeli',
         'keterangan',
     ];
