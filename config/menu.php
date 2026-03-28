@@ -69,7 +69,7 @@ return [
             ],
         ],
         [
-            'title' => 'Penjualan',
+            'title' => 'Penjualan Ikan',
             'icon' => 'ti-bag',
             'route' => '#',
             'children' => [
