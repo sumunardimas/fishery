@@ -109,6 +109,8 @@ Route::middleware(['auth'])->group(function () {
 
     Route::prefix('pembelian')->name('pembelian.')->group(function () {
         Route::get('/', [PembelianController::class, 'index'])->name('index');
+        Route::get('/transaksi', [PembelianController::class, 'transaksi'])->name('transaksi');
+        Route::get('/riwayat', [PembelianController::class, 'riwayat'])->name('riwayat');
 
         Route::post('/items', [PembelianController::class, 'storeItem'])->name('items.store');
         Route::put('/items/{item}', [PembelianController::class, 'updateItem'])->name('items.update');

@@ -14,7 +14,33 @@ use Illuminate\View\View;
 
 class PembelianController extends Controller
 {
-    public function index(Request $request): View
+    public function index(): RedirectResponse
+    {
+        return redirect()->route('master.item-pembelian.index');
+    }
+
+    public function transaksi(): View
+    {
+        $items = DB::table('master_item_pembelian as mip')
+            ->leftJoin('gudang_item_pembelian_stock as s', 's.id_item_pembelian', '=', 'mip.id_item_pembelian')
+            ->select(
+                'mip.id_item_pembelian',
+                'mip.nama_item',
+                'mip.kategori',
+                'mip.satuan',
+                'mip.keterangan',
+                DB::raw('COALESCE(SUM(s.stok_aktual), 0) as total_stok')
+            )
+            ->groupBy('mip.id_item_pembelian', 'mip.nama_item', 'mip.kategori', 'mip.satuan', 'mip.keterangan')
+            ->orderBy('mip.nama_item')
+            ->get();
+
+        $gudangs = DB::table('master_gudang')->orderBy('nama_gudang')->get();
+
+        return view('pembelian.transaksi', compact('items', 'gudangs'));
+    }
+
+    public function riwayat(Request $request): View
     {
         $selectedItemId = $request->integer('show_item');
 
@@ -32,8 +58,6 @@ class PembelianController extends Controller
             ->orderBy('mip.nama_item')
             ->get();
 
-        $gudangs = DB::table('master_gudang')->orderBy('nama_gudang')->get();
-
         $selectedItem = null;
         $transactions = collect();
 
@@ -50,7 +74,7 @@ class PembelianController extends Controller
             }
         }
 
-        return view('pembelian.index', compact('items', 'gudangs', 'selectedItem', 'transactions', 'selectedItemId'));
+        return view('pembelian.riwayat', compact('items', 'selectedItem', 'transactions', 'selectedItemId'));
     }
 
     public function storeItem(Request $request): RedirectResponse
@@ -64,7 +88,7 @@ class PembelianController extends Controller
 
         MasterItemPembelian::create($data);
 
-        return redirect()->route('pembelian.index')->with('success', 'Master item pembelian berhasil ditambahkan.');
+        return redirect()->route('master.item-pembelian.index')->with('success', 'Master item pembelian berhasil ditambahkan.');
     }
 
     public function updateItem(Request $request, MasterItemPembelian $item): RedirectResponse
@@ -83,7 +107,7 @@ class PembelianController extends Controller
 
         $item->update($data);
 
-        return redirect()->route('pembelian.index')->with('success', 'Master item pembelian berhasil diperbarui.');
+        return redirect()->route('master.item-pembelian.index')->with('success', 'Master item pembelian berhasil diperbarui.');
     }
 
     public function destroyItem(MasterItemPembelian $item): RedirectResponse
@@ -93,7 +117,7 @@ class PembelianController extends Controller
             ->exists();
 
         if ($used) {
-            return redirect()->route('pembelian.index')->withErrors([
+            return redirect()->route('master.item-pembelian.index')->withErrors([
                 'message' => 'Item tidak bisa dihapus karena sudah memiliki riwayat transaksi.',
             ]);
         }
@@ -104,7 +128,7 @@ class PembelianController extends Controller
 
         $item->delete();
 
-        return redirect()->route('pembelian.index')->with('success', 'Master item pembelian berhasil dihapus.');
+        return redirect()->route('master.item-pembelian.index')->with('success', 'Master item pembelian berhasil dihapus.');
     }
 
     public function storeTransaction(Request $request): RedirectResponse
@@ -165,7 +189,7 @@ class PembelianController extends Controller
             ]);
         });
 
-        return redirect()->route('pembelian.index', ['show_item' => (int) $data['id_item_pembelian']])
+        return redirect()->route('pembelian.riwayat', ['show_item' => (int) $data['id_item_pembelian']])
             ->with('success', 'Transaksi pembelian berhasil disimpan.');
     }
 
@@ -204,7 +228,7 @@ class PembelianController extends Controller
             $transaction->delete();
         });
 
-        return redirect()->route('pembelian.index', ['show_item' => (int) $transaction->id_item_pembelian])
+        return redirect()->route('pembelian.riwayat', ['show_item' => (int) $transaction->id_item_pembelian])
             ->with('success', 'Transaksi berhasil dihapus dan stok telah disesuaikan.');
     }
 

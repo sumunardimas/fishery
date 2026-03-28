@@ -58,8 +58,27 @@ return [
         [
             'title' => 'Pembelian Barang',
             'icon' => 'ti-package',
-            'route' => 'pembelian.index',
-            'type' => 'route',
+            'route' => '#',
+            'children' => [
+                [
+                    'title' => 'Master',
+                    'icon' => 'ti-layout-list-thumb',
+                    'route' => 'master.item-pembelian.index',
+                    'type' => 'route',
+                ],
+                [
+                    'title' => 'Transaksi',
+                    'icon' => 'ti-write',
+                    'route' => 'pembelian.transaksi',
+                    'type' => 'route',
+                ],
+                [
+                    'title' => 'Riwayat',
+                    'icon' => 'ti-exchange-vertical',
+                    'route' => 'pembelian.riwayat',
+                    'type' => 'route',
+                ],
+            ],
         ],
         [
             'title' => 'Perbekalan',
@@ -182,12 +201,6 @@ return [
                     'title' => 'Master Operasional',
                     'icon' => 'ti-agenda',
                     'route' => 'master.operasional.index',
-                    'type' => 'route',
-                ],
-                [
-                    'title' => 'Master Item Pembelian',
-                    'icon' => 'ti-layout-list-thumb',
-                    'route' => 'master.item-pembelian.index',
                     'type' => 'route',
                 ],
                 [
