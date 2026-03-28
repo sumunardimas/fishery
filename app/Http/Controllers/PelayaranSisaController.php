@@ -7,12 +7,18 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
 class PelayaranSisaController extends Controller
 {
+    private const TAB_PERBEKALAN = 'perbekalan';
+    private const TAB_TANGKAPAN = 'tangkapan';
+    private const TAB_OPERASIONAL = 'operasional';
+    private const TAB_REKAP = 'rekap';
+
     /**
-     * Show active pelayaran and sisa form for selected pelayaran.
+     * Show active pelayaran and consolidated closing wizard.
      */
     public function index(Request $request): View
     {
@@ -23,6 +29,16 @@ class PelayaranSisaController extends Controller
             ->get();
 
         $selectedPelayaranId = (int) ($request->integer('pelayaran_id') ?: ($activePelayaran->first()->id_pelayaran ?? 0));
+        $activeTab = $request->string('tab')->toString();
+        $validTabs = [
+            self::TAB_PERBEKALAN,
+            self::TAB_TANGKAPAN,
+            self::TAB_OPERASIONAL,
+            self::TAB_REKAP,
+        ];
+        if (!in_array($activeTab, $validTabs, true)) {
+            $activeTab = self::TAB_PERBEKALAN;
+        }
 
         $selectedPelayaran = $activePelayaran
             ->firstWhere('id_pelayaran', $selectedPelayaranId);
@@ -31,6 +47,20 @@ class PelayaranSisaController extends Controller
         $existingSisa = [];
         $masterIkan = DB::table('master_ikan')->orderBy('nama_ikan')->get();
         $existingHasilIkan = [];
+        $masterOperasional = DB::table('master_operasional')
+            ->orderBy('nama_operasional')
+            ->get();
+        $existingOperasional = [];
+        $rekapOperasional = [
+            'total_item_biaya' => 0,
+            'total_biaya' => 0,
+            'detail' => collect(),
+        ];
+        $completionStatus = [
+            'perbekalan' => false,
+            'tangkapan' => false,
+            'operasional' => false,
+        ];
 
         if ($selectedPelayaran) {
             $perbekalanRows = DB::table('perbekalan_pelayaran as pp')
@@ -51,43 +81,85 @@ class PelayaranSisaController extends Controller
                 ->pluck('berat_hasil', 'id_ikan')
                 ->map(fn ($value) => (float) $value)
                 ->toArray();
+
+            $existingOperasional = DB::table('operasional')
+                ->where('id_pelayaran', $selectedPelayaran->id_pelayaran)
+                ->pluck('jumlah', 'id_master_operasional')
+                ->map(fn ($value) => (float) $value)
+                ->toArray();
+
+            $rekapDetail = DB::table('operasional as o')
+                ->leftJoin('master_operasional as mo', 'mo.id_master_operasional', '=', 'o.id_master_operasional')
+                ->where('o.id_pelayaran', $selectedPelayaran->id_pelayaran)
+                ->select(
+                    'o.id_operasional',
+                    'o.tanggal',
+                    'o.jumlah',
+                    'o.jenis_biaya',
+                    'o.deskripsi',
+                    'mo.nama_operasional'
+                )
+                ->orderByDesc('o.tanggal')
+                ->orderByDesc('o.id_operasional')
+                ->get();
+
+            $rekapOperasional = [
+                'total_item_biaya' => $rekapDetail->count(),
+                'total_biaya' => (float) $rekapDetail->sum('jumlah'),
+                'detail' => $rekapDetail,
+            ];
+
+            $plannedCount = $perbekalanRows->count();
+            $filledSisaCount = DB::table('sisa_trip')
+                ->where('id_pelayaran', $selectedPelayaran->id_pelayaran)
+                ->count();
+
+            $completionStatus = [
+                'perbekalan' => $plannedCount === 0 ? true : $filledSisaCount >= $plannedCount,
+                'tangkapan' => $masterIkan->count() === 0 ? true : !empty($existingHasilIkan),
+                'operasional' => $masterOperasional->count() === 0 ? true : !empty($existingOperasional),
+            ];
         }
+
+        $canClose = $selectedPelayaran
+            ? ($completionStatus['perbekalan'] && $completionStatus['tangkapan'] && $completionStatus['operasional'])
+            : false;
 
         return view('pelayaran.sisa.index', compact(
             'activePelayaran',
             'selectedPelayaran',
+            'activeTab',
             'perbekalanRows',
             'existingSisa',
             'masterIkan',
-            'existingHasilIkan'
+            'existingHasilIkan',
+            'masterOperasional',
+            'existingOperasional',
+            'rekapOperasional',
+            'completionStatus',
+            'canClose'
         ));
     }
 
     /**
-     * Close pelayaran and store remaining supplies + fish captures.
+     * Backward compatible endpoint: save all sections and close trip.
      */
     public function store(Request $request): RedirectResponse
+    {
+        return $this->closePelayaran($request);
+    }
+
+    public function storePerbekalan(Request $request): RedirectResponse
     {
         $validated = $request->validate([
             'id_pelayaran' => ['required', 'integer', 'exists:pelayaran,id_pelayaran'],
             'sisa_qty' => ['nullable', 'array'],
             'sisa_qty.*' => ['nullable', 'numeric', 'min:0'],
-            'hasil_ikan' => ['nullable', 'array'],
-            'hasil_ikan.*' => ['nullable', 'numeric', 'min:0'],
             'catatan_sisa' => ['nullable', 'string'],
         ]);
 
         $idPelayaran = (int) $validated['id_pelayaran'];
-
-        $pelayaran = Pelayaran::query()
-            ->where('id_pelayaran', $idPelayaran)
-            ->firstOrFail();
-
-        if ($pelayaran->status_pelayaran !== 'aktif') {
-            return back()->withErrors([
-                'message' => 'Pelayaran sudah ditutup sebelumnya.',
-            ]);
-        }
+        $pelayaran = $this->getActivePelayaranOrFail($idPelayaran);
 
         $plannedPerbekalan = DB::table('perbekalan_pelayaran')
             ->where('id_pelayaran', $idPelayaran)
@@ -106,11 +178,7 @@ class PelayaranSisaController extends Controller
             }
         }
 
-        $hasilIkan = $this->extractNumericMap($request->input('hasil_ikan', []), false);
-        $validIkanIds = DB::table('master_ikan')->pluck('id_ikan')->map(fn ($id) => (int) $id)->all();
-        $hasilIkan = $hasilIkan->only($validIkanIds)->filter(fn (float $berat) => $berat > 0);
-
-        DB::transaction(function () use ($pelayaran, $idPelayaran, $sisaQty, $hasilIkan, $validated) {
+        DB::transaction(function () use ($idPelayaran, $sisaQty, $validated) {
             DB::table('sisa_trip')->where('id_pelayaran', $idPelayaran)->delete();
 
             if ($sisaQty->isNotEmpty()) {
@@ -133,7 +201,29 @@ class PelayaranSisaController extends Controller
 
                 DB::table('sisa_trip')->insert($rows);
             }
+        });
 
+        return redirect()
+            ->route('pelayaran.sisa.index', ['pelayaran_id' => $pelayaran->id_pelayaran, 'tab' => self::TAB_PERBEKALAN])
+            ->with('success', 'Card Sisa Perbekalan berhasil disimpan.');
+    }
+
+    public function storeTangkapan(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'id_pelayaran' => ['required', 'integer', 'exists:pelayaran,id_pelayaran'],
+            'hasil_ikan' => ['nullable', 'array'],
+            'hasil_ikan.*' => ['nullable', 'numeric', 'min:0'],
+        ]);
+
+        $idPelayaran = (int) $validated['id_pelayaran'];
+        $pelayaran = $this->getActivePelayaranOrFail($idPelayaran);
+
+        $hasilIkan = $this->extractNumericMap($request->input('hasil_ikan', []), false);
+        $validIkanIds = DB::table('master_ikan')->pluck('id_ikan')->map(fn ($id) => (int) $id)->all();
+        $hasilIkan = $hasilIkan->only($validIkanIds)->filter(fn (float $berat) => $berat > 0);
+
+        DB::transaction(function () use ($idPelayaran, $hasilIkan) {
             DB::table('ikan_hasil_pelayaran')->where('id_pelayaran', $idPelayaran)->delete();
 
             if ($hasilIkan->isNotEmpty()) {
@@ -151,18 +241,151 @@ class PelayaranSisaController extends Controller
                 DB::table('ikan_hasil_pelayaran')->insert($hasilRows);
             }
 
-            $pelayaran->update([
-                'status_pelayaran' => 'selesai',
-                'tanggal_selesai' => now()->toDateString(),
-            ]);
-
             $periode = now()->format('Y-m');
             $this->recalculateStokIkan($periode, $hasilIkan->keys()->map(fn ($id) => (int) $id)->all());
         });
 
         return redirect()
+            ->route('pelayaran.sisa.index', ['pelayaran_id' => $pelayaran->id_pelayaran, 'tab' => self::TAB_TANGKAPAN])
+            ->with('success', 'Card Hasil Tangkapan Ikan berhasil disimpan.');
+    }
+
+    public function storeOperasional(Request $request): RedirectResponse
+    {
+        $data = $request->validate([
+            'id_pelayaran' => ['required', 'integer', 'exists:pelayaran,id_pelayaran'],
+            'tanggal' => ['required', 'array'],
+            'tanggal.*' => ['nullable', 'date'],
+            'jumlah' => ['required', 'array'],
+            'jumlah.*' => ['nullable', 'numeric', 'min:0'],
+            'deskripsi' => ['nullable', 'array'],
+            'deskripsi.*' => ['nullable', 'string'],
+        ]);
+
+        $pelayaran = $this->getActivePelayaranOrFail((int) $data['id_pelayaran']);
+
+        $masterOperasional = DB::table('master_operasional')
+            ->select('id_master_operasional', 'nama_operasional', 'deskripsi')
+            ->get()
+            ->keyBy('id_master_operasional');
+
+        $tanggalMap = $data['tanggal'] ?? [];
+        $jumlahMap = $data['jumlah'] ?? [];
+        $deskripsiMap = $data['deskripsi'] ?? [];
+
+        $records = [];
+        $defaultTanggal = now()->toDateString();
+
+        foreach ($masterOperasional as $masterId => $master) {
+            $jumlahRaw = $jumlahMap[$masterId] ?? null;
+            $jumlah = $jumlahRaw === null || $jumlahRaw === '' ? 0 : (float) $jumlahRaw;
+
+            if ($jumlah <= 0) {
+                continue;
+            }
+
+            $tanggal = $tanggalMap[$masterId] ?? null;
+            $tanggal = $tanggal ?: $defaultTanggal;
+
+            $deskripsi = $deskripsiMap[$masterId] ?? null;
+
+            $records[] = [
+                'id_pelayaran' => (int) $data['id_pelayaran'],
+                'id_master_operasional' => (int) $masterId,
+                'jenis_biaya' => $master->nama_operasional,
+                'deskripsi' => $deskripsi ?: ($master->deskripsi ?? '-'),
+                'jumlah' => $jumlah,
+                'tanggal' => $tanggal,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ];
+        }
+
+        if ($records === []) {
+            throw ValidationException::withMessages([
+                'jumlah' => 'Isi minimal satu biaya operasional dengan jumlah > 0.',
+            ]);
+        }
+
+        DB::transaction(function () use ($data, $records) {
+            DB::table('operasional')
+                ->where('id_pelayaran', (int) $data['id_pelayaran'])
+                ->delete();
+
+            DB::table('operasional')->insert($records);
+        });
+
+        return redirect()
+            ->route('pelayaran.sisa.index', ['pelayaran_id' => $pelayaran->id_pelayaran, 'tab' => self::TAB_OPERASIONAL])
+            ->with('success', 'Data Operasional Trip berhasil disimpan.');
+    }
+
+    public function closePelayaran(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'id_pelayaran' => ['required', 'integer', 'exists:pelayaran,id_pelayaran'],
+        ]);
+
+        $idPelayaran = (int) $validated['id_pelayaran'];
+        $pelayaran = $this->getActivePelayaranOrFail($idPelayaran);
+
+        $plannedPerbekalanCount = DB::table('perbekalan_pelayaran')
+            ->where('id_pelayaran', $idPelayaran)
+            ->count();
+        $sisaTripCount = DB::table('sisa_trip')
+            ->where('id_pelayaran', $idPelayaran)
+            ->count();
+        $hasilIkanCount = DB::table('ikan_hasil_pelayaran')
+            ->where('id_pelayaran', $idPelayaran)
+            ->count();
+        $masterIkanCount = DB::table('master_ikan')->count();
+        $operasionalCount = DB::table('operasional')
+            ->where('id_pelayaran', $idPelayaran)
+            ->count();
+        $masterOperasionalCount = DB::table('master_operasional')->count();
+
+        $missing = [];
+        if ($plannedPerbekalanCount > 0 && $sisaTripCount < $plannedPerbekalanCount) {
+            $missing[] = 'Card Sisa Perbekalan';
+        }
+        if ($masterIkanCount > 0 && $hasilIkanCount === 0) {
+            $missing[] = 'Card Hasil Tangkapan Ikan';
+        }
+        if ($masterOperasionalCount > 0 && $operasionalCount === 0) {
+            $missing[] = 'Operasional Trip';
+        }
+
+        if ($missing !== []) {
+            return redirect()
+                ->route('pelayaran.sisa.index', ['pelayaran_id' => $idPelayaran, 'tab' => self::TAB_PERBEKALAN])
+                ->withErrors([
+                    'message' => 'Tidak bisa menutup pelayaran. Lengkapi terlebih dahulu: ' . implode(', ', $missing) . '.',
+                ]);
+        }
+
+        $pelayaran->update([
+            'status_pelayaran' => 'selesai',
+            'tanggal_selesai' => now()->toDateString(),
+        ]);
+
+        return redirect()
             ->route('pelayaran.index')
-            ->with('success', 'Sisa trip dan hasil tangkapan berhasil disimpan. Status pelayaran dipindahkan ke nonaktif.');
+            ->with('success', 'Pelayaran berhasil ditutup.');
+    }
+
+    private function getActivePelayaranOrFail(int $idPelayaran): Pelayaran
+    {
+        $pelayaran = Pelayaran::query()
+            ->where('id_pelayaran', $idPelayaran)
+            ->firstOrFail();
+
+        if ($pelayaran->status_pelayaran !== 'aktif') {
+            throw ValidationException::withMessages([
+                'message' => 'Pelayaran sudah ditutup sebelumnya.',
+            ]);
+        }
+
+        return $pelayaran;
     }
 
     private function extractNumericMap(array $input, bool $allowZero): Collection

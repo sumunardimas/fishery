@@ -41,32 +41,32 @@ return [
             'title' => 'Pelayaran Selesai',
             'icon' => 'ti-calendar',
             'route' => '/pelayaran/sisa',
-            'type' => 'url',
-        ],
-        [
-            'title' => 'Operasional Trip',
-            'icon' => 'ti-agenda',
-            'route' => '#',
-            'children' => [
-                [
-                    'title' => 'Transaksi',
-                    'icon' => 'ti-write',
-                    'route' => 'operasional.transaksi',
-                    'type' => 'route',
-                ],
-                [
-                    'title' => 'Rekap',
-                    'icon' => 'ti-bar-chart',
-                    'route' => 'operasional.index',
-                    'type' => 'route',
-                ],
-                [
-                    'title' => 'Master',
-                    'icon' => 'ti-layout-list-thumb',
-                    'route' => 'operasional.master',
-                    'type' => 'route',
-                ],
-            ],
+            // 'children' => [
+            //     [
+            //         'title' => 'Perbekalan',
+            //         'icon' => 'ti-package',
+            //         'route' => '/pelayaran/sisa?tab=perbekalan',
+            //         'type' => 'url',
+            //     ],
+            //     [
+            //         'title' => 'Tangkapan',
+            //         'icon' => 'ti-fish',
+            //         'route' => '/pelayaran/sisa?tab=tangkapan',
+            //         'type' => 'url',
+            //     ],
+            //     [
+            //         'title' => 'Operasional Trip',
+            //         'icon' => 'ti-write',
+            //         'route' => '/pelayaran/sisa?tab=operasional',
+            //         'type' => 'url',
+            //     ],
+            //     [
+            //         'title' => 'Rekap Trip',
+            //         'icon' => 'ti-bar-chart',
+            //         'route' => '/pelayaran/sisa?tab=rekap',
+            //         'type' => 'url',
+            //     ],
+            // ],
         ],
         [
             'title' => 'Penjualan Ikan',
@@ -240,6 +240,12 @@ return [
                     'title' => 'Master Customer',
                     'icon' => 'ti-id-badge',
                     'route' => 'master.customer.index',
+                    'type' => 'route',
+                ],
+                [
+                    'title' => 'Master Operasional Trip',
+                    'icon' => 'ti-layout-list-thumb',
+                    'route' => 'operasional.master',
                     'type' => 'route',
                 ],
                 [

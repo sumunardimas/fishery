@@ -73,6 +73,10 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/create', [PelayaranController::class, 'create'])->name('create');
         Route::post('/', [PelayaranController::class, 'store'])->name('store');
         Route::get('/sisa', [PelayaranSisaController::class, 'index'])->name('sisa.index');
+        Route::post('/sisa/perbekalan', [PelayaranSisaController::class, 'storePerbekalan'])->name('sisa.perbekalan.store');
+        Route::post('/sisa/tangkapan', [PelayaranSisaController::class, 'storeTangkapan'])->name('sisa.tangkapan.store');
+        Route::post('/sisa/operasional', [PelayaranSisaController::class, 'storeOperasional'])->name('sisa.operasional.store');
+        Route::post('/sisa/close', [PelayaranSisaController::class, 'closePelayaran'])->name('sisa.close');
         Route::post('/sisa', [PelayaranSisaController::class, 'store'])->name('sisa.store');
         Route::get('/{pelayaran}/edit', [PelayaranController::class, 'edit'])->name('edit');
         Route::put('/{pelayaran}', [PelayaranController::class, 'update'])->name('update');
