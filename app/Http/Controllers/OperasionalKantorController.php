@@ -2,13 +2,13 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\MasterOperasional;
 use App\Models\MasterOperasionalKantor;
 use App\Models\OperasionalKantor;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
@@ -16,9 +16,58 @@ class OperasionalKantorController extends Controller
 {
     public function index(): View
     {
-        $items = MasterOperasional::query()->orderByDesc('created_at')->get();
+        $items = MasterOperasionalKantor::query()
+            ->orderBy('kategori')
+            ->orderBy('item')
+            ->get();
 
         return view('operasional-kantor.index', compact('items'));
+    }
+
+    public function storeMaster(Request $request): RedirectResponse
+    {
+        $data = $request->validate([
+            'item' => ['required', 'string', 'max:255', 'unique:master_operasional_kantor,item'],
+            'kategori' => ['required', Rule::in(['Operasional', 'Gaji', 'Retribusi', 'Transportasi'])],
+        ]);
+
+        MasterOperasionalKantor::create($data);
+
+        return redirect()->route('operasional-kantor.index')->with('success', 'Master operasional kantor berhasil ditambahkan.');
+    }
+
+    public function updateMaster(Request $request, MasterOperasionalKantor $masterItem): RedirectResponse
+    {
+        $data = $request->validate([
+            'item' => [
+                'required',
+                'string',
+                'max:255',
+                Rule::unique('master_operasional_kantor', 'item')->ignore($masterItem->id_master_operasional_kantor, 'id_master_operasional_kantor'),
+            ],
+            'kategori' => ['required', Rule::in(['Operasional', 'Gaji', 'Retribusi', 'Transportasi'])],
+        ]);
+
+        $masterItem->update($data);
+
+        return redirect()->route('operasional-kantor.index')->with('success', 'Master operasional kantor berhasil diperbarui.');
+    }
+
+    public function destroyMaster(MasterOperasionalKantor $masterItem): RedirectResponse
+    {
+        $used = OperasionalKantor::query()
+            ->where('id_master_operasional_kantor', $masterItem->id_master_operasional_kantor)
+            ->exists();
+
+        if ($used) {
+            return redirect()->route('operasional-kantor.index')->withErrors([
+                'message' => 'Data tidak bisa dihapus karena sudah digunakan pada transaksi operasional kantor.',
+            ]);
+        }
+
+        $masterItem->delete();
+
+        return redirect()->route('operasional-kantor.index')->with('success', 'Master operasional kantor berhasil dihapus.');
     }
 
     public function transaksi(): View

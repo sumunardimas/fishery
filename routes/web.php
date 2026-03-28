@@ -96,6 +96,9 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/', [OperasionalKantorController::class, 'index'])->name('index');
         Route::get('/transaksi', [OperasionalKantorController::class, 'transaksi'])->name('transaksi');
         Route::get('/history', [OperasionalKantorController::class, 'history'])->name('history');
+        Route::post('/master-items', [OperasionalKantorController::class, 'storeMaster'])->name('master.store');
+        Route::put('/master-items/{masterItem}', [OperasionalKantorController::class, 'updateMaster'])->name('master.update');
+        Route::delete('/master-items/{masterItem}', [OperasionalKantorController::class, 'destroyMaster'])->name('master.destroy');
         Route::post('/', [OperasionalKantorController::class, 'store'])->name('store');
     });
 
