@@ -6,9 +6,11 @@ use Carbon\CarbonPeriod;
 use App\Models\KasHarian;
 use App\Models\MasterCustomer;
 use App\Models\Penjualan;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 
@@ -21,25 +23,7 @@ class PenjualanController extends Controller
         $ikanStock = $this->getIkanStockMap();
         $customers = MasterCustomer::query()->orderBy('nama_customer')->get();
 
-        $todaySales = Penjualan::query()
-            ->leftJoin('master_ikan as mi', 'mi.id_ikan', '=', 'penjualan.id_ikan')
-            ->leftJoin('master_customer as mc', 'mc.id_customer', '=', 'penjualan.id_customer')
-            ->whereDate('tanggal_penjualan', $today)
-            ->orderByDesc('penjualan.created_at')
-            ->select(
-                'penjualan.*',
-                'mi.nama_ikan',
-                DB::raw('COALESCE(mc.nama_customer, penjualan.pembeli) as nama_customer_display')
-            )
-            ->get();
-
-        $summaryToday = [
-            'total_transaksi' => $todaySales->count(),
-            'total_berat' => (float) $todaySales->sum('berat'),
-            'total_pendapatan' => (float) $todaySales->sum('total_harga'),
-        ];
-
-        return view('penjualan.index', compact('ikanStock', 'customers', 'todaySales', 'summaryToday', 'today'));
+        return view('penjualan.index', compact('ikanStock', 'customers'));
     }
 
     public function store(Request $request): RedirectResponse
@@ -199,6 +183,69 @@ class PenjualanController extends Controller
             })->values();
 
         return view('penjualan.report', compact('sales', 'summary', 'startDate', 'endDate', 'groupByIkan'));
+    }
+
+    public function riwayat(Request $request): View
+    {
+        $date = $request->input('date', now()->toDateString());
+
+        $sales = Penjualan::query()
+            ->leftJoin('master_ikan as mi', 'mi.id_ikan', '=', 'penjualan.id_ikan')
+            ->leftJoin('master_customer as mc', 'mc.id_customer', '=', 'penjualan.id_customer')
+            ->whereDate('tanggal_penjualan', $date)
+            ->orderByDesc('penjualan.created_at')
+            ->select(
+                'penjualan.*',
+                'mi.nama_ikan',
+                DB::raw('COALESCE(mc.nama_customer, penjualan.pembeli) as nama_customer_display')
+            )
+            ->get();
+
+        $summary = [
+            'total_transaksi' => $sales->count(),
+            'total_berat' => (float) $sales->sum('berat'),
+            'total_pendapatan' => (float) $sales->sum('total_harga'),
+            'total_piutang' => (float) $sales->sum('piutang'),
+        ];
+
+        return view('penjualan.riwayat', compact('sales', 'summary', 'date'));
+    }
+
+    public function downloadInvoice(int $id): Response
+    {
+        $trx = Penjualan::query()
+            ->leftJoin('master_ikan as mi', 'mi.id_ikan', '=', 'penjualan.id_ikan')
+            ->leftJoin('master_customer as mc', 'mc.id_customer', '=', 'penjualan.id_customer')
+            ->where('penjualan.id_penjualan', $id)
+            ->select(
+                'penjualan.*',
+                'mi.nama_ikan',
+                DB::raw('COALESCE(mc.nama_customer, penjualan.pembeli) as nama_customer_display')
+            )
+            ->firstOrFail();
+
+        $pdf = Pdf::loadView('penjualan.invoice', ['trx' => $trx])
+            ->setPaper('a5', 'portrait');
+
+        $filename = 'invoice-' . $trx->id_penjualan . '-' . $trx->tanggal_penjualan . '.pdf';
+
+        return $pdf->download($filename);
+    }
+
+    public function previewInvoice(int $id): View
+    {
+        $trx = Penjualan::query()
+            ->leftJoin('master_ikan as mi', 'mi.id_ikan', '=', 'penjualan.id_ikan')
+            ->leftJoin('master_customer as mc', 'mc.id_customer', '=', 'penjualan.id_customer')
+            ->where('penjualan.id_penjualan', $id)
+            ->select(
+                'penjualan.*',
+                'mi.nama_ikan',
+                DB::raw('COALESCE(mc.nama_customer, penjualan.pembeli) as nama_customer_display')
+            )
+            ->firstOrFail();
+
+        return view('penjualan.invoice', ['trx' => $trx]);
     }
 
     public function keuanganPenjualanSummary(Request $request): View

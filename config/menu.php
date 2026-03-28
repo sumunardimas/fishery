@@ -71,8 +71,21 @@ return [
         [
             'title' => 'Penjualan',
             'icon' => 'ti-bag',
-            'route' => '/penjualan',
-            'type' => 'url',
+            'route' => '#',
+            'children' => [
+                [
+                    'title' => 'Transaksi',
+                    'icon' => 'ti-write',
+                    'route' => 'penjualan.index',
+                    'type' => 'route',
+                ],
+                [
+                    'title' => 'Riwayat Transaksi',
+                    'icon' => 'ti-exchange-vertical',
+                    'route' => 'penjualan.riwayat',
+                    'type' => 'route',
+                ],
+            ],
         ],
         [
             'title' => 'Pembelian Barang',

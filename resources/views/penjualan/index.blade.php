@@ -38,7 +38,7 @@
                         <h4 class="card-title mb-1">POS Penjualan Ikan</h4>
                         <p class="card-description mb-0">Penjualan berdasarkan stok hasil tangkapan yang tersedia.</p>
                     </div>
-                    <a href="{{ route('penjualan.report') }}" class="btn btn-outline-primary">Lihat Laporan Penjualan</a>
+                    <a href="{{ route('penjualan.riwayat') }}" class="btn btn-outline-primary">Riwayat Transaksi</a>
                 </div>
             </div>
 
@@ -207,80 +207,6 @@
                 </div>
             </div>
 
-            <div class="row mb-4">
-                <div class="col-md-4">
-                    <div class="card">
-                        <div class="card-body"><small class="text-muted">Total Transaksi Hari Ini</small>
-                            <h4>{{ $summaryToday['total_transaksi'] }}</h4>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-4">
-                    <div class="card">
-                        <div class="card-body"><small class="text-muted">Total Berat Hari Ini</small>
-                            <h4>{{ number_format($summaryToday['total_berat'], 2) }} kg</h4>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-4">
-                    <div class="card">
-                        <div class="card-body"><small class="text-muted">Total Pendapatan Hari Ini</small>
-                            <h4>Rp {{ number_format($summaryToday['total_pendapatan'], 2, ',', '.') }}</h4>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="card">
-                <div class="card-body">
-                    <h5 class="card-title">Transaksi Hari Ini</h5>
-                    <div class="table-responsive">
-                        <table class="table table-striped">
-                            <thead>
-                                <tr>
-                                    <th>Waktu</th>
-                                    <th>Ikan</th>
-                                    <th>Customer</th>
-                                    <th>Berat</th>
-                                    <th>Harga/kg</th>
-                                    <th>Total Tagihan</th>
-                                    <th>Tunai</th>
-                                    <th>Transfer</th>
-                                    <th>Piutang</th>
-                                    <th>Status</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @forelse ($todaySales as $trx)
-                                    <tr>
-                                        <td>{{ $trx->created_at?->format('H:i') }}</td>
-                                        <td>{{ $trx->nama_ikan }}</td>
-                                        <td>{{ $trx->nama_customer_display }}</td>
-                                        <td>{{ number_format($trx->berat, 2) }} kg</td>
-                                        <td>Rp {{ number_format($trx->harga_per_kg, 2, ',', '.') }}</td>
-                                        <td>Rp {{ number_format($trx->total_harga, 2, ',', '.') }}</td>
-                                        <td>Rp {{ number_format($trx->bayar_tunai ?? 0, 2, ',', '.') }}</td>
-                                        <td>Rp {{ number_format($trx->bayar_transfer ?? 0, 2, ',', '.') }}</td>
-                                        <td>Rp {{ number_format($trx->piutang ?? 0, 2, ',', '.') }}</td>
-                                        <td>
-                                            @if (($trx->status_pembayaran ?? 'lunas') === 'lunas')
-                                                <span class="badge badge-success">Lunas</span>
-                                            @else
-                                                <span class="badge badge-warning">Piutang</span>
-                                            @endif
-                                        </td>
-                                    </tr>
-                                @empty
-                                    <tr>
-                                        <td colspan="10" class="text-center text-muted">Belum ada transaksi hari ini.
-                                        </td>
-                                    </tr>
-                                @endforelse
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
         </div>
     </div>
 @endsection
