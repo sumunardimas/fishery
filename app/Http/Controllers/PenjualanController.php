@@ -169,21 +169,28 @@ class PenjualanController extends Controller
         $startDate = $request->input('start_date', $today);
         $endDate = $request->input('end_date', $today);
 
-        $sales = Penjualan::query()
-            ->leftJoin('master_ikan as mi', 'mi.id_ikan', '=', 'penjualan.id_ikan')
-            ->leftJoin('master_customer as mc', 'mc.id_customer', '=', 'penjualan.id_customer')
-            ->whereBetween('tanggal_penjualan', [$startDate, $endDate])
-            ->orderByDesc('tanggal_penjualan')
+        // Item-level rows so berat/harga per item is accurate for multi-item transactions
+        $sales = DB::table('penjualan_items as pi')
+            ->join('penjualan as p', 'p.id_penjualan', '=', 'pi.id_penjualan')
+            ->leftJoin('master_ikan as mi', 'mi.id_ikan', '=', 'pi.id_ikan')
+            ->leftJoin('master_customer as mc', 'mc.id_customer', '=', 'p.id_customer')
+            ->whereBetween('p.tanggal_penjualan', [$startDate, $endDate])
+            ->orderByDesc('p.tanggal_penjualan')
             ->select(
-                'penjualan.*',
+                'p.id_penjualan',
+                'p.tanggal_penjualan',
+                'p.pembeli',
+                'pi.berat',
+                'pi.harga_per_kg',
+                'pi.subtotal as total_harga',
                 'mi.nama_ikan',
-                DB::raw('COALESCE(mc.nama_customer, penjualan.pembeli) as nama_customer_display')
+                DB::raw('COALESCE(mc.nama_customer, p.pembeli) as nama_customer_display')
             )
             ->get();
 
         $summary = [
-            'total_transaksi' => $sales->count(),
-            'total_berat' => (float) $sales->sum('berat'),
+            'total_transaksi' => $sales->pluck('id_penjualan')->unique()->count(),
+            'total_berat'     => (float) $sales->sum('berat'),
             'total_pendapatan' => (float) $sales->sum('total_harga'),
         ];
 
@@ -191,9 +198,9 @@ class PenjualanController extends Controller
             ->groupBy('nama_ikan')
             ->map(function ($rows, $namaIkan) {
                 return [
-                    'nama_ikan' => $namaIkan,
-                    'jumlah_transaksi' => $rows->count(),
-                    'total_berat' => (float) $rows->sum('berat'),
+                    'nama_ikan'        => $namaIkan,
+                    'jumlah_transaksi' => $rows->pluck('id_penjualan')->unique()->count(),
+                    'total_berat'      => (float) $rows->sum('berat'),
                     'total_pendapatan' => (float) $rows->sum('total_harga'),
                 ];
             })->values();
@@ -287,9 +294,14 @@ class PenjualanController extends Controller
             ->whereBetween('tanggal_penjualan', [$startDate, $endDate])
             ->get();
 
+        $filteredBeratTotal = (float) DB::table('penjualan_items as pi')
+            ->join('penjualan as p', 'p.id_penjualan', '=', 'pi.id_penjualan')
+            ->whereBetween('p.tanggal_penjualan', [$startDate, $endDate])
+            ->sum('pi.berat');
+
         $filteredSummary = [
             'total_transaksi' => $filteredSales->count(),
-            'total_berat' => (float) $filteredSales->sum('berat'),
+            'total_berat' => $filteredBeratTotal,
             'total_pendapatan' => (float) $filteredSales->sum('total_harga'),
         ];
 
@@ -297,9 +309,14 @@ class PenjualanController extends Controller
             ->whereDate('tanggal_penjualan', $today)
             ->get();
 
+        $todayBeratTotal = (float) DB::table('penjualan_items as pi')
+            ->join('penjualan as p', 'p.id_penjualan', '=', 'pi.id_penjualan')
+            ->whereDate('p.tanggal_penjualan', $today)
+            ->sum('pi.berat');
+
         $summaryToday = [
             'total_transaksi' => $todaySales->count(),
-            'total_berat' => (float) $todaySales->sum('berat'),
+            'total_berat' => $todayBeratTotal,
             'total_pendapatan' => (float) $todaySales->sum('total_harga'),
         ];
 

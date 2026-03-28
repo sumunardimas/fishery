@@ -93,7 +93,7 @@
                             <tbody>
                                 @forelse ($sales as $trx)
                                     <tr>
-                                        <td>{{ $trx->tanggal_penjualan?->format('d-m-Y') }}</td>
+                                        <td>{{ \Carbon\Carbon::parse($trx->tanggal_penjualan)->format('d-m-Y') }}</td>
                                         <td>{{ $trx->nama_ikan }}</td>
                                         <td>{{ $trx->nama_customer_display }}</td>
                                         <td>{{ number_format($trx->berat, 2) }} kg</td>
