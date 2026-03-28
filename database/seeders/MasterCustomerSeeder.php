@@ -12,9 +12,16 @@ class MasterCustomerSeeder extends Seeder
         $now = now();
 
         $customers = [
-            ['nama_customer' => 'PT Laut Nusantara', 'alamat' => 'Belawan, Medan', 'telepon' => '0618001111'],
-            ['nama_customer' => 'CV Samudra Jaya', 'alamat' => 'Banda Aceh', 'telepon' => '0651999222'],
-            ['nama_customer' => 'UD Ikan Segar', 'alamat' => 'Pekanbaru', 'telepon' => null],
+            ['nama_customer' => 'Budi Santoso',        'alamat' => 'Wonosari, Gunung Kidul',          'telepon' => '081234567801'],
+            ['nama_customer' => 'Siti Rahayu',          'alamat' => 'Playen, Gunung Kidul',            'telepon' => '081234567802'],
+            ['nama_customer' => 'Ahmad Fauzi',          'alamat' => 'Semanu, Gunung Kidul',            'telepon' => '081234567803'],
+            ['nama_customer' => 'Dewi Kurniawati',      'alamat' => 'Tepus, Gunung Kidul',             'telepon' => '081234567804'],
+            ['nama_customer' => 'UD Mina Jaya',         'alamat' => 'Imogiri, Bantul',                 'telepon' => '081234567805'],
+            ['nama_customer' => 'CV Barokah Seafood',   'alamat' => 'Jl. Parangtritis No. 12, Bantul', 'telepon' => '081234567806'],
+            ['nama_customer' => 'Pasar Ikan Wonosari',  'alamat' => 'Wonosari, Gunung Kidul',          'telepon' => '081234567807'],
+            ['nama_customer' => 'Hendra Wijaya',        'alamat' => 'Paliyan, Gunung Kidul',           'telepon' => '081234567808'],
+            ['nama_customer' => 'Rumah Makan Pak Dhe',  'alamat' => 'Baron, Gunung Kidul',             'telepon' => '081234567809'],
+            ['nama_customer' => 'Koperasi Nelayan Sadeng', 'alamat' => 'Sadeng, Girisubo, Gunung Kidul', 'telepon' => '081234567810'],
         ];
 
         foreach ($customers as $row) {
