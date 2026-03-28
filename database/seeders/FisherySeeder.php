@@ -337,28 +337,16 @@ class FisherySeeder extends Seeder
         ]);
 
         DB::table('arus_kas')->insert([
-            [
-                'tanggal' => '2026-02-11',
-                'jenis_transaksi' => 'Masuk',
-                'kategori' => 'Penjualan Ikan',
-                'deskripsi' => 'Pendapatan trip A',
-                'uang_masuk' => 218421000.00,
-                'uang_keluar' => 0.00,
-                'saldo' => 218421000.00,
-                'created_at' => $now,
-                'updated_at' => $now,
-            ],
-            [
-                'tanggal' => '2026-02-12',
-                'jenis_transaksi' => 'Keluar',
-                'kategori' => 'Perbekalan',
-                'deskripsi' => 'Pembayaran logistik trip B',
-                'uang_masuk' => 0.00,
-                'uang_keluar' => 32000000.00,
-                'saldo' => 186421000.00,
-                'created_at' => $now,
-                'updated_at' => $now,
-            ],
+            'akun' => 'kas',
+            'tanggal' => '2026-03-01',
+            'jenis_transaksi' => 'Masuk',
+            'kategori' => 'Modal',
+            'deskripsi' => 'Modal awal operasional',
+            'uang_masuk' => 200000000.00,
+            'uang_keluar' => 0.00,
+            'saldo' => 200000000.00,
+            'created_at' => $now,
+            'updated_at' => $now,
         ]);
 
         DB::table('laba')->insert([
