@@ -18,6 +18,7 @@ class PerbekalanTransaction extends Model
         'tanggal_transaksi',
         'id_barang',
         'jenis_transaksi',
+        'akun_pembayaran',
         'jumlah',
         'harga_satuan',
         'total_harga',

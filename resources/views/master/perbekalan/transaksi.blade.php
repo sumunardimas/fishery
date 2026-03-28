@@ -62,6 +62,14 @@
                                 <input type="number" step="0.01" min="0" id="harga_satuan" name="harga_satuan"
                                     class="form-control" value="{{ old('harga_satuan') }}" placeholder="Wajib untuk IN">
                             </div>
+                            <div class="form-group col-md-2">
+                                <label for="akun_pembayaran">Bayar Dari</label>
+                                <select id="akun_pembayaran" name="akun_pembayaran" class="form-control">
+                                    <option value="">-</option>
+                                    <option value="kas" @selected(old('akun_pembayaran', 'kas') === 'kas')>Kas</option>
+                                    <option value="bank" @selected(old('akun_pembayaran') === 'bank')>Bank</option>
+                                </select>
+                            </div>
                             <div class="form-group col-md-2 d-flex align-items-end">
                                 <button type="submit" class="btn btn-primary w-100">Simpan Transaksi</button>
                             </div>
@@ -79,9 +87,38 @@
                                     value="{{ old('keterangan') }}" placeholder="Opsional">
                             </div>
                         </div>
+
+                        <small class="text-muted d-block mt-2">
+                            Untuk transaksi <strong>IN</strong>, pembelian perbekalan akan memotong saldo akun yang dipilih
+                            (Kas/Bank). Untuk <strong>OUT</strong>, akun pembayaran diabaikan.
+                        </small>
                     </form>
                 </div>
             </div>
         </div>
     </div>
 @endsection
+
+@push('scripts')
+    <script>
+        (function() {
+            const jenis = document.getElementById('jenis_transaksi');
+            const akun = document.getElementById('akun_pembayaran');
+
+            if (!jenis || !akun) return;
+
+            const syncAkunState = () => {
+                const isIn = jenis.value === 'in';
+                akun.disabled = !isIn;
+                if (!isIn) {
+                    akun.value = '';
+                } else if (!akun.value) {
+                    akun.value = 'kas';
+                }
+            };
+
+            jenis.addEventListener('change', syncAkunState);
+            syncAkunState();
+        })();
+    </script>
+@endpush
