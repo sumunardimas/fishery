@@ -24,8 +24,6 @@ class StokController extends Controller
             ->select(
                 'mi.id_ikan',
                 'mi.nama_ikan',
-                'mi.jenis_ikan',
-                'mi.harga_default',
                 DB::raw('COALESCE(si.stok_akhir, 0) as stok_aktual'),
                 DB::raw("COALESCE(sip.periode, '-') as periode_terakhir")
             )

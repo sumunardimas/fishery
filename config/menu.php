@@ -161,12 +161,6 @@ return [
                     'route' => 'stok.ikan.index',
                     'type' => 'route',
                 ],
-                [
-                    'title' => 'Stok Barang',
-                    'icon' => 'ti-tag',
-                    'route' => 'stok.barang.index',
-                    'type' => 'route',
-                ],
             ],
         ],
         [
