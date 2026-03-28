@@ -269,10 +269,15 @@
 
     {{-- ══ Company header ══ --}}
     <div class="header">
-        <div class="company-name">TPI Sadeng</div>
+        <div class="company-name">{{ $appSettings['company_name'] ?? 'TPI Sadeng' }}</div>
         <div class="company-meta">
-            Sadeng, Songbanyu, Girisubo, Gunung Kidul, DIY<br>
-            Telp.: +62 822 2702 4502
+            {{ $appSettings['company_address'] ?? '' }}<br>
+            @if (!empty($appSettings['company_phone']))
+                Telp.: {{ $appSettings['company_phone'] }}
+            @endif
+            @if (!empty($appSettings['company_email']))
+                &middot; {{ $appSettings['company_email'] }}
+            @endif
         </div>
     </div>
 
@@ -298,10 +303,10 @@
     <div class="parties">
         <div class="party">
             <div class="party-label">Dari</div>
-            <div class="party-name">TPI Sadeng</div>
+            <div class="party-name">{{ $appSettings['company_name'] ?? 'TPI Sadeng' }}</div>
             <div class="party-detail">
-                Sadeng, Girisubo, Gunung Kidul<br>
-                +62 822 2702 4502
+                {{ $appSettings['company_address'] ?? '' }}<br>
+                {{ $appSettings['company_phone'] ?? '' }}
             </div>
         </div>
         <div class="party">
@@ -346,9 +351,9 @@
         <div class="payment-left">
             <div class="bank-box">
                 <div class="bank-label">Transfer Pembayaran</div>
-                <div class="bank-name">Bank BRI</div>
-                <div class="bank-no">0029-01-004071-56-4</div>
-                <div class="bank-an">A.N. Uum Faida</div>
+                <div class="bank-name">{{ $appSettings['bank_name'] ?? '' }}</div>
+                <div class="bank-no">{{ $appSettings['bank_account_number'] ?? '' }}</div>
+                <div class="bank-an">A.N. {{ $appSettings['bank_account_holder'] ?? '' }}</div>
             </div>
         </div>
         <div class="payment-right">
@@ -388,7 +393,10 @@
     <hr class="divider-thin">
 
     <div class="footer">
-        Dokumen ini dibuat secara otomatis oleh sistem. Terima kasih atas kepercayaan Anda.
+        Dokumen ini dibuat secara otomatis oleh sistem.
+        @if (!empty($appSettings['invoice_notes']))
+            {{ $appSettings['invoice_notes'] }}
+        @endif
     </div>
 
 </body>

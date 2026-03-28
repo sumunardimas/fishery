@@ -349,6 +349,17 @@ class FisherySeeder extends Seeder
             'updated_at' => $now,
         ]);
 
+        DB::table('app_settings')->upsert([
+            ['key' => 'company_name',        'value' => 'TPI Sadeng',                                       'created_at' => $now, 'updated_at' => $now],
+            ['key' => 'company_address',     'value' => 'Sadeng, Songbanyu, Girisubo, Gunung Kidul, DIY',  'created_at' => $now, 'updated_at' => $now],
+            ['key' => 'company_phone',       'value' => '+62 822 2702 4502',                                'created_at' => $now, 'updated_at' => $now],
+            ['key' => 'company_email',       'value' => '',                                                 'created_at' => $now, 'updated_at' => $now],
+            ['key' => 'bank_name',           'value' => 'Bank BRI',                                        'created_at' => $now, 'updated_at' => $now],
+            ['key' => 'bank_account_number', 'value' => '0029-01-004071-56-4',                             'created_at' => $now, 'updated_at' => $now],
+            ['key' => 'bank_account_holder', 'value' => 'Uum Faida',                                       'created_at' => $now, 'updated_at' => $now],
+            ['key' => 'invoice_notes',       'value' => 'Terima kasih atas kepercayaan Anda.',             'created_at' => $now, 'updated_at' => $now],
+        ], ['key'], ['value', 'updated_at']);
+
         DB::table('laba')->insert([
             'periode' => '2026-02',
             'total_pendapatan' => 333221000.00,

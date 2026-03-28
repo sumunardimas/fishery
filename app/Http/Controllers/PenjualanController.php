@@ -262,8 +262,9 @@ class PenjualanController extends Controller
     public function downloadInvoice(int $id): Response
     {
         $trx = $this->findTrxWithItems($id);
+        $appSettings = \App\Http\Controllers\PengaturanController::getAll();
 
-        $pdf = Pdf::loadView('penjualan.invoice', ['trx' => $trx])
+        $pdf = Pdf::loadView('penjualan.invoice', ['trx' => $trx, 'appSettings' => $appSettings])
             ->setPaper('a5', 'portrait');
 
         $filename = 'invoice-'.$trx->id_penjualan.'-'.$trx->tanggal_penjualan.'.pdf';
@@ -274,8 +275,9 @@ class PenjualanController extends Controller
     public function previewInvoice(int $id): View
     {
         $trx = $this->findTrxWithItems($id);
+        $appSettings = \App\Http\Controllers\PengaturanController::getAll();
 
-        return view('penjualan.invoice', ['trx' => $trx]);
+        return view('penjualan.invoice', ['trx' => $trx, 'appSettings' => $appSettings]);
     }
 
     private function findTrxWithItems(int $id): Penjualan
