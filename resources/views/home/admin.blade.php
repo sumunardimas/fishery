@@ -13,23 +13,12 @@
             <div class="row">
                 <div class="col-12 col-xl-8 mb-4 mb-xl-0">
                     <h3 class="font-weight-bold">Selamat datang <span
-                            class="text-info">{{ ucwords($user->getRoleNames()->first() ?? '-') }}</span> di <br> Perikanan</h3>
-                    <h6 class="font-weight-normal mb-0">Ringkasan operasional dan keuangan perusahaan per {{ $overview['today_label'] }}.</h6>
+                            class="text-info">{{ ucwords($user->getRoleNames()->first() ?? '-') }}</span> di Perikanan
+                    </h3>
+                    <h6 class="font-weight-normal mb-0">Ringkasan operasional dan keuangan perusahaan per
+                        {{ $overview['today_label'] }}.</h6>
                 </div>
-                <div class="col-12 col-xl-4">
-                    <div class="card card-light-danger mb-0">
-                        <div class="card-body py-3">
-                            <p class="mb-1">Status Kas Hari Ini</p>
-                            @if ($overview['kas_harian_today']['exists'])
-                                <h5 class="mb-0 {{ $overview['kas_harian_today']['is_open'] ? 'text-success' : 'text-danger' }}">
-                                    {{ $overview['kas_harian_today']['is_open'] ? 'Kas Masih Buka' : 'Kas Sudah Ditutup' }}
-                                </h5>
-                            @else
-                                <h5 class="mb-0 text-warning">Kas Belum Dibuka</h5>
-                            @endif
-                        </div>
-                    </div>
-                </div>
+
             </div>
         </div>
     </div>
@@ -45,7 +34,8 @@
                         <p class="mb-0">Transaksi: <strong>{{ $overview['sales_today']['transactions'] }}</strong></p>
                         <p class="mb-0">Berat: <strong>{{ $decimal($overview['sales_today']['weight']) }} kg</strong></p>
                     </div>
-                    <a href="{{ route('penjualan.report') }}" class="btn btn-sm btn-outline-info mt-3">Lihat Detail Penjualan</a>
+                    <a href="{{ route('penjualan.report') }}" class="btn btn-sm btn-outline-info mt-3">Lihat Detail
+                        Penjualan</a>
                 </div>
             </div>
         </div>
@@ -59,7 +49,8 @@
                         <p class="mb-0">Transaksi: <strong>{{ $overview['sales_month']['transactions'] }}</strong></p>
                         <p class="mb-0">Berat: <strong>{{ $decimal($overview['sales_month']['weight']) }} kg</strong></p>
                     </div>
-                    <a href="{{ route('keuangan.lap-penjualan.index') }}" class="btn btn-sm btn-outline-info mt-3">Lihat Ringkasan Keuangan</a>
+                    <a href="{{ route('keuangan.lap-penjualan.index') }}" class="btn btn-sm btn-outline-info mt-3">Lihat
+                        Ringkasan Keuangan</a>
                 </div>
             </div>
         </div>
@@ -134,7 +125,8 @@
                         <div class="col-sm-6 col-lg-4 mb-3">
                             <div class="border rounded p-3 h-100">
                                 <p class="mb-1 text-muted">Net Cashflow Hari Ini</p>
-                                <h5 class="mb-0 {{ $overview['cash_today']['net'] >= 0 ? 'text-success' : 'text-danger' }}">
+                                <h5
+                                    class="mb-0 {{ $overview['cash_today']['net'] >= 0 ? 'text-success' : 'text-danger' }}">
                                     {{ $currency($overview['cash_today']['net']) }}
                                 </h5>
                             </div>
@@ -149,11 +141,16 @@
                 <div class="card-body">
                     <h4 class="card-title">Aksi Cepat Admin</h4>
                     <div class="d-grid gap-2">
-                        <a href="{{ route('users.index') }}" class="btn btn-outline-primary btn-block mb-2">Kelola Pengguna</a>
-                        <a href="{{ route('master.ikan.index') }}" class="btn btn-outline-primary btn-block mb-2">Kelola Master Ikan</a>
-                        <a href="{{ route('master.customer.index') }}" class="btn btn-outline-primary btn-block mb-2">Kelola Customer</a>
-                        <a href="{{ route('keuangan.arus-kas.index') }}" class="btn btn-outline-primary btn-block mb-2">Cek Arus Kas</a>
-                        <a href="{{ route('keuangan.laba.index') }}" class="btn btn-outline-primary btn-block">Cek Laba Rugi</a>
+                        <a href="{{ route('users.index') }}" class="btn btn-outline-primary btn-block mb-2">Kelola
+                            Pengguna</a>
+                        <a href="{{ route('master.ikan.index') }}" class="btn btn-outline-primary btn-block mb-2">Kelola
+                            Master Ikan</a>
+                        <a href="{{ route('master.customer.index') }}"
+                            class="btn btn-outline-primary btn-block mb-2">Kelola Customer</a>
+                        <a href="{{ route('keuangan.arus-kas.index') }}" class="btn btn-outline-primary btn-block mb-2">Cek
+                            Arus Kas</a>
+                        <a href="{{ route('keuangan.laba.index') }}" class="btn btn-outline-primary btn-block">Cek Laba
+                            Rugi</a>
                     </div>
                 </div>
             </div>
@@ -165,5 +162,4 @@
 @endsection
 
 @push('scripts')
-
 @endpush
