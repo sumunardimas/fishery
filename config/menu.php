@@ -62,6 +62,25 @@ return [
             'type' => 'route',
         ],
         [
+            'title' => 'Perbekalan',
+            'icon' => 'ti-package',
+            'route' => '#',
+            'children' => [
+                [
+                    'title' => 'Master',
+                    'icon' => 'ti-layout-list-thumb',
+                    'route' => 'master.perbekalan.index',
+                    'type' => 'route',
+                ],
+                [
+                    'title' => 'Riwayat In Out',
+                    'icon' => 'ti-exchange-vertical',
+                    'route' => 'master.perbekalan.history',
+                    'type' => 'route',
+                ],
+            ],
+        ],
+        [
             'title' => 'Operasional Kantor',
             'icon' => 'ti-clipboard',
             'route' => '/operasional-kantor',
@@ -122,12 +141,6 @@ return [
             'icon' => 'ti-settings',
             'route' => '#',
             'children' => [
-                [
-                    'title' => 'Master Perbekalan',
-                    'icon' => 'ti-package',
-                    'route' => 'master.perbekalan.index',
-                    'type' => 'route',
-                ],
                 [
                     'title' => 'Master Ikan',
                     'icon' => 'ti-layout-list-thumb',

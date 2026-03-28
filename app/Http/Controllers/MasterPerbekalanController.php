@@ -18,16 +18,19 @@ class MasterPerbekalanController extends Controller
     {
         $selectedItemId = $request->integer('show_item');
 
-        $items = DB::table('master_perbekalan as mp')
-            ->leftJoin('perbekalan_stock as ps', 'ps.id_barang', '=', 'mp.id_barang')
-            ->select(
-                'mp.id_barang',
-                'mp.nama_barang',
-                'mp.satuan',
-                DB::raw('COALESCE(ps.stok_aktual, 0) as stok_aktual')
-            )
-            ->orderBy('mp.nama_barang')
-            ->get();
+        $items = $this->getPerbekalanItems();
+
+        return view('master.perbekalan.index', compact(
+            'items',
+            'selectedItemId'
+        ));
+    }
+
+    public function history(Request $request): View
+    {
+        $selectedItemId = $request->integer('show_item');
+
+        $items = $this->getPerbekalanItems();
 
         $selectedItem = null;
         $transactions = collect();
@@ -44,12 +47,26 @@ class MasterPerbekalanController extends Controller
             }
         }
 
-        return view('master.perbekalan.index', compact(
+        return view('master.perbekalan.history', compact(
             'items',
             'selectedItem',
             'transactions',
             'selectedItemId'
         ));
+    }
+
+    private function getPerbekalanItems()
+    {
+        return DB::table('master_perbekalan as mp')
+            ->leftJoin('perbekalan_stock as ps', 'ps.id_barang', '=', 'mp.id_barang')
+            ->select(
+                'mp.id_barang',
+                'mp.nama_barang',
+                'mp.satuan',
+                DB::raw('COALESCE(ps.stok_aktual, 0) as stok_aktual')
+            )
+            ->orderBy('mp.nama_barang')
+            ->get();
     }
 
     public function store(Request $request): RedirectResponse
@@ -175,7 +192,7 @@ class MasterPerbekalanController extends Controller
             ]);
         });
 
-        return redirect()->route('master.perbekalan.index', ['show_item' => (int) $data['id_barang']])
+        return redirect()->route('master.perbekalan.history', ['show_item' => (int) $data['id_barang']])
             ->with('success', 'Transaksi perbekalan berhasil disimpan.');
     }
 
@@ -212,7 +229,7 @@ class MasterPerbekalanController extends Controller
             $transaction->delete();
         });
 
-        return redirect()->route('master.perbekalan.index', ['show_item' => (int) $transaction->id_barang])
+        return redirect()->route('master.perbekalan.history', ['show_item' => (int) $transaction->id_barang])
             ->with('success', 'Transaksi berhasil dihapus dan stok telah disesuaikan.');
     }
 
