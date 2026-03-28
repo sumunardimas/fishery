@@ -73,10 +73,11 @@ class PenjualanController extends Controller
         $totalHarga = collect($validated['items'])->sum(fn ($i) => (float) $i['berat'] * (float) $i['harga_per_kg']);
         $bayarTunai = (float) ($validated['bayar_tunai'] ?? 0);
         $bayarTransfer = (float) ($validated['bayar_transfer'] ?? 0);
-        $piutang = max(0, $totalHarga - $bayarTunai - $bayarTransfer);
+        $totalPenerimaan = $bayarTunai + $bayarTransfer;
+        $piutang = max(0, $totalHarga - $totalPenerimaan);
         $statusPembayaran = $piutang <= 0 ? 'lunas' : 'piutang';
 
-        DB::transaction(function () use ($today, $customer, $totalHarga, $bayarTunai, $bayarTransfer, $piutang, $statusPembayaran, $validated, $requestedByIkan) {
+        DB::transaction(function () use ($today, $customer, $totalHarga, $bayarTunai, $bayarTransfer, $totalPenerimaan, $piutang, $statusPembayaran, $validated, $requestedByIkan) {
             $penjualan = Penjualan::create([
                 'tanggal_penjualan' => $today,
                 'id_customer' => $customer?->id_customer,
@@ -99,18 +100,20 @@ class PenjualanController extends Controller
                 ]);
             }
 
-            $lastSaldoKas = (float) (DB::table('arus_kas')->orderByDesc('id_kas')->value('saldo') ?? 0);
-            DB::table('arus_kas')->insert([
-                'tanggal' => $today,
-                'jenis_transaksi' => 'Masuk',
-                'kategori' => 'Penjualan Ikan',
-                'deskripsi' => 'Transaksi POS penjualan ikan',
-                'uang_masuk' => $totalHarga,
-                'uang_keluar' => 0,
-                'saldo' => $lastSaldoKas + $totalHarga,
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
+            if ($totalPenerimaan > 0) {
+                $lastSaldoKas = (float) (DB::table('arus_kas')->orderByDesc('id_kas')->value('saldo') ?? 0);
+                DB::table('arus_kas')->insert([
+                    'tanggal' => $today,
+                    'jenis_transaksi' => 'Masuk',
+                    'kategori' => 'Penjualan Ikan',
+                    'deskripsi' => 'Transaksi POS penjualan ikan. Kas/Bank diterima Rp '.number_format($totalPenerimaan, 2, ',', '.').'; Piutang Rp '.number_format($piutang, 2, ',', '.'),
+                    'uang_masuk' => $totalPenerimaan,
+                    'uang_keluar' => 0,
+                    'saldo' => $lastSaldoKas + $totalPenerimaan,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
 
             $this->recalculateStokIkan(now()->format('Y-m'), array_keys($requestedByIkan));
         });
@@ -190,7 +193,7 @@ class PenjualanController extends Controller
 
         $summary = [
             'total_transaksi' => $sales->pluck('id_penjualan')->unique()->count(),
-            'total_berat'     => (float) $sales->sum('berat'),
+            'total_berat' => (float) $sales->sum('berat'),
             'total_pendapatan' => (float) $sales->sum('total_harga'),
         ];
 
@@ -198,9 +201,9 @@ class PenjualanController extends Controller
             ->groupBy('nama_ikan')
             ->map(function ($rows, $namaIkan) {
                 return [
-                    'nama_ikan'        => $namaIkan,
+                    'nama_ikan' => $namaIkan,
                     'jumlah_transaksi' => $rows->pluck('id_penjualan')->unique()->count(),
-                    'total_berat'      => (float) $rows->sum('berat'),
+                    'total_berat' => (float) $rows->sum('berat'),
                     'total_pendapatan' => (float) $rows->sum('total_harga'),
                 ];
             })->values();

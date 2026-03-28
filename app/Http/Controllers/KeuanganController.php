@@ -82,9 +82,17 @@ class KeuanganController extends Controller
         $startDate = $start->toDateString();
         $endDate = $end->toDateString();
 
+        $dailyRevenue = DB::table('penjualan')
+            ->whereBetween('tanggal_penjualan', [$startDate, $endDate])
+            ->selectRaw('DATE(tanggal_penjualan) as tanggal, SUM(total_harga) as total_revenue')
+            ->groupBy('tanggal')
+            ->orderBy('tanggal')
+            ->get()
+            ->keyBy('tanggal');
+
         $dailyFromDb = DB::table('arus_kas')
             ->whereBetween('tanggal', [$startDate, $endDate])
-            ->selectRaw('DATE(tanggal) as tanggal, SUM(uang_masuk) as total_revenue, SUM(uang_keluar) as total_expenditure')
+            ->selectRaw('DATE(tanggal) as tanggal, SUM(uang_keluar) as total_expenditure')
             ->groupBy('tanggal')
             ->orderBy('tanggal')
             ->get()
@@ -95,7 +103,7 @@ class KeuanganController extends Controller
             $key = $date->toDateString();
             $rows->push((object) [
                 'tanggal' => $key,
-                'total_revenue' => (float) ($dailyFromDb[$key]->total_revenue ?? 0),
+                'total_revenue' => (float) ($dailyRevenue[$key]->total_revenue ?? 0),
                 'total_expenditure' => (float) ($dailyFromDb[$key]->total_expenditure ?? 0),
             ]);
         }
