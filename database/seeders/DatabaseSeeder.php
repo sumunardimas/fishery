@@ -18,6 +18,7 @@ class DatabaseSeeder extends Seeder
             MasterPerbekalanSeeder::class,
             MasterIkanSeeder::class,
             FisherySeeder::class,
+            StokIkanSeeder::class,
             MasterCustomerSeeder::class,
             MasterOperasionalSeeder::class,
             MasterOperasionalKantorSeeder::class,
