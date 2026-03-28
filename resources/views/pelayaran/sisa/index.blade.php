@@ -3,6 +3,55 @@
 @section('title', 'Sisa Trip Pelayaran')
 
 @section('content')
+    <style>
+        .trip-tabs {
+            --tab-count: 1;
+            width: 100%;
+            display: flex;
+            flex-wrap: nowrap;
+            border-bottom: 1px solid #dee2e6;
+        }
+
+        .trip-tabs .nav-item {
+            flex: 0 0 calc(100% / var(--tab-count));
+            max-width: calc(100% / var(--tab-count));
+        }
+
+        .trip-tabs .nav-link {
+            width: 100%;
+            text-align: center;
+            border: 0;
+            border-bottom: 3px solid transparent;
+            border-radius: 0;
+            color: #6c757d;
+            font-weight: 600;
+            transition: color 0.15s ease, border-color 0.15s ease, background-color 0.15s ease;
+        }
+
+        .trip-tabs .nav-link:hover {
+            color: #0d6efd;
+            border-bottom-color: #9ec5fe;
+            background-color: #f8f9fa;
+        }
+
+        .trip-tabs .nav-link.active {
+            color: #b54708;
+            border-bottom-color: #f79009;
+            background-color: #fff4e5;
+        }
+
+        @media (max-width: 767.98px) {
+            .trip-tabs {
+                flex-wrap: wrap;
+            }
+
+            .trip-tabs .nav-item {
+                flex: 0 0 50%;
+                max-width: 50%;
+            }
+        }
+    </style>
+
     @php
         $tabPerbekalan = 'perbekalan';
         $tabTangkapan = 'tangkapan';
@@ -107,7 +156,7 @@
                             </div>
                         </div>
 
-                        <ul class="nav nav-tabs" role="tablist">
+                        <ul class="nav nav-tabs trip-tabs js-trip-tabs" role="tablist">
                             <li class="nav-item">
                                 <a class="nav-link js-trip-tab {{ $activeTab === $tabPerbekalan ? 'active' : '' }}"
                                     href="#" data-tab="{{ $tabPerbekalan }}">
@@ -423,7 +472,20 @@
                 var panes = document.querySelectorAll('.js-trip-pane');
                 var activeTabInputs = document.querySelectorAll('.js-active-tab-input');
                 var selectorInput = document.getElementById('active_tab_selector');
+                var tabContainer = document.querySelector('.js-trip-tabs');
                 var selectedPelayaranId = '{{ $selectedPelayaran->id_pelayaran }}';
+
+                var updateTabCount = function() {
+                    if (!tabContainer) {
+                        return;
+                    }
+
+                    var visibleTabs = Array.from(tabs).filter(function(tab) {
+                        return tab.offsetParent !== null;
+                    }).length;
+
+                    tabContainer.style.setProperty('--tab-count', String(Math.max(visibleTabs, 1)));
+                };
 
                 var setActiveTab = function(tabName) {
                     tabs.forEach(function(tab) {
@@ -455,6 +517,9 @@
                         setActiveTab(tab.getAttribute('data-tab'));
                     });
                 });
+
+                updateTabCount();
+                window.addEventListener('resize', updateTabCount);
             });
         </script>
     @endif
