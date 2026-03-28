@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Penjualan extends Model
 {
@@ -37,5 +38,10 @@ class Penjualan extends Model
     public function customer(): BelongsTo
     {
         return $this->belongsTo(MasterCustomer::class, 'id_customer', 'id_customer');
+    }
+
+    public function items(): HasMany
+    {
+        return $this->hasMany(PenjualanItem::class, 'id_penjualan', 'id_penjualan');
     }
 }

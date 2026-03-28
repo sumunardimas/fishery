@@ -323,12 +323,14 @@
             </tr>
         </thead>
         <tbody>
-            <tr>
-                <td>{{ $trx->nama_ikan }}</td>
-                <td class="right">{{ number_format($trx->berat, 2) }}</td>
-                <td class="right">Rp {{ number_format($trx->harga_per_kg, 2, ',', '.') }}</td>
-                <td class="right">Rp {{ number_format($trx->total_harga, 2, ',', '.') }}</td>
-            </tr>
+            @foreach ($trx->items as $item)
+                <tr>
+                    <td>{{ $item->ikan?->nama_ikan ?? '—' }}</td>
+                    <td class="right">{{ number_format($item->berat, 2) }}</td>
+                    <td class="right">Rp {{ number_format($item->harga_per_kg, 2, ',', '.') }}</td>
+                    <td class="right">Rp {{ number_format($item->subtotal, 2, ',', '.') }}</td>
+                </tr>
+            @endforeach
             @if ($trx->keterangan && $trx->keterangan !== 'Transaksi POS penjualan ikan')
                 <tr>
                     <td colspan="4" style="color:#666; font-size:10px; font-style:italic;">

@@ -2,15 +2,16 @@
 
 namespace App\Http\Controllers;
 
-use Carbon\CarbonPeriod;
 use App\Models\KasHarian;
 use App\Models\MasterCustomer;
 use App\Models\Penjualan;
+use App\Models\PenjualanItem;
 use Barryvdh\DomPDF\Facade\Pdf;
-use Illuminate\Support\Carbon;
+use Carbon\CarbonPeriod;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 
@@ -29,9 +30,10 @@ class PenjualanController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $validated = $request->validate([
-            'id_ikan' => ['required', 'integer', 'exists:master_ikan,id_ikan'],
-            'berat' => ['required', 'numeric', 'gt:0'],
-            'harga_per_kg' => ['required', 'numeric', 'gt:0'],
+            'items' => ['required', 'array', 'min:1'],
+            'items.*.id_ikan' => ['required', 'integer', 'exists:master_ikan,id_ikan'],
+            'items.*.berat' => ['required', 'numeric', 'gt:0'],
+            'items.*.harga_per_kg' => ['required', 'numeric', 'gt:0'],
             'bayar_tunai' => ['nullable', 'numeric', 'min:0'],
             'bayar_transfer' => ['nullable', 'numeric', 'min:0'],
             'keterangan' => ['nullable', 'string'],
@@ -46,34 +48,38 @@ class PenjualanController extends Controller
 
         [$customer, $customerError] = $this->resolveCustomer($validated);
         if ($customerError !== null) {
-            return back()->withInput()->withErrors([
-                'message' => $customerError,
-            ]);
-        }
-        $idIkan = (int) $validated['id_ikan'];
-        $berat = (float) $validated['berat'];
-
-        $availableStock = $this->getAvailableStockByIkan($idIkan);
-        if ($berat > $availableStock) {
-            return back()->withInput()->withErrors([
-                'berat' => 'Berat penjualan melebihi stok tersisa. Stok saat ini: '.number_format($availableStock, 2).' kg.',
-            ]);
+            return back()->withInput()->withErrors(['message' => $customerError]);
         }
 
-        $hargaPerKg = (float) $validated['harga_per_kg'];
-        $totalHarga = $berat * $hargaPerKg;
+        // Aggregate requested berat per ikan (same fish may appear in multiple rows)
+        $requestedByIkan = [];
+        foreach ($validated['items'] as $item) {
+            $id = (int) $item['id_ikan'];
+            $requestedByIkan[$id] = ($requestedByIkan[$id] ?? 0.0) + (float) $item['berat'];
+        }
+
+        // Stock check per unique ikan
+        foreach ($requestedByIkan as $idIkan => $totalRequested) {
+            $available = $this->getAvailableStockByIkan($idIkan);
+            if ($totalRequested > $available) {
+                $namaIkan = DB::table('master_ikan')->where('id_ikan', $idIkan)->value('nama_ikan');
+
+                return back()->withInput()->withErrors([
+                    'items' => "Berat {$namaIkan} melebihi stok tersisa. Stok: ".number_format($available, 2).' kg.',
+                ]);
+            }
+        }
+
+        $totalHarga = collect($validated['items'])->sum(fn ($i) => (float) $i['berat'] * (float) $i['harga_per_kg']);
         $bayarTunai = (float) ($validated['bayar_tunai'] ?? 0);
         $bayarTransfer = (float) ($validated['bayar_transfer'] ?? 0);
         $piutang = max(0, $totalHarga - $bayarTunai - $bayarTransfer);
         $statusPembayaran = $piutang <= 0 ? 'lunas' : 'piutang';
 
-        DB::transaction(function () use ($today, $idIkan, $customer, $berat, $hargaPerKg, $totalHarga, $bayarTunai, $bayarTransfer, $piutang, $statusPembayaran, $validated) {
-            Penjualan::create([
+        DB::transaction(function () use ($today, $customer, $totalHarga, $bayarTunai, $bayarTransfer, $piutang, $statusPembayaran, $validated, $requestedByIkan) {
+            $penjualan = Penjualan::create([
                 'tanggal_penjualan' => $today,
-                'id_ikan' => $idIkan,
                 'id_customer' => $customer?->id_customer,
-                'berat' => $berat,
-                'harga_per_kg' => $hargaPerKg,
                 'total_harga' => $totalHarga,
                 'bayar_tunai' => $bayarTunai,
                 'bayar_transfer' => $bayarTransfer,
@@ -82,6 +88,16 @@ class PenjualanController extends Controller
                 'pembeli' => $customer?->nama_customer ?? '-',
                 'keterangan' => $validated['keterangan'] ?? 'Transaksi POS penjualan ikan',
             ]);
+
+            foreach ($validated['items'] as $item) {
+                PenjualanItem::create([
+                    'id_penjualan' => $penjualan->id_penjualan,
+                    'id_ikan' => (int) $item['id_ikan'],
+                    'berat' => (float) $item['berat'],
+                    'harga_per_kg' => (float) $item['harga_per_kg'],
+                    'subtotal' => (float) $item['berat'] * (float) $item['harga_per_kg'],
+                ]);
+            }
 
             $lastSaldoKas = (float) (DB::table('arus_kas')->orderByDesc('id_kas')->value('saldo') ?? 0);
             DB::table('arus_kas')->insert([
@@ -96,7 +112,7 @@ class PenjualanController extends Controller
                 'updated_at' => now(),
             ]);
 
-            $this->recalculateStokIkan(now()->format('Y-m'), [$idIkan]);
+            $this->recalculateStokIkan(now()->format('Y-m'), array_keys($requestedByIkan));
         });
 
         return redirect()->route('penjualan.index')->with('success', 'Transaksi penjualan berhasil disimpan.');
@@ -131,7 +147,7 @@ class PenjualanController extends Controller
         $today = now()->toDateString();
         $kasHarian = KasHarian::query()->whereDate('tanggal', $today)->first();
 
-        if (!$kasHarian) {
+        if (! $kasHarian) {
             return back()->withErrors(['message' => 'Belum ada pembukaan saldo hari ini.']);
         }
 
@@ -190,20 +206,21 @@ class PenjualanController extends Controller
         $date = $request->input('date', now()->toDateString());
 
         $sales = Penjualan::query()
-            ->leftJoin('master_ikan as mi', 'mi.id_ikan', '=', 'penjualan.id_ikan')
             ->leftJoin('master_customer as mc', 'mc.id_customer', '=', 'penjualan.id_customer')
             ->whereDate('tanggal_penjualan', $date)
             ->orderByDesc('penjualan.created_at')
             ->select(
                 'penjualan.*',
-                'mi.nama_ikan',
                 DB::raw('COALESCE(mc.nama_customer, penjualan.pembeli) as nama_customer_display')
             )
-            ->get();
+            ->get()
+            ->load(['items.ikan']);
+
+        $totalBerat = $sales->flatMap->items->sum('berat');
 
         $summary = [
             'total_transaksi' => $sales->count(),
-            'total_berat' => (float) $sales->sum('berat'),
+            'total_berat' => (float) $totalBerat,
             'total_pendapatan' => (float) $sales->sum('total_harga'),
             'total_piutang' => (float) $sales->sum('piutang'),
         ];
@@ -213,39 +230,34 @@ class PenjualanController extends Controller
 
     public function downloadInvoice(int $id): Response
     {
-        $trx = Penjualan::query()
-            ->leftJoin('master_ikan as mi', 'mi.id_ikan', '=', 'penjualan.id_ikan')
-            ->leftJoin('master_customer as mc', 'mc.id_customer', '=', 'penjualan.id_customer')
-            ->where('penjualan.id_penjualan', $id)
-            ->select(
-                'penjualan.*',
-                'mi.nama_ikan',
-                DB::raw('COALESCE(mc.nama_customer, penjualan.pembeli) as nama_customer_display')
-            )
-            ->firstOrFail();
+        $trx = $this->findTrxWithItems($id);
 
         $pdf = Pdf::loadView('penjualan.invoice', ['trx' => $trx])
             ->setPaper('a5', 'portrait');
 
-        $filename = 'invoice-' . $trx->id_penjualan . '-' . $trx->tanggal_penjualan . '.pdf';
+        $filename = 'invoice-'.$trx->id_penjualan.'-'.$trx->tanggal_penjualan.'.pdf';
 
         return $pdf->download($filename);
     }
 
     public function previewInvoice(int $id): View
     {
-        $trx = Penjualan::query()
-            ->leftJoin('master_ikan as mi', 'mi.id_ikan', '=', 'penjualan.id_ikan')
+        $trx = $this->findTrxWithItems($id);
+
+        return view('penjualan.invoice', ['trx' => $trx]);
+    }
+
+    private function findTrxWithItems(int $id): Penjualan
+    {
+        return Penjualan::query()
             ->leftJoin('master_customer as mc', 'mc.id_customer', '=', 'penjualan.id_customer')
             ->where('penjualan.id_penjualan', $id)
             ->select(
                 'penjualan.*',
-                'mi.nama_ikan',
                 DB::raw('COALESCE(mc.nama_customer, penjualan.pembeli) as nama_customer_display')
             )
+            ->with('items.ikan')
             ->firstOrFail();
-
-        return view('penjualan.invoice', ['trx' => $trx]);
     }
 
     public function keuanganPenjualanSummary(Request $request): View
@@ -350,7 +362,7 @@ class PenjualanController extends Controller
             ]), null];
         }
 
-        if (!empty($validated['id_customer'])) {
+        if (! empty($validated['id_customer'])) {
             return [MasterCustomer::query()->find((int) $validated['id_customer']), null];
         }
 
@@ -366,7 +378,7 @@ class PenjualanController extends Controller
             ->selectRaw('id_ikan, SUM(berat_hasil) as total_tangkapan')
             ->pluck('total_tangkapan', 'id_ikan');
 
-        $salesByIkan = DB::table('penjualan')
+        $salesByIkan = DB::table('penjualan_items')
             ->groupBy('id_ikan')
             ->selectRaw('id_ikan, SUM(berat) as total_penjualan')
             ->pluck('total_penjualan', 'id_ikan');
@@ -389,7 +401,7 @@ class PenjualanController extends Controller
             ->where('id_ikan', $idIkan)
             ->sum('berat_hasil'));
 
-        $totalPenjualan = (float) (DB::table('penjualan')
+        $totalPenjualan = (float) (DB::table('penjualan_items')
             ->where('id_ikan', $idIkan)
             ->sum('berat'));
 
@@ -402,11 +414,12 @@ class PenjualanController extends Controller
             return;
         }
 
-        $salesByIkan = DB::table('penjualan')
-            ->whereIn('id_ikan', $affectedIkanIds)
-            ->whereRaw("DATE_FORMAT(tanggal_penjualan, '%Y-%m') = ?", [$periode])
-            ->groupBy('id_ikan')
-            ->selectRaw('id_ikan, SUM(berat) as total_penjualan')
+        $salesByIkan = DB::table('penjualan_items as pi')
+            ->join('penjualan as p', 'p.id_penjualan', '=', 'pi.id_penjualan')
+            ->whereIn('pi.id_ikan', $affectedIkanIds)
+            ->whereRaw("DATE_FORMAT(p.tanggal_penjualan, '%Y-%m') = ?", [$periode])
+            ->groupBy('pi.id_ikan')
+            ->selectRaw('pi.id_ikan, SUM(pi.berat) as total_penjualan')
             ->pluck('total_penjualan', 'id_ikan');
 
         $catchByIkan = DB::table('ikan_hasil_pelayaran as ihp')

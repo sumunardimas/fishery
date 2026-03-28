@@ -5,29 +5,23 @@
 @section('content')
     <div class="row" x-data="{
         createNewCustomer: false,
-        ikanMap: {{ Js::from($ikanStock->keyBy('id_ikan')->map(fn($i) => ['stok_tersedia' => $i->stok_tersedia])) }},
-        selectedIkan: '{{ old('id_ikan') }}',
-        berat: {{ (float) old('berat', 0) }},
-        hargaPerKg: {{ (float) old('harga_per_kg', 0) }},
+        ikanMap: {{ Js::from($ikanStock->keyBy('id_ikan')->map(fn($i) => ['nama_ikan' => $i->nama_ikan, 'stok_tersedia' => $i->stok_tersedia])) }},
+        items: [{ id_ikan: '', berat: 0, harga_per_kg: 0 }],
         bayarTunai: {{ (float) old('bayar_tunai', 0) }},
         bayarTransfer: {{ (float) old('bayar_transfer', 0) }},
-        totalHarga() {
-            return this.berat * this.hargaPerKg;
-        },
-        piutang() {
-            return Math.max(0, this.totalHarga() - this.bayarTunai - this.bayarTransfer);
-        },
-        statusPembayaran() {
-            return this.piutang() <= 0 ? 'Lunas' : 'Piutang';
-        },
-        stokTersedia() {
-            if (!this.selectedIkan) return 0;
-            return this.ikanMap[this.selectedIkan]?.stok_tersedia ?? 0;
-        }
+        addItem() { this.items.push({ id_ikan: '', berat: 0, harga_per_kg: 0 }); },
+        removeItem(idx) { if (this.items.length > 1) this.items.splice(idx, 1); },
+        subtotal(item) { return item.berat * item.harga_per_kg; },
+        totalHarga() { return this.items.reduce((sum, it) => sum + this.subtotal(it), 0); },
+        piutang() { return Math.max(0, this.totalHarga() - this.bayarTunai - this.bayarTransfer); },
+        statusPembayaran() { return this.piutang() <= 0 ? 'Lunas' : 'Piutang'; },
+        stokByItem(item) { return !item.id_ikan ? 0 : (this.ikanMap[item.id_ikan]?.stok_tersedia ?? 0); },
     }">
         <div class="col-12">
             @if ($errors->has('message'))
                 <x-alert type="danger" :message="$errors->first('message') ?? null" />
+            @elseif ($errors->has('items'))
+                <x-alert type="danger" :message="$errors->first('items')" />
             @elseif (session('success'))
                 <x-alert type="success" :message="session('success')" />
             @endif
@@ -48,6 +42,7 @@
                     <form action="{{ route('penjualan.store') }}" method="POST">
                         @csrf
 
+                        {{-- Customer section --}}
                         <div class="form-group form-check mb-3" style="padding-left: 1.5rem;">
                             <input type="checkbox" class="form-check-input" id="create_new_customer"
                                 name="create_new_customer" value="1" x-model="createNewCustomer"
@@ -106,51 +101,63 @@
                             </div>
                         </div>
 
-                        <div class="row">
-                            <div class="col-md-6 form-group">
-                                <label class="required-asterisk" for="id_ikan">Pilih Ikan</label>
-                                <select class="form-control @error('id_ikan') is-invalid @enderror" name="id_ikan"
-                                    id="id_ikan" x-model="selectedIkan" @change="updateHarga()" required>
-                                    <option value="">Pilih ikan</option>
-                                    @foreach ($ikanStock as $ikan)
-                                        <option value="{{ $ikan->id_ikan }}"
-                                            {{ (string) old('id_ikan') === (string) $ikan->id_ikan ? 'selected' : '' }}>
-                                            {{ $ikan->nama_ikan }} - Stok: {{ number_format($ikan->stok_tersedia, 2) }} kg
-                                        </option>
-                                    @endforeach
-                                </select>
-                                @error('id_ikan')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                            </div>
-
-                            <div class="col-md-3 form-group">
-                                <label class="required-asterisk" for="berat">Jumlah (kg)</label>
-                                <input type="number" min="0.01" step="0.01" x-model.number="berat"
-                                    class="form-control @error('berat') is-invalid @enderror" name="berat" id="berat"
-                                    value="{{ old('berat') }}" required>
-                                @error('berat')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                            </div>
-
-                            <div class="col-md-3 form-group">
-                                <label class="required-asterisk" for="harga_per_kg">Harga per kg</label>
-                                <input type="number" min="1" step="0.01" x-model.number="hargaPerKg"
-                                    class="form-control @error('harga_per_kg') is-invalid @enderror" name="harga_per_kg"
-                                    id="harga_per_kg" value="{{ old('harga_per_kg') }}" required>
-                                @error('harga_per_kg')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                            </div>
+                        {{-- ── Fish line items ── --}}
+                        <div class="mb-2 d-flex justify-content-between align-items-center">
+                            <label class="required-asterisk mb-0">Daftar Ikan</label>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" @click="addItem()">
+                                <i class="ti-plus mr-1"></i> Tambah Ikan
+                            </button>
                         </div>
 
-                        <div class="mb-3">
-                            <small class="text-muted">Stok tersedia saat ini: <strong
-                                    x-text="Number(stokTersedia()).toFixed(2)"></strong> kg</small>
-                        </div>
+                        <template x-for="(item, index) in items" :key="index">
+                            <div class="border rounded p-3 mb-2">
+                                <div class="row">
+                                    <div class="col-md-5 form-group mb-2">
+                                        <label class="required-asterisk">Pilih Ikan</label>
+                                        <select :name="'items[' + index + '][id_ikan]'" x-model="item.id_ikan"
+                                            class="form-control" required>
+                                            <option value="">Pilih ikan</option>
+                                            @foreach ($ikanStock as $ikan)
+                                                <option value="{{ $ikan->id_ikan }}">
+                                                    {{ $ikan->nama_ikan }} — Stok:
+                                                    {{ number_format($ikan->stok_tersedia, 2) }} kg
+                                                </option>
+                                            @endforeach
+                                        </select>
+                                        <small class="text-muted" x-show="item.id_ikan">
+                                            Stok tersedia: <strong x-text="Number(stokByItem(item)).toFixed(2)"></strong> kg
+                                        </small>
+                                    </div>
+                                    <div class="col-md-3 form-group mb-2">
+                                        <label class="required-asterisk">Jumlah (kg)</label>
+                                        <input type="number" min="0.01" step="0.01"
+                                            :name="'items[' + index + '][berat]'" x-model.number="item.berat"
+                                            class="form-control" required>
+                                    </div>
+                                    <div class="col-md-3 form-group mb-2">
+                                        <label class="required-asterisk">Harga / kg</label>
+                                        <input type="number" min="1" step="0.01"
+                                            :name="'items[' + index + '][harga_per_kg]'" x-model.number="item.harga_per_kg"
+                                            class="form-control" required>
+                                    </div>
+                                    <div class="col-md-1 d-flex align-items-end form-group mb-2">
+                                        <button type="button" class="btn btn-sm btn-outline-danger w-100"
+                                            @click="removeItem(index)" x-show="items.length > 1"
+                                            title="Hapus baris">&times;</button>
+                                    </div>
+                                </div>
+                                <div class="text-right">
+                                    <small class="text-muted">
+                                        Subtotal:
+                                        <strong
+                                            x-text="'Rp ' + subtotal(item).toLocaleString('id-ID', {minimumFractionDigits: 2})"></strong>
+                                    </small>
+                                </div>
+                            </div>
+                        </template>
 
-                        <div class="card bg-light mb-3">
+                        {{-- ── Payment summary ── --}}
+                        <div class="card bg-light mb-3 mt-3">
                             <div class="card-body py-2">
                                 <div class="row align-items-center">
                                     <div class="col-md-4">
@@ -172,6 +179,7 @@
                             </div>
                         </div>
 
+                        {{-- ── Payment inputs ── --}}
                         <div class="row">
                             <div class="col-md-6 form-group">
                                 <label for="bayar_tunai">Bayar Tunai (Rp)</label>
@@ -192,8 +200,6 @@
                                 @enderror
                             </div>
                         </div>
-
-
 
                         <div class="form-group">
                             <label for="keterangan">Catatan Penjualan</label>

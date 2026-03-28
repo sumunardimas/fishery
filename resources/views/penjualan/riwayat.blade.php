@@ -112,6 +112,9 @@
                                 <tbody>
                                     @forelse ($sales as $trx)
                                         @php
+                                            $ikanList = $trx->items
+                                                ->map(fn($it) => $it->ikan?->nama_ikan ?? '—')
+                                                ->implode(', ');
                                             $waText =
                                                 "Yth. {$trx->nama_customer_display},\n\n" .
                                                 'Anda memiliki tagihan (piutang) sebesar *Rp ' .
@@ -127,7 +130,7 @@
                                         <tr>
                                             <td>{{ $trx->created_at?->format('H:i') }}</td>
                                             <td>{{ $trx->nama_customer_display }}</td>
-                                            <td>{{ $trx->nama_ikan }}</td>
+                                            <td>{{ $ikanList }}</td>
                                             <td>Rp {{ number_format($trx->total_harga, 2, ',', '.') }}</td>
                                             <td>
                                                 @if (($trx->piutang ?? 0) > 0)
