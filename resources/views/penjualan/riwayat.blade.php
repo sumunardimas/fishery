@@ -10,8 +10,10 @@
         waUrl: '',
         showWa: false,
         copied: false,
-        openPreview(url) { this.previewUrl = url;
-            this.showPreview = true; },
+        openPreview(url) {
+            this.previewUrl = url;
+            this.showPreview = true;
+        },
         openWa(msg) {
             this.waMsg = msg;
             this.waUrl = 'https://wa.me/?text=' + encodeURIComponent(msg);
@@ -179,11 +181,10 @@
         </div>
 
         {{-- ── Invoice Preview Overlay ── --}}
-        <div x-show="showPreview" x-cloak
-            style="position:fixed;inset:0;z-index:1050;background:rgba(0,0,0,0.65);display:flex;align-items:center;justify-content:center;"
+        <div x-show="showPreview" x-cloak style="position:fixed;inset:0;z-index:1050;background:rgba(0,0,0,0.65);"
             @keydown.escape.window="showPreview = false">
             <div
-                style="background:#fff;border-radius:8px;width:92%;max-width:680px;height:90vh;display:flex;flex-direction:column;box-shadow:0 8px 32px rgba(0,0,0,0.3);">
+                style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:#fff;border-radius:8px;width:92%;max-width:680px;height:90vh;display:flex;flex-direction:column;box-shadow:0 8px 32px rgba(0,0,0,0.3);">
                 <div class="d-flex justify-content-between align-items-center px-3 py-2 border-bottom">
                     <strong>Detail Transaksi</strong>
                     <button type="button" class="close" @click="showPreview = false">&times;</button>
@@ -193,10 +194,10 @@
         </div>
 
         {{-- ── WhatsApp Piutang Overlay ── --}}
-        <div x-show="showWa" x-cloak
-            style="position:fixed;inset:0;z-index:1050;background:rgba(0,0,0,0.65);display:flex;align-items:center;justify-content:center;"
+        <div x-show="showWa" x-cloak style="position:fixed;inset:0;z-index:1050;background:rgba(0,0,0,0.65);"
             @keydown.escape.window="showWa = false">
-            <div style="background:#fff;border-radius:8px;width:92%;max-width:480px;box-shadow:0 8px 32px rgba(0,0,0,0.3);">
+            <div
+                style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:#fff;border-radius:8px;width:92%;max-width:480px;box-shadow:0 8px 32px rgba(0,0,0,0.3);">
                 <div class="d-flex justify-content-between align-items-center px-3 py-2 border-bottom">
                     <strong><i class="ti-comment-alt mr-1 text-success"></i> Pesan WhatsApp Piutang</strong>
                     <button type="button" class="close" @click="showWa = false">&times;</button>
