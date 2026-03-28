@@ -27,6 +27,7 @@ class OperasionalKantor extends Model
         'total_biaya',
         'tanggal',
         'keterangan',
+        'akun_pembayaran',
     ];
 
     protected $casts = [

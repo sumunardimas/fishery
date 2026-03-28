@@ -161,6 +161,7 @@ class OperasionalKantorController extends Controller
     {
         $data = $request->validate([
             'tanggal' => ['required', 'date'],
+            'akun_pembayaran' => ['required', 'in:kas,bank'],
             'rows' => ['required', 'array', 'min:1'],
             'rows.*.id_master_operasional_kantor' => ['required', 'integer', 'exists:master_operasional_kantor,id_master_operasional_kantor'],
             'rows.*.harga_satuan' => ['required', 'numeric', 'min:0'],
@@ -216,12 +217,13 @@ class OperasionalKantorController extends Controller
                 'total_biaya' => $totalBiaya,
                 'tanggal' => $tanggal,
                 'keterangan' => $keterangan,
+                'akun_pembayaran' => $data['akun_pembayaran'],
                 'created_at' => now(),
                 'updated_at' => now(),
             ];
 
             $arusKasRows[] = [
-                'akun' => 'kas',
+                'akun' => $data['akun_pembayaran'],
                 'tanggal' => $tanggal,
                 'jenis_transaksi' => 'Keluar',
                 'kategori' => 'Operasional Kantor - '.$master->kategori,
@@ -242,10 +244,10 @@ class OperasionalKantorController extends Controller
             ]);
         }
 
-        DB::transaction(function () use ($operasionalRows, $arusKasRows) {
+        DB::transaction(function () use ($operasionalRows, $arusKasRows, $data) {
             OperasionalKantor::query()->insert($operasionalRows);
 
-            $lastSaldoKas = (float) (DB::table('arus_kas')->where('akun', 'kas')->orderByDesc('id_kas')->value('saldo') ?? 0);
+            $lastSaldoKas = (float) (DB::table('arus_kas')->where('akun', $data['akun_pembayaran'])->orderByDesc('id_kas')->value('saldo') ?? 0);
 
             foreach ($arusKasRows as $row) {
                 $lastSaldoKas -= (float) $row['uang_keluar'];
@@ -255,5 +257,72 @@ class OperasionalKantorController extends Controller
         });
 
         return redirect()->route('operasional-kantor.transaksi')->with('success', 'Biaya operasional kantor berhasil disimpan. Grand total: Rp '.number_format($grandTotal, 2, ',', '.'));
+    }
+
+    public function destroyTransaction(Request $request, OperasionalKantor $transaction): RedirectResponse
+    {
+        $validated = $request->validate([
+            'start_date' => ['nullable', 'date'],
+            'end_date' => ['nullable', 'date'],
+            'detail_date' => ['nullable', 'date'],
+        ]);
+
+        DB::transaction(function () use ($transaction) {
+            $akun = in_array((string) $transaction->akun_pembayaran, ['kas', 'bank'], true)
+                ? (string) $transaction->akun_pembayaran
+                : 'kas';
+
+            $totalBiaya = (float) ($transaction->total_biaya ?? $transaction->jumlah ?? 0);
+
+            if ($totalBiaya > 0) {
+                $this->postArusKas(
+                    akun: $akun,
+                    tanggal: now()->toDateString(),
+                    kategori: 'Pembatalan Operasional Kantor - '.($transaction->kategori ?? $transaction->jenis_biaya ?? '-'),
+                    deskripsi: 'Pembatalan transaksi operasional kantor #'.$transaction->id_operasional_kantor,
+                    debit: $totalBiaya,
+                    kredit: 0
+                );
+            }
+
+            $transaction->delete();
+        });
+
+        $params = array_filter([
+            'start_date' => $validated['start_date'] ?? null,
+            'end_date' => $validated['end_date'] ?? null,
+            'detail_date' => $validated['detail_date'] ?? null,
+        ]);
+
+        return redirect()
+            ->route('operasional-kantor.history', $params)
+            ->with('success', 'Transaksi operasional kantor berhasil dihapus dan saldo akun dikembalikan.');
+    }
+
+    private function getLastSaldoByAkun(string $akun): float
+    {
+        return (float) (DB::table('arus_kas')
+            ->where('akun', $akun)
+            ->orderByDesc('id_kas')
+            ->value('saldo') ?? 0);
+    }
+
+    private function postArusKas(string $akun, string $tanggal, string $kategori, string $deskripsi, float $debit, float $kredit): void
+    {
+        $lastSaldo = $this->getLastSaldoByAkun($akun);
+        $saldoBaru = $lastSaldo + $debit - $kredit;
+
+        DB::table('arus_kas')->insert([
+            'akun' => $akun,
+            'tanggal' => $tanggal,
+            'jenis_transaksi' => $debit > 0 ? 'Masuk' : 'Keluar',
+            'kategori' => $kategori,
+            'deskripsi' => $deskripsi,
+            'uang_masuk' => $debit,
+            'uang_keluar' => $kredit,
+            'saldo' => $saldoBaru,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
     }
 }

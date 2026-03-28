@@ -99,10 +99,12 @@
                                     <tr>
                                         <th>Kategori</th>
                                         <th>Item</th>
+                                        <th>Akun Bayar</th>
                                         <th>Harga Satuan</th>
                                         <th>Qty</th>
                                         <th>Total</th>
                                         <th>Keterangan</th>
+                                        <th class="text-right">Aksi</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -110,6 +112,14 @@
                                         <tr>
                                             <td>{{ $detail->kategori ?: $detail->jenis_biaya }}</td>
                                             <td>{{ $detail->item ?: $detail->deskripsi }}</td>
+                                            <td>
+                                                @if (!empty($detail->akun_pembayaran))
+                                                    <span
+                                                        class="badge badge-info">{{ strtoupper($detail->akun_pembayaran) }}</span>
+                                                @else
+                                                    <span class="text-muted">-</span>
+                                                @endif
+                                            </td>
                                             <td>Rp {{ number_format((float) ($detail->harga_satuan ?? 0), 2, ',', '.') }}
                                             </td>
                                             <td>{{ number_format((float) ($detail->qty ?? 0), 2, ',', '.') }}</td>
@@ -117,10 +127,24 @@
                                                 {{ number_format((float) ($detail->total_biaya ?? ($detail->jumlah ?? 0)), 2, ',', '.') }}
                                             </td>
                                             <td>{{ $detail->keterangan ?: '-' }}</td>
+                                            <td class="text-right">
+                                                <form
+                                                    action="{{ route('operasional-kantor.transactions.destroy', $detail->id_operasional_kantor) }}"
+                                                    method="POST"
+                                                    onsubmit="return confirm('Hapus transaksi ini? Saldo akun akan dikembalikan otomatis.')">
+                                                    @csrf
+                                                    @method('DELETE')
+                                                    <input type="hidden" name="start_date" value="{{ $startDate }}">
+                                                    <input type="hidden" name="end_date" value="{{ $endDate }}">
+                                                    <input type="hidden" name="detail_date" value="{{ $detailDate }}">
+                                                    <button type="submit"
+                                                        class="btn btn-outline-danger btn-sm">Hapus</button>
+                                                </form>
+                                            </td>
                                         </tr>
                                     @empty
                                         <tr>
-                                            <td colspan="6" class="text-center text-muted">Tidak ada detail pada
+                                            <td colspan="8" class="text-center text-muted">Tidak ada detail pada
                                                 tanggal ini.</td>
                                         </tr>
                                     @endforelse

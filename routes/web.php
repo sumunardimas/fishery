@@ -105,6 +105,7 @@ Route::middleware(['auth'])->group(function () {
         Route::put('/master-items/{masterItem}', [OperasionalKantorController::class, 'updateMaster'])->name('master.update');
         Route::delete('/master-items/{masterItem}', [OperasionalKantorController::class, 'destroyMaster'])->name('master.destroy');
         Route::post('/', [OperasionalKantorController::class, 'store'])->name('store');
+        Route::delete('/transactions/{transaction}', [OperasionalKantorController::class, 'destroyTransaction'])->name('transactions.destroy');
     });
 
     Route::prefix('keuangan')->name('keuangan.')->group(function () {

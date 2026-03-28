@@ -25,11 +25,24 @@
                     <form action="{{ route('operasional-kantor.store') }}" method="POST" id="operasional-kantor-form">
                         @csrf
 
-                        <div class="form-group">
-                            <label for="tanggal">Tanggal</label>
-                            <input type="date" class="form-control" id="tanggal" name="tanggal"
-                                value="{{ old('tanggal', now()->toDateString()) }}" required>
+                        <div class="form-row">
+                            <div class="form-group col-md-4">
+                                <label for="tanggal">Tanggal</label>
+                                <input type="date" class="form-control" id="tanggal" name="tanggal"
+                                    value="{{ old('tanggal', now()->toDateString()) }}" required>
+                            </div>
+                            <div class="form-group col-md-4">
+                                <label for="akun_pembayaran">Bayar Dari</label>
+                                <select class="form-control" id="akun_pembayaran" name="akun_pembayaran" required>
+                                    <option value="kas" @selected(old('akun_pembayaran', 'kas') === 'kas')>Kas</option>
+                                    <option value="bank" @selected(old('akun_pembayaran') === 'bank')>Bank</option>
+                                </select>
+                            </div>
                         </div>
+
+                        <small class="text-muted d-block mb-2">
+                            Setiap transaksi akan mengurangi saldo akun yang dipilih (Kas/Bank) di arus kas.
+                        </small>
 
                         @php
                             $oldRows = old('rows', [
