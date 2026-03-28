@@ -32,13 +32,13 @@ return [
             'type' => 'url',
         ],
         [
-            'title' => 'Pelayaran',
+            'title' => 'Pelayaran Mulai',
             'icon' => 'ti-direction',
             'route' => '/pelayaran',
             'type' => 'url',
         ],
         [
-            'title' => 'Sisa Trip',
+            'title' => 'Pelayaran Selesai',
             'icon' => 'ti-calendar',
             'route' => '/pelayaran/sisa',
             'type' => 'url',
