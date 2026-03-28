@@ -15,16 +15,6 @@ class OperasionalController extends Controller
 {
     public function index(): View
     {
-        $pelayaran = DB::table('pelayaran as p')
-            ->join('kapal as k', 'k.id_kapal', '=', 'p.id_kapal')
-            ->orderByDesc('p.tanggal_berangkat')
-            ->select('p.*', 'k.nama_kapal')
-            ->get();
-
-        $masterOperasional = MasterOperasional::query()
-            ->orderBy('nama_operasional')
-            ->get();
-
         $rekapSail = DB::table('operasional as o')
             ->join('pelayaran as p', 'p.id_pelayaran', '=', 'o.id_pelayaran')
             ->join('kapal as k', 'k.id_kapal', '=', 'p.id_kapal')
@@ -66,7 +56,22 @@ class OperasionalController extends Controller
             ->get()
             ->groupBy('id_pelayaran');
 
-        return view('operasional.index', compact('pelayaran', 'masterOperasional', 'rekapSail', 'detailBiaya'));
+        return view('operasional.index', compact('rekapSail', 'detailBiaya'));
+    }
+
+    public function transaksi(): View
+    {
+        $pelayaran = DB::table('pelayaran as p')
+            ->join('kapal as k', 'k.id_kapal', '=', 'p.id_kapal')
+            ->orderByDesc('p.tanggal_berangkat')
+            ->select('p.*', 'k.nama_kapal')
+            ->get();
+
+        $masterOperasional = MasterOperasional::query()
+            ->orderBy('nama_operasional')
+            ->get();
+
+        return view('operasional.transaksi', compact('pelayaran', 'masterOperasional'));
     }
 
     public function store(Request $request): RedirectResponse
@@ -133,6 +138,6 @@ class OperasionalController extends Controller
             Operasional::query()->insert($records);
         });
 
-        return redirect()->route('operasional.index')->with('success', 'Data biaya operasional berhasil disimpan.');
+        return redirect()->route('operasional.transaksi')->with('success', 'Data biaya operasional berhasil disimpan.');
     }
 }

@@ -89,6 +89,8 @@ Route::middleware(['auth'])->group(function () {
 
     Route::prefix('operasional')->name('operasional.')->group(function () {
         Route::get('/', [OperasionalController::class, 'index'])->name('index');
+        Route::get('/transaksi', [OperasionalController::class, 'transaksi'])->name('transaksi');
+        Route::get('/master', [MasterOperasionalController::class, 'index'])->name('master');
         Route::post('/', [OperasionalController::class, 'store'])->name('store');
     });
 

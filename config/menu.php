@@ -46,8 +46,27 @@ return [
         [
             'title' => 'Operasional Trip',
             'icon' => 'ti-agenda',
-            'route' => '/operasional',
-            'type' => 'url',
+            'route' => '#',
+            'children' => [
+                [
+                    'title' => 'Master',
+                    'icon' => 'ti-layout-list-thumb',
+                    'route' => 'operasional.master',
+                    'type' => 'route',
+                ],
+                [
+                    'title' => 'Transaksi',
+                    'icon' => 'ti-write',
+                    'route' => 'operasional.transaksi',
+                    'type' => 'route',
+                ],
+                [
+                    'title' => 'Rekap',
+                    'icon' => 'ti-bar-chart',
+                    'route' => 'operasional.index',
+                    'type' => 'route',
+                ],
+            ],
         ],
         [
             'title' => 'Penjualan',

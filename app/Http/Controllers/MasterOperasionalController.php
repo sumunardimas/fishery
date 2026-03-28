@@ -15,7 +15,7 @@ class MasterOperasionalController extends Controller
     {
         $items = MasterOperasional::query()->orderByDesc('created_at')->get();
 
-        return view('master.operasional.index', compact('items'));
+        return view('operasional.master', compact('items'));
     }
 
     public function store(Request $request): RedirectResponse
@@ -27,7 +27,7 @@ class MasterOperasionalController extends Controller
 
         MasterOperasional::create($data);
 
-        return redirect()->route('master.operasional.index')->with('success', 'Master operasional berhasil ditambahkan.');
+        return redirect()->route('operasional.master')->with('success', 'Master operasional berhasil ditambahkan.');
     }
 
     public function update(Request $request, MasterOperasional $operasional): RedirectResponse
@@ -44,7 +44,7 @@ class MasterOperasionalController extends Controller
 
         $operasional->update($data);
 
-        return redirect()->route('master.operasional.index')->with('success', 'Master operasional berhasil diperbarui.');
+        return redirect()->route('operasional.master')->with('success', 'Master operasional berhasil diperbarui.');
     }
 
     public function destroy(MasterOperasional $operasional): RedirectResponse
@@ -52,13 +52,13 @@ class MasterOperasionalController extends Controller
         $idMasterOperasional = (int) $operasional->id_master_operasional;
 
         if (DB::table('operasional')->where('id_master_operasional', $idMasterOperasional)->exists()) {
-            return redirect()->route('master.operasional.index')->withErrors([
+            return redirect()->route('operasional.master')->withErrors([
                 'message' => 'Data tidak bisa dihapus karena sudah digunakan pada transaksi operasional.',
             ]);
         }
 
         $operasional->delete();
 
-        return redirect()->route('master.operasional.index')->with('success', 'Master operasional berhasil dihapus.');
+        return redirect()->route('operasional.master')->with('success', 'Master operasional berhasil dihapus.');
     }
 }
