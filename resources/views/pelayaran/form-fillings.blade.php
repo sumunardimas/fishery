@@ -27,7 +27,6 @@
         required>
     <x-input-error :message="$errors->first('tanggal_tiba')" />
 </div>
-</div>
 
 <div class="form-group">
     <label class="required-asterisk" for="keterangan">Keterangan Operasional</label>
@@ -56,9 +55,10 @@
             <table class="table table-bordered align-middle">
                 <thead>
                     <tr>
-                        <th style="width: 45%;">Nama Barang</th>
-                        <th style="width: 20%;">Satuan</th>
-                        <th style="width: 35%;">Jumlah Dibawa</th>
+                        <th style="width: 40%;">Nama Barang</th>
+                        <th style="width: 15%;">Satuan</th>
+                        <th style="width: 20%;">Stok</th>
+                        <th style="width: 25%;">Jumlah Dibawa</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -71,14 +71,25 @@
                             <td>{{ $barang->nama_barang }}</td>
                             <td>{{ $barang->satuan }}</td>
                             <td>
+                                <span class="badge badge-light">
+                                    {{ number_format((float) ($barang->stok_aktual ?? 0), 2, ',', '.') }}
+                                </span>
+                            </td>
+                            <td>
                                 <input type="number" data-perbekalan-qty @input="$dispatch('input')"
-                                    name="perbekalan_qty[{{ $barang->id_barang }}]" class="form-control" step="0.01"
-                                    min="0" placeholder="0" value="{{ $value }}">
+                                    data-stock="{{ (float) ($barang->stok_aktual ?? 0) }}"
+                                    name="perbekalan_qty[{{ $barang->id_barang }}]"
+                                    class="form-control js-perbekalan-qty" step="0.01" min="0"
+                                    max="{{ (float) ($barang->stok_aktual ?? 0) }}" placeholder="0"
+                                    value="{{ $value }}">
+                                <small class="text-danger js-stock-helper d-none">
+                                    Jumlah melebihi stok yang tersedia.
+                                </small>
                             </td>
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="3" class="text-center text-muted">Master perbekalan belum tersedia.</td>
+                            <td colspan="4" class="text-center text-muted">Master perbekalan belum tersedia.</td>
                         </tr>
                     @endforelse
                 </tbody>
@@ -88,3 +99,29 @@
         <x-input-error :message="$errors->first('perbekalan_qty.*')" />
     </div>
 </div>
+
+@push('scripts')
+    <script>
+        (function() {
+            const inputs = document.querySelectorAll('.js-perbekalan-qty');
+            if (!inputs.length) return;
+
+            const toggleWarning = (input) => {
+                const stock = Number(input.dataset.stock || 0);
+                const qty = Number(input.value || 0);
+                const helper = input.closest('td')?.querySelector('.js-stock-helper');
+
+                if (!helper) return;
+
+                const exceeded = qty > stock;
+                helper.classList.toggle('d-none', !exceeded);
+                input.classList.toggle('is-invalid', exceeded);
+            };
+
+            inputs.forEach((input) => {
+                input.addEventListener('input', () => toggleWarning(input));
+                toggleWarning(input);
+            });
+        })();
+    </script>
+@endpush

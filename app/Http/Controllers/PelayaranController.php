@@ -8,6 +8,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
 class PelayaranController extends Controller
@@ -40,7 +41,7 @@ class PelayaranController extends Controller
     public function create(): View
     {
         $kapals = Kapal::query()->orderBy('nama_kapal')->get();
-        $masterPerbekalan = DB::table('master_perbekalan')->orderBy('nama_barang')->get();
+        $masterPerbekalan = $this->getMasterPerbekalanWithStock();
         $selectedPerbekalan = [];
 
         return view('pelayaran.create', compact('kapals', 'masterPerbekalan', 'selectedPerbekalan'));
@@ -53,6 +54,7 @@ class PelayaranController extends Controller
     {
         $data = $this->validatePayload($request);
         $perbekalanQty = $this->extractPerbekalanQty($request);
+        $this->validatePerbekalanAvailability($perbekalanQty);
 
         if ($this->hasScheduleConflict(
             (int) $data['id_kapal'],
@@ -80,7 +82,7 @@ class PelayaranController extends Controller
     public function edit(Pelayaran $pelayaran): View
     {
         $kapals = Kapal::query()->orderBy('nama_kapal')->get();
-        $masterPerbekalan = DB::table('master_perbekalan')->orderBy('nama_barang')->get();
+        $masterPerbekalan = $this->getMasterPerbekalanWithStock();
         $selectedPerbekalan = DB::table('perbekalan_pelayaran')
             ->where('id_pelayaran', $pelayaran->id_pelayaran)
             ->pluck('jumlah', 'id_barang')
@@ -97,6 +99,7 @@ class PelayaranController extends Controller
     {
         $data = $this->validatePayload($request);
         $perbekalanQty = $this->extractPerbekalanQty($request);
+        $this->validatePerbekalanAvailability($perbekalanQty);
 
         if ($this->hasScheduleConflict(
             (int) $data['id_kapal'],
@@ -179,6 +182,51 @@ class PelayaranController extends Controller
             ->all();
 
         return $qtyMap->only($validBarangIds);
+    }
+
+    private function validatePerbekalanAvailability(Collection $perbekalanQty): void
+    {
+        if ($perbekalanQty->isEmpty()) {
+            return;
+        }
+
+        $stockMap = DB::table('perbekalan_stock')
+            ->whereIn('id_barang', $perbekalanQty->keys()->all())
+            ->pluck('stok_aktual', 'id_barang')
+            ->map(fn ($stok) => (float) $stok);
+
+        $nameMap = DB::table('master_perbekalan')
+            ->whereIn('id_barang', $perbekalanQty->keys()->all())
+            ->pluck('nama_barang', 'id_barang');
+
+        $errors = [];
+
+        foreach ($perbekalanQty as $idBarang => $qty) {
+            $available = (float) ($stockMap[$idBarang] ?? 0);
+            if ((float) $qty > $available) {
+                $namaBarang = (string) ($nameMap[$idBarang] ?? ('ID '.$idBarang));
+                $errors['perbekalan_qty.'.$idBarang] =
+                    'Jumlah '.$namaBarang.' melebihi stok. Stok tersedia: '.number_format($available, 2, ',', '.').'.';
+            }
+        }
+
+        if ($errors !== []) {
+            throw ValidationException::withMessages($errors);
+        }
+    }
+
+    private function getMasterPerbekalanWithStock()
+    {
+        return DB::table('master_perbekalan as mp')
+            ->leftJoin('perbekalan_stock as ps', 'ps.id_barang', '=', 'mp.id_barang')
+            ->select(
+                'mp.id_barang',
+                'mp.nama_barang',
+                'mp.satuan',
+                DB::raw('COALESCE(ps.stok_aktual, 0) as stok_aktual')
+            )
+            ->orderBy('mp.nama_barang')
+            ->get();
     }
 
     private function syncPerbekalanPelayaran(int $idPelayaran, Collection $perbekalanQty): void
