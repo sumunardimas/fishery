@@ -54,9 +54,17 @@
 
     @php
         $tabPerbekalan = 'perbekalan';
-        $tabTangkapan = 'tangkapan';
+        $tabTangkapanPribadi = 'tangkapan-pribadi';
+        $tabTangkapanBersama = 'tangkapan-bersama';
+        $tabTangkapanJaringan = 'tangkapan-jaringan';
         $tabOperasional = 'operasional';
         $tabRekap = 'rekap';
+
+        $tangkapanTabs = [
+            $tabTangkapanPribadi => ['key' => 'pancingan_pribadi', 'label' => 'Pancingan Pribadi'],
+            $tabTangkapanBersama => ['key' => 'pancingan_bersama', 'label' => 'Pancingan Bersama'],
+            $tabTangkapanJaringan => ['key' => 'jaringan', 'label' => 'Jaringan'],
+        ];
     @endphp
 
     <div class="row">
@@ -127,7 +135,7 @@
                                 </span>
                                 <span
                                     class="badge {{ $completionStatus['tangkapan'] ? 'badge-success' : 'badge-secondary' }}">
-                                    Tangkapan {{ $completionStatus['tangkapan'] ? 'Terisi' : 'Belum' }}
+                                    Semua Kategori Tangkapan {{ $completionStatus['tangkapan'] ? 'Terisi' : 'Belum' }}
                                 </span>
                                 <span
                                     class="badge {{ $completionStatus['operasional'] ? 'badge-success' : 'badge-secondary' }}">
@@ -164,9 +172,21 @@
                                 </a>
                             </li>
                             <li class="nav-item">
-                                <a class="nav-link js-trip-tab {{ $activeTab === $tabTangkapan ? 'active' : '' }}"
-                                    href="#" data-tab="{{ $tabTangkapan }}">
-                                    Tangkapan
+                                <a class="nav-link js-trip-tab {{ $activeTab === $tabTangkapanPribadi ? 'active' : '' }}"
+                                    href="#" data-tab="{{ $tabTangkapanPribadi }}">
+                                    Pancingan Pribadi
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link js-trip-tab {{ $activeTab === $tabTangkapanBersama ? 'active' : '' }}"
+                                    href="#" data-tab="{{ $tabTangkapanBersama }}">
+                                    Pancingan Bersama
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link js-trip-tab {{ $activeTab === $tabTangkapanJaringan ? 'active' : '' }}"
+                                    href="#" data-tab="{{ $tabTangkapanJaringan }}">
+                                    Jaringan
                                 </a>
                             </li>
                             <li class="nav-item">
@@ -253,60 +273,101 @@
                     </div>
                 </div>
 
-                <div class="js-trip-pane {{ $activeTab === $tabTangkapan ? '' : 'd-none' }}"
-                    data-pane="{{ $tabTangkapan }}">
-                    <div class="card mb-4">
-                        <div class="card-body">
-                            <h5 class="mb-1">Card Hasil Tangkapan Ikan</h5>
-                            <p class="text-muted mb-3">Isi berat hasil tangkapan per jenis ikan (kg). Hanya nilai > 0 yang
-                                disimpan.</p>
+                @foreach ($tangkapanTabs as $tabKey => $meta)
+                    <div class="js-trip-pane {{ $activeTab === $tabKey ? '' : 'd-none' }}"
+                        data-pane="{{ $tabKey }}">
+                        <div class="card mb-4">
+                            <div class="card-body">
+                                <h5 class="mb-1">Card Hasil Tangkapan Ikan - {{ $meta['label'] }}</h5>
+                                <p class="text-muted mb-3">Isi berat tangkapan (kg) dan harga per kg untuk kategori
+                                    {{ $meta['label'] }}. Hanya berat > 0 yang disimpan.</p>
 
-                            <form action="{{ route('pelayaran.sisa.tangkapan.store') }}" method="POST">
-                                @csrf
-                                <input type="hidden" name="id_pelayaran"
-                                    value="{{ $selectedPelayaran->id_pelayaran }}">
-                                <input type="hidden" name="tab" class="js-active-tab-input"
-                                    value="{{ $activeTab }}">
-
-                                <div class="table-responsive">
-                                    <table class="table table-bordered">
-                                        <thead>
-                                            <tr>
-                                                <th>Nama Ikan</th>
-                                                <th>Berat Tangkapan (kg)</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            @forelse ($masterIkan as $ikan)
-                                                @php
-                                                    $defaultHasil = $existingHasilIkan[$ikan->id_ikan] ?? null;
-                                                @endphp
-                                                <tr>
-                                                    <td>{{ $ikan->nama_ikan }}</td>
-                                                    <td>
-                                                        <input type="number" class="form-control"
-                                                            name="hasil_ikan[{{ $ikan->id_ikan }}]" min="0"
-                                                            step="0.01" placeholder="0"
-                                                            value="{{ old('hasil_ikan.' . $ikan->id_ikan, $defaultHasil) }}">
-                                                    </td>
-                                                </tr>
-                                            @empty
-                                                <tr>
-                                                    <td colspan="2" class="text-center text-muted">Master ikan belum
-                                                        tersedia.</td>
-                                                </tr>
-                                            @endforelse
-                                        </tbody>
-                                    </table>
+                                <div class="row mb-3 js-kategori-subtotal" data-kategori-tab="{{ $tabKey }}">
+                                    <div class="col-md-6">
+                                        <div class="border rounded p-2 h-100">
+                                            <small class="text-muted d-block">Subtotal Berat {{ $meta['label'] }}</small>
+                                            <div class="h6 mb-0 js-subtotal-berat">0,00 kg</div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="border rounded p-2 h-100">
+                                            <small class="text-muted d-block">Subtotal Nilai {{ $meta['label'] }}</small>
+                                            <div class="h6 mb-0 js-subtotal-nilai">Rp 0,00</div>
+                                        </div>
+                                    </div>
                                 </div>
 
-                                <div class="mt-2">
-                                    <button type="submit" class="btn btn-primary">Simpan Card Hasil Tangkapan</button>
-                                </div>
-                            </form>
+                                <form action="{{ route('pelayaran.sisa.tangkapan.store') }}" method="POST">
+                                    @csrf
+                                    <input type="hidden" name="id_pelayaran"
+                                        value="{{ $selectedPelayaran->id_pelayaran }}">
+                                    <input type="hidden" name="kategori_tangkapan" value="{{ $meta['key'] }}">
+                                    <input type="hidden" name="tab" class="js-active-tab-input"
+                                        value="{{ $activeTab }}">
+
+                                    <div class="table-responsive">
+                                        <table class="table table-bordered">
+                                            <thead>
+                                                <tr>
+                                                    <th>Nama Ikan</th>
+                                                    <th>Berat Tangkapan (kg)</th>
+                                                    <th>Harga per Kg (Rp)</th>
+                                                    <th>Estimasi Nilai (Rp)</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                @forelse ($masterIkan as $ikan)
+                                                    @php
+                                                        $existingByCategory =
+                                                            $existingHasilIkanByKategori[$meta['key']][
+                                                                $ikan->id_ikan
+                                                            ] ?? null;
+                                                        $defaultHasil = $existingByCategory['berat_hasil'] ?? null;
+                                                        $defaultHarga = $existingByCategory['harga_per_kg'] ?? null;
+                                                    @endphp
+                                                    <tr>
+                                                        <td>{{ $ikan->nama_ikan }}</td>
+                                                        <td>
+                                                            <input type="number" class="form-control js-berat-input"
+                                                                name="hasil_ikan[{{ $ikan->id_ikan }}]" min="0"
+                                                                step="0.01" placeholder="0"
+                                                                value="{{ old('hasil_ikan.' . $ikan->id_ikan, $defaultHasil) }}"
+                                                                data-target="#nilai_{{ $meta['key'] }}_{{ $ikan->id_ikan }}"
+                                                                data-role="berat">
+                                                        </td>
+                                                        <td>
+                                                            <input type="number" class="form-control js-harga-input"
+                                                                name="harga_ikan[{{ $ikan->id_ikan }}]" min="0"
+                                                                step="0.01" placeholder="0"
+                                                                value="{{ old('harga_ikan.' . $ikan->id_ikan, $defaultHarga) }}"
+                                                                data-target="#nilai_{{ $meta['key'] }}_{{ $ikan->id_ikan }}"
+                                                                data-role="harga">
+                                                        </td>
+                                                        <td>
+                                                            <div class="font-weight-bold text-muted js-nilai-output"
+                                                                id="nilai_{{ $meta['key'] }}_{{ $ikan->id_ikan }}">Rp 0
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                @empty
+                                                    <tr>
+                                                        <td colspan="4" class="text-center text-muted">Master ikan
+                                                            belum tersedia.</td>
+                                                    </tr>
+                                                @endforelse
+                                            </tbody>
+                                        </table>
+                                    </div>
+
+                                    <div class="mt-2">
+                                        <button type="submit" class="btn btn-primary">Simpan
+                                            {{ $meta['label'] }}</button>
+                                    </div>
+                                </form>
+                            </div>
                         </div>
                     </div>
-                </div>
+                @endforeach
 
                 <div class="js-trip-pane {{ $activeTab === $tabOperasional ? '' : 'd-none' }}"
                     data-pane="{{ $tabOperasional }}">
@@ -383,6 +444,26 @@
                     <div class="card mb-4">
                         <div class="card-body">
                             <h5 class="mb-3">Rekap Trip</h5>
+                            <div class="row mb-3">
+                                @foreach ($kategoriTangkapanMap as $kategoriKey => $kategoriLabel)
+                                    @php
+                                        $rekapRow = $rekapTangkapan[$kategoriKey] ?? null;
+                                        $totalBeratKategori = (float) ($rekapRow->total_berat ?? 0);
+                                        $totalNilaiKategori = (float) ($rekapRow->total_nilai ?? 0);
+                                    @endphp
+                                    <div class="col-md-4 mb-3">
+                                        <div class="border rounded p-3 h-100">
+                                            <div class="text-muted mb-1">{{ $kategoriLabel }}</div>
+                                            <div class="small">Total Berat:
+                                                <strong>{{ number_format($totalBeratKategori, 2, ',', '.') }} kg</strong>
+                                            </div>
+                                            <div class="small">Total Nilai: <strong>Rp
+                                                    {{ number_format($totalNilaiKategori, 2, ',', '.') }}</strong></div>
+                                        </div>
+                                    </div>
+                                @endforeach
+                            </div>
+
                             <div class="row mb-3">
                                 <div class="col-md-6">
                                     <div class="border rounded p-3">
@@ -475,6 +556,72 @@
                 var tabContainer = document.querySelector('.js-trip-tabs');
                 var selectedPelayaranId = '{{ $selectedPelayaran->id_pelayaran }}';
 
+                var updateEstimatedValue = function(targetSelector) {
+                    var output = document.querySelector(targetSelector);
+                    if (!output) {
+                        return;
+                    }
+
+                    var row = output.closest('tr');
+                    if (!row) {
+                        return;
+                    }
+
+                    var beratInput = row.querySelector('[data-role="berat"]');
+                    var hargaInput = row.querySelector('[data-role="harga"]');
+                    var berat = parseFloat((beratInput && beratInput.value) || '0');
+                    var harga = parseFloat((hargaInput && hargaInput.value) || '0');
+                    var total = (isNaN(berat) ? 0 : berat) * (isNaN(harga) ? 0 : harga);
+                    output.textContent = 'Rp ' + total.toLocaleString('id-ID', {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2
+                    });
+                };
+
+                var updateCategorySubtotal = function(container) {
+                    if (!container) {
+                        return;
+                    }
+
+                    var totalBerat = 0;
+                    var totalNilai = 0;
+                    var rows = container.querySelectorAll('tbody tr');
+
+                    rows.forEach(function(row) {
+                        var beratInput = row.querySelector('[data-role="berat"]');
+                        var hargaInput = row.querySelector('[data-role="harga"]');
+
+                        if (!beratInput || !hargaInput) {
+                            return;
+                        }
+
+                        var berat = parseFloat(beratInput.value || '0');
+                        var harga = parseFloat(hargaInput.value || '0');
+                        berat = isNaN(berat) ? 0 : berat;
+                        harga = isNaN(harga) ? 0 : harga;
+
+                        totalBerat += berat;
+                        totalNilai += berat * harga;
+                    });
+
+                    var beratOutput = container.querySelector('.js-subtotal-berat');
+                    var nilaiOutput = container.querySelector('.js-subtotal-nilai');
+
+                    if (beratOutput) {
+                        beratOutput.textContent = totalBerat.toLocaleString('id-ID', {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2
+                        }) + ' kg';
+                    }
+
+                    if (nilaiOutput) {
+                        nilaiOutput.textContent = 'Rp ' + totalNilai.toLocaleString('id-ID', {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2
+                        });
+                    }
+                };
+
                 var updateTabCount = function() {
                     if (!tabContainer) {
                         return;
@@ -520,6 +667,33 @@
 
                 updateTabCount();
                 window.addEventListener('resize', updateTabCount);
+
+                document.querySelectorAll('.js-berat-input, .js-harga-input').forEach(function(input) {
+                    var targetSelector = input.getAttribute('data-target');
+                    if (targetSelector) {
+                        updateEstimatedValue(targetSelector);
+                    }
+
+                    var pane = input.closest('.js-trip-pane');
+                    if (pane) {
+                        updateCategorySubtotal(pane);
+                    }
+
+                    input.addEventListener('input', function() {
+                        if (targetSelector) {
+                            updateEstimatedValue(targetSelector);
+                        }
+
+                        var currentPane = input.closest('.js-trip-pane');
+                        if (currentPane) {
+                            updateCategorySubtotal(currentPane);
+                        }
+                    });
+                });
+
+                document.querySelectorAll('.js-trip-pane').forEach(function(pane) {
+                    updateCategorySubtotal(pane);
+                });
             });
         </script>
     @endif
