@@ -27,6 +27,18 @@ class MasterPerbekalanController extends Controller
         ));
     }
 
+    public function transaksi(Request $request): View
+    {
+        $selectedItemId = $request->integer('show_item');
+
+        $items = $this->getPerbekalanItems();
+
+        return view('master.perbekalan.transaksi', compact(
+            'items',
+            'selectedItemId'
+        ));
+    }
+
     public function history(Request $request): View
     {
         $selectedItemId = $request->integer('show_item');
@@ -200,7 +212,7 @@ class MasterPerbekalanController extends Controller
             ]);
         });
 
-        return redirect()->route('master.perbekalan.history', ['show_item' => (int) $data['id_barang']])
+        return redirect()->route('master.perbekalan.transaksi', ['show_item' => (int) $data['id_barang']])
             ->with('success', 'Transaksi perbekalan berhasil disimpan.');
     }
 

@@ -123,6 +123,7 @@ Route::middleware(['auth'])->group(function () {
 
     Route::prefix('master/perbekalan')->name('master.perbekalan.')->group(function () {
         Route::get('/', [MasterPerbekalanController::class, 'index'])->name('index');
+        Route::get('/transaksi', [MasterPerbekalanController::class, 'transaksi'])->name('transaksi');
         Route::get('/history', [MasterPerbekalanController::class, 'history'])->name('history');
         Route::post('/', [MasterPerbekalanController::class, 'store'])->name('store');
         Route::put('/{perbekalan}', [MasterPerbekalanController::class, 'update'])->name('update');

@@ -17,69 +17,6 @@
 
             <div class="card mb-4">
                 <div class="card-body">
-                    <h4 class="card-title mb-1">Transaksi Perbekalan (IN/OUT)</h4>
-                    <p class="card-description mb-4">Gunakan transaksi IN untuk pembelian/stok masuk dan OUT untuk pemakaian.
-                        Harga per transaksi disimpan agar item yang sama bisa punya harga berbeda.</p>
-
-                    <form action="{{ route('master.perbekalan.transactions.store') }}" method="POST">
-                        @csrf
-                        <div class="form-row">
-                            <div class="form-group col-md-2">
-                                <label for="tanggal_transaksi">Tanggal</label>
-                                <input type="date" id="tanggal_transaksi" name="tanggal_transaksi" class="form-control"
-                                    value="{{ old('tanggal_transaksi', now()->toDateString()) }}" required>
-                            </div>
-                            <div class="form-group col-md-3">
-                                <label for="id_barang">Perbekalan</label>
-                                <select id="id_barang" name="id_barang" class="form-control" required>
-                                    <option value="">Pilih perbekalan</option>
-                                    @foreach ($items as $item)
-                                        <option value="{{ $item->id_barang }}" @selected((int) old('id_barang', $selectedItemId) === (int) $item->id_barang)>
-                                            {{ $item->nama_barang }} ({{ $item->satuan }})
-                                        </option>
-                                    @endforeach
-                                </select>
-                            </div>
-                            <div class="form-group col-md-1">
-                                <label for="jenis_transaksi">Jenis</label>
-                                <select id="jenis_transaksi" name="jenis_transaksi" class="form-control" required>
-                                    <option value="in" @selected(old('jenis_transaksi', 'in') === 'in')>IN</option>
-                                    <option value="out" @selected(old('jenis_transaksi') === 'out')>OUT</option>
-                                </select>
-                            </div>
-                            <div class="form-group col-md-2">
-                                <label for="jumlah">Jumlah</label>
-                                <input type="number" step="0.01" min="0.01" id="jumlah" name="jumlah"
-                                    class="form-control" value="{{ old('jumlah') }}" required>
-                            </div>
-                            <div class="form-group col-md-2">
-                                <label for="harga_satuan">Harga Satuan</label>
-                                <input type="number" step="0.01" min="0" id="harga_satuan" name="harga_satuan"
-                                    class="form-control" value="{{ old('harga_satuan') }}" placeholder="Wajib untuk IN">
-                            </div>
-                            <div class="form-group col-md-2 d-flex align-items-end">
-                                <button type="submit" class="btn btn-primary w-100">Simpan Transaksi</button>
-                            </div>
-                        </div>
-
-                        <div class="form-row">
-                            <div class="form-group col-md-4">
-                                <label for="sumber_tujuan">Supplier / Tujuan</label>
-                                <input type="text" id="sumber_tujuan" name="sumber_tujuan" class="form-control"
-                                    value="{{ old('sumber_tujuan') }}" placeholder="Contoh: Supplier A / Dipakai Trip 12">
-                            </div>
-                            <div class="form-group col-md-8">
-                                <label for="keterangan">Keterangan</label>
-                                <input type="text" id="keterangan" name="keterangan" class="form-control"
-                                    value="{{ old('keterangan') }}" placeholder="Opsional">
-                            </div>
-                        </div>
-                    </form>
-                </div>
-            </div>
-
-            <div class="card mb-4">
-                <div class="card-body">
                     <h4 class="card-title mb-1">Master Perbekalan</h4>
                     <p class="card-description mb-4">Kelola daftar item perbekalan yang dipakai di operasional.</p>
 
@@ -133,8 +70,7 @@
                                                 onsubmit="return confirm('Hapus perbekalan {{ addslashes($item->nama_barang) }}?')">
                                                 @csrf
                                                 @method('DELETE')
-                                                <button type="submit"
-                                                    class="btn btn-outline-danger btn-sm">Hapus</button>
+                                                <button type="submit" class="btn btn-outline-danger btn-sm">Hapus</button>
                                             </form>
                                         </td>
                                     </tr>

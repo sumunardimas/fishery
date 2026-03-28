@@ -73,6 +73,12 @@ return [
                     'type' => 'route',
                 ],
                 [
+                    'title' => 'Transaksi',
+                    'icon' => 'ti-write',
+                    'route' => 'master.perbekalan.transaksi',
+                    'type' => 'route',
+                ],
+                [
                     'title' => 'Riwayat In Out',
                     'icon' => 'ti-exchange-vertical',
                     'route' => 'master.perbekalan.history',
