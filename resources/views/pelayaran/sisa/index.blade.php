@@ -29,7 +29,6 @@
                                     <option value="{{ $trip->id_pelayaran }}"
                                         {{ (string) ($selectedPelayaran->id_pelayaran ?? '') === (string) $trip->id_pelayaran ? 'selected' : '' }}>
                                         #{{ $trip->id_pelayaran }} - {{ $trip->kapal->nama_kapal ?? '-' }}
-                                        ({{ $trip->pelabuhan_asal }} -> {{ $trip->pelabuhan_tujuan }})
                                     </option>
                                 @empty
                                     <option value="">Tidak ada pelayaran aktif</option>
@@ -114,7 +113,6 @@
                                     <thead>
                                         <tr>
                                             <th>Nama Ikan</th>
-                                            <th>Jenis Ikan</th>
                                             <th>Berat Tangkapan (kg)</th>
                                         </tr>
                                     </thead>
@@ -125,7 +123,6 @@
                                             @endphp
                                             <tr>
                                                 <td>{{ $ikan->nama_ikan }}</td>
-                                                <td>{{ $ikan->jenis_ikan }}</td>
                                                 <td>
                                                     <input type="number" class="form-control"
                                                         name="hasil_ikan[{{ $ikan->id_ikan }}]" min="0"

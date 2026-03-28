@@ -21,33 +21,12 @@
 </div>
 
 <div class="form-group">
-    <label class="required-asterisk" for="tanggal_tiba">Tanggal Tiba</label>
+    <label class="required-asterisk" for="tanggal_tiba">Tanggal Kembali Estimasi</label>
     <input type="date" name="tanggal_tiba" id="tanggal_tiba" class="form-control"
         value="{{ old('tanggal_tiba', isset($pelayaran) ? $pelayaran->tanggal_tiba?->format('Y-m-d') : null) }}"
         required>
     <x-input-error :message="$errors->first('tanggal_tiba')" />
 </div>
-
-<div class="form-group">
-    <label class="required-asterisk" for="pelabuhan_asal">Pelabuhan Asal</label>
-    <input type="text" name="pelabuhan_asal" id="pelabuhan_asal" class="form-control" maxlength="255"
-        value="{{ old('pelabuhan_asal', $pelayaran->pelabuhan_asal ?? null) }}" placeholder="Contoh: Belawan" required>
-    <x-input-error :message="$errors->first('pelabuhan_asal')" />
-</div>
-
-<div class="form-group">
-    <label class="required-asterisk" for="pelabuhan_tujuan">Pelabuhan Tujuan</label>
-    <input type="text" name="pelabuhan_tujuan" id="pelabuhan_tujuan" class="form-control" maxlength="255"
-        value="{{ old('pelabuhan_tujuan', $pelayaran->pelabuhan_tujuan ?? null) }}" placeholder="Contoh: Sabang"
-        required>
-    <x-input-error :message="$errors->first('pelabuhan_tujuan')" />
-</div>
-
-<div class="form-group">
-    <label class="required-asterisk" for="jumlah_trip">Jumlah Trip</label>
-    <input type="number" name="jumlah_trip" id="jumlah_trip" class="form-control" min="1" step="1"
-        value="{{ old('jumlah_trip', $pelayaran->jumlah_trip ?? 1) }}" required>
-    <x-input-error :message="$errors->first('jumlah_trip')" />
 </div>
 
 <div class="form-group">

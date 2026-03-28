@@ -151,10 +151,7 @@ class PelayaranController extends Controller
             'id_kapal' => ['required', 'integer', 'exists:kapal,id_kapal'],
             'tanggal_berangkat' => ['required', 'date'],
             'tanggal_tiba' => ['required', 'date', 'after_or_equal:tanggal_berangkat'],
-            'pelabuhan_asal' => ['required', 'string', 'max:255'],
-            'pelabuhan_tujuan' => ['required', 'string', 'max:255'],
-            'jumlah_trip' => ['required', 'integer', 'min:1'],
-            'keterangan' => ['required', 'string'],
+            'keterangan' => ['nullable', 'string'],
             'perbekalan_qty' => ['nullable', 'array'],
             'perbekalan_qty.*' => ['nullable', 'numeric', 'min:0'],
         ]);
