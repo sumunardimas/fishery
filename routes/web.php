@@ -114,6 +114,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/lap-selisih-bongkaran', [KeuanganController::class, 'selisihBongkar'])->name('lap-selisih-bongkaran.index');
         Route::post('/lap-selisih-bongkaran/berat-lelang', [KeuanganController::class, 'storeBeratLelang'])->name('lap-selisih-bongkaran.store');
         Route::get('/piutang', [KeuanganController::class, 'piutang'])->name('piutang.index');
+        Route::post('/piutang/bayar', [KeuanganController::class, 'bayarPiutang'])->name('piutang.bayar');
     });
 
     Route::prefix('pembelian')->name('pembelian.')->group(function () {

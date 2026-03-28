@@ -255,6 +255,96 @@ class KeuanganController extends Controller
             ->with('success', 'Berat lelang ikan berhasil disimpan.');
     }
 
+    public function bayarPiutang(Request $request): \Illuminate\Http\JsonResponse
+    {
+        $validated = $request->validate([
+            'id_penjualan'   => ['required', 'integer', 'exists:penjualan,id_penjualan'],
+            'bayar_tunai'    => ['nullable', 'numeric', 'min:0'],
+            'bayar_transfer' => ['nullable', 'numeric', 'min:0'],
+        ]);
+
+        $idPenjualan = (int) $validated['id_penjualan'];
+        $newKas      = (float) ($validated['bayar_tunai'] ?? 0);
+        $newTransfer = (float) ($validated['bayar_transfer'] ?? 0);
+        $newPayment  = $newKas + $newTransfer;
+
+        if ($newPayment <= 0) {
+            return response()->json(['message' => 'Masukkan jumlah pembayaran.'], 422);
+        }
+
+        $penjualan = DB::table('penjualan as p')
+            ->leftJoin('master_customer as mc', 'p.id_customer', '=', 'mc.id_customer')
+            ->where('p.id_penjualan', $idPenjualan)
+            ->select([
+                'p.id_penjualan', 'p.bayar_tunai', 'p.bayar_transfer',
+                'p.piutang', 'p.total_harga',
+                DB::raw('COALESCE(mc.nama_customer, p.pembeli) as nama_customer_display'),
+            ])
+            ->first();
+
+        if (! $penjualan) {
+            return response()->json(['message' => 'Transaksi tidak ditemukan.'], 404);
+        }
+
+        $currentPiutang = (float) $penjualan->piutang;
+
+        if ($currentPiutang <= 0) {
+            return response()->json(['message' => 'Transaksi ini sudah lunas.'], 422);
+        }
+
+        if ($newPayment > $currentPiutang + 0.01) {
+            return response()->json([
+                'message' => 'Pembayaran melebihi sisa piutang (Rp ' . number_format($currentPiutang, 2, ',', '.') . ').',
+            ], 422);
+        }
+
+        $newPiutang       = round(max(0, $currentPiutang - $newPayment), 2);
+        $newBayarTunai    = (float) $penjualan->bayar_tunai + $newKas;
+        $newBayarTransfer = (float) $penjualan->bayar_transfer + $newTransfer;
+        $newDiterima      = $newBayarTunai + $newBayarTransfer;
+        $statusPembayaran = $newPiutang <= 0 ? 'lunas' : 'piutang';
+        $invNo            = 'INV-' . str_pad($idPenjualan, 5, '0', STR_PAD_LEFT);
+
+        DB::transaction(function () use (
+            $idPenjualan, $penjualan, $invNo,
+            $newBayarTunai, $newBayarTransfer, $newPayment, $newPiutang, $statusPembayaran
+        ) {
+            DB::table('penjualan')->where('id_penjualan', $idPenjualan)->update([
+                'bayar_tunai'       => $newBayarTunai,
+                'bayar_transfer'    => $newBayarTransfer,
+                'piutang'           => $newPiutang,
+                'status_pembayaran' => $statusPembayaran,
+                'updated_at'        => now(),
+            ]);
+
+            $lastSaldo = (float) (DB::table('arus_kas')->orderByDesc('id_kas')->value('saldo') ?? 0);
+            $deskripsi = 'Pelunasan piutang ' . $penjualan->nama_customer_display
+                . ' (' . $invNo . ').'
+                . ' Kas/Bank diterima Rp ' . number_format($newPayment, 2, ',', '.')
+                . '; Sisa Piutang Rp ' . number_format($newPiutang, 2, ',', '.');
+
+            DB::table('arus_kas')->insert([
+                'tanggal'         => Carbon::today()->toDateString(),
+                'jenis_transaksi' => 'Masuk',
+                'kategori'        => 'Pelunasan Piutang',
+                'deskripsi'       => $deskripsi,
+                'uang_masuk'      => $newPayment,
+                'uang_keluar'     => 0,
+                'saldo'           => $lastSaldo + $newPayment,
+                'created_at'      => now(),
+                'updated_at'      => now(),
+            ]);
+        });
+
+        return response()->json([
+            'status_pembayaran'      => $statusPembayaran,
+            'new_piutang'            => $newPiutang,
+            'new_piutang_formatted'  => number_format($newPiutang, 2, ',', '.'),
+            'new_diterima'           => $newDiterima,
+            'new_diterima_formatted' => number_format($newDiterima, 2, ',', '.'),
+        ]);
+    }
+
     public function piutang(Request $request): View
     {
         $validated = $request->validate([

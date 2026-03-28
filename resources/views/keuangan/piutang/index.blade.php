@@ -3,19 +3,63 @@
 @section('title', 'Laporan Piutang')
 
 @section('content')
-    <div x-data="{
-        waMsg: '',
-        waUrl: '',
-        showWa: false,
-        openWa(msg) {
-            this.waMsg = msg;
-            this.waUrl = 'https://wa.me/?text=' + encodeURIComponent(msg);
-            this.showWa = true;
-        },
-        copyWa() {
-            navigator.clipboard.writeText(this.waMsg);
-        },
-    }">
+    <div x-data="piutangApp()">
+
+        {{-- Payment overlay --}}
+        <div x-show="showBayar" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:1060;">
+            <div
+                style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+                        background:#fff; border-radius:8px; padding:24px; max-width:440px; width:90%;">
+                <h5 class="mb-1">Bayar Piutang</h5>
+                <p class="text-muted small mb-3">
+                    <span x-text="bayarTrx.invNo"></span> &mdash; <span x-text="bayarTrx.customer"></span>
+                </p>
+
+                <div class="alert alert-warning py-2 mb-3">
+                    Sisa Piutang: <strong>Rp <span x-text="fmtRp(bayarTrx.piutang)"></span></strong>
+                </div>
+
+                <div x-show="bayarError" class="alert alert-danger py-2 mb-3" x-text="bayarError" style="display:none;">
+                </div>
+
+                <div class="form-group">
+                    <label>Kas (Tunai)</label>
+                    <input type="number" x-model="bayarKas" class="form-control" min="0" step="1000"
+                        placeholder="0">
+                </div>
+                <div class="form-group">
+                    <label>Transfer</label>
+                    <input type="number" x-model="bayarTransfer" class="form-control" min="0" step="1000"
+                        placeholder="0">
+                </div>
+
+                <div class="border rounded p-3 mb-3">
+                    <div class="d-flex justify-content-between mb-1">
+                        <span>Total Pembayaran:</span>
+                        <strong>Rp <span x-text="fmtRp(pembayaran)"></span></strong>
+                    </div>
+                    <div class="d-flex justify-content-between">
+                        <span>Sisa Piutang Setelah Bayar:</span>
+                        <strong :class="isLunas ? 'text-success' : 'text-danger'">
+                            Rp <span x-text="fmtRp(sisaPiutang)"></span>
+                        </strong>
+                    </div>
+                    <div class="mt-2 text-center" x-show="isLunas" style="display:none;">
+                        <span class="badge badge-success">Lunas ✓</span>
+                    </div>
+                </div>
+
+                <div class="d-flex">
+                    <button type="button" class="btn btn-primary mr-2" @click="submitBayar()"
+                        :disabled="bayarLoading || pembayaran <= 0">
+                        <span x-show="!bayarLoading">Simpan Pembayaran</span>
+                        <span x-show="bayarLoading" style="display:none;">Menyimpan...</span>
+                    </button>
+                    <button type="button" class="btn btn-light" @click="showBayar = false"
+                        :disabled="bayarLoading">Batal</button>
+                </div>
+            </div>
+        </div>
 
         {{-- WA overlay --}}
         <div x-show="showWa" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:1050;">
@@ -163,6 +207,7 @@
                                     @forelse ($rows as $trx)
                                         @php
                                             $invNo = 'INV-' . str_pad($trx->id_penjualan, 5, '0', STR_PAD_LEFT);
+                                            $piutangVal = (float) ($trx->piutang ?? 0);
                                             $waText =
                                                 "Yth. {$trx->nama_customer_display},\n\n" .
                                                 'Anda memiliki tagihan (piutang) sebesar *Rp ' .
@@ -175,7 +220,7 @@
                                                 ) .
                                                 ".\n\nMohon segera diselesaikan. Terima kasih 🙏\n\n_TPI Sadeng_";
                                         @endphp
-                                        <tr>
+                                        <tr id="row-{{ $trx->id_penjualan }}">
                                             <td>
                                                 <span class="badge badge-light">{{ $invNo }}</span>
                                             </td>
@@ -207,7 +252,12 @@
                                                     target="_blank">
                                                     <i class="ti-download mr-1"></i> Invoice
                                                 </a>
-                                                @if (($trx->piutang ?? 0) > 0)
+                                                @if ($piutangVal > 0)
+                                                    <button type="button"
+                                                        class="btn btn-sm btn-warning d-block w-100 mb-1"
+                                                        @click="openBayar({ id_penjualan: {{ $trx->id_penjualan }}, invNo: '{{ $invNo }}', customer: {{ Js::from($trx->nama_customer_display) }}, piutang: {{ $piutangVal }} })">
+                                                        <i class="ti-money mr-1"></i> Bayar Piutang
+                                                    </button>
                                                     <button type="button" class="btn btn-sm btn-success d-block w-100"
                                                         @click="openWa({{ Js::from($waText) }})">
                                                         <i class="ti-comment-alt mr-1"></i> WA Tagih
@@ -234,15 +284,116 @@
 
 @push('scripts')
     <script>
+        const BAYAR_URL = '{{ route('keuangan.piutang.bayar') }}';
+
+        function piutangApp() {
+            return {
+                waMsg: '',
+                waUrl: '',
+                showWa: false,
+                openWa(msg) {
+                    this.waMsg = msg;
+                    this.waUrl = 'https://wa.me/?text=' + encodeURIComponent(msg);
+                    this.showWa = true;
+                },
+                copyWa() {
+                    navigator.clipboard.writeText(this.waMsg);
+                },
+
+                showBayar: false,
+                bayarTrx: {
+                    id_penjualan: 0,
+                    invNo: '',
+                    customer: '',
+                    piutang: 0
+                },
+                bayarKas: '',
+                bayarTransfer: '',
+                bayarLoading: false,
+                bayarError: '',
+                openBayar(trx) {
+                    this.bayarTrx = trx;
+                    this.bayarKas = '';
+                    this.bayarTransfer = '';
+                    this.bayarError = '';
+                    this.showBayar = true;
+                },
+                get pembayaran() {
+                    return (parseFloat(this.bayarKas) || 0) + (parseFloat(this.bayarTransfer) || 0);
+                },
+                get sisaPiutang() {
+                    return Math.max(0, (this.bayarTrx.piutang || 0) - this.pembayaran);
+                },
+                get isLunas() {
+                    return this.pembayaran > 0 && this.sisaPiutang < 0.01;
+                },
+                fmtRp(val) {
+                    return new Intl.NumberFormat('id-ID', {
+                        minimumFractionDigits: 2
+                    }).format(val);
+                },
+                async submitBayar() {
+                    if (this.pembayaran <= 0) {
+                        this.bayarError = 'Masukkan jumlah pembayaran.';
+                        return;
+                    }
+                    if (this.pembayaran > this.bayarTrx.piutang + 0.01) {
+                        this.bayarError = 'Pembayaran melebihi sisa piutang.';
+                        return;
+                    }
+                    this.bayarLoading = true;
+                    this.bayarError = '';
+                    try {
+                        const res = await fetch(BAYAR_URL, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content,
+                            },
+                            body: JSON.stringify({
+                                id_penjualan: this.bayarTrx.id_penjualan,
+                                bayar_tunai: parseFloat(this.bayarKas) || 0,
+                                bayar_transfer: parseFloat(this.bayarTransfer) || 0,
+                            }),
+                        });
+                        const json = await res.json();
+                        if (!res.ok) {
+                            this.bayarError = json.message || 'Gagal menyimpan.';
+                            return;
+                        }
+                        const id = this.bayarTrx.id_penjualan;
+                        if (json.status_pembayaran === 'lunas') {
+                            window.piutangDT.row('#row-' + id).remove().draw();
+                        } else {
+                            this.bayarTrx.piutang = json.new_piutang;
+                            const row = document.getElementById('row-' + id);
+                            if (row) {
+                                const cells = row.querySelectorAll('td');
+                                cells[4].innerHTML = 'Rp ' + json.new_diterima_formatted;
+                                cells[5].innerHTML = '<span class="text-danger font-weight-bold">Rp ' + json
+                                    .new_piutang_formatted + '</span>';
+                            }
+                            window.piutangDT.draw(false);
+                        }
+                        this.showBayar = false;
+                    } catch (e) {
+                        this.bayarError = 'Terjadi kesalahan jaringan.';
+                    } finally {
+                        this.bayarLoading = false;
+                    }
+                },
+            };
+        }
+
         $(document).ready(function() {
-            $('#piutang-table').DataTable({
+            window.piutangDT = $('#piutang-table').DataTable({
                 pageLength: 25,
                 order: [
                     [1, 'desc']
                 ],
                 columnDefs: [{
                     targets: [7],
-                    orderable: false,
+                    orderable: false
                 }],
                 language: {
                     search: 'Cari:',
@@ -250,7 +401,7 @@
                     info: 'Menampilkan _START_–_END_ dari _TOTAL_ data',
                     paginate: {
                         previous: 'Sebelumnya',
-                        next: 'Berikutnya',
+                        next: 'Berikutnya'
                     },
                     emptyTable: 'Tidak ada data piutang.',
                     zeroRecords: 'Tidak ada data yang cocok.',
