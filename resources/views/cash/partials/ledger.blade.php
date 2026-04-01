@@ -78,6 +78,7 @@
                                     'Transfer Antar Akun',
                                     'Penyesuaian',
                                     'Pinjam Modal Jons Group',
+                                    'Kas Bon Pegawai',
                                 ];
                                 $selectedKategori = old('kategori');
                             @endphp
@@ -92,6 +93,8 @@
                         <small class="form-text text-muted">
                             Transaksi kategori Pinjam Modal Jons Group otomatis masuk ke
                             <a href="{{ url('/keuangan/hutang-jons-group') }}">halaman hutang Jons Group</a>.
+                            Kategori Kas Bon Pegawai otomatis masuk ke
+                            <a href="{{ url('/keuangan/kas-bon-pegawai') }}">halaman Kas Bon Pegawai</a>.
                         </small>
                     </div>
 
@@ -99,6 +102,9 @@
                         <label for="deskripsi">Deskripsi</label>
                         <input type="text" id="deskripsi" name="deskripsi" class="form-control"
                             value="{{ old('deskripsi') }}" maxlength="255" placeholder="Contoh: Setoran modal awal">
+                        <small class="form-text text-muted">
+                            Untuk Kas Bon Pegawai, isi nama pegawai pada kolom deskripsi.
+                        </small>
                     </div>
 
                     <div class="form-group">

@@ -17,6 +17,10 @@ class KeuanganController extends Controller
 
     private const JONS_GROUP_PAYMENT_CATEGORY = 'Pembayaran Hutang Jons Group';
 
+    private const EMPLOYEE_CASH_ADVANCE_CATEGORY = 'Kas Bon Pegawai';
+
+    private const EMPLOYEE_CASH_ADVANCE_PAYMENT_CATEGORY = 'Pelunasan Kas Bon Pegawai';
+
     public function arusKas(Request $request): View
     {
         $validated = $request->validate([
@@ -412,6 +416,62 @@ class KeuanganController extends Controller
         ));
     }
 
+    public function kasBonPegawai(Request $request): View
+    {
+        $validated = $request->validate([
+            'start_date' => ['nullable', 'date'],
+            'end_date' => ['nullable', 'date'],
+        ]);
+
+        $today = Carbon::today();
+
+        $start = ! empty($validated['start_date'])
+            ? Carbon::parse($validated['start_date'])
+            : $today->copy()->subDays(89);
+
+        $end = ! empty($validated['end_date'])
+            ? Carbon::parse($validated['end_date'])
+            : $today->copy();
+
+        if ($start->gt($end)) {
+            [$start, $end] = [$end, $start];
+        }
+
+        $startDate = $start->toDateString();
+        $endDate = $end->toDateString();
+
+        $rows = DB::table('kas_bon_pegawai')
+            ->whereBetween('tanggal_pinjam', [$startDate, $endDate])
+            ->orderByDesc('tanggal_pinjam')
+            ->orderByDesc('id_kas_bon_pegawai')
+            ->get();
+
+        $summary = [
+            'total_piutang' => (float) $rows->sum('sisa_piutang'),
+            'jumlah_transaksi' => $rows->count(),
+            'total_pinjaman' => (float) $rows->sum('nominal_awal'),
+            'total_dibayar' => (float) $rows->sum(fn ($row) => (float) $row->nominal_awal - (float) $row->sisa_piutang),
+        ];
+
+        $byPegawai = $rows
+            ->groupBy('nama_pegawai')
+            ->map(fn ($items) => (object) [
+                'nama' => $items->first()->nama_pegawai,
+                'jumlah' => $items->count(),
+                'total_piutang' => (float) $items->sum('sisa_piutang'),
+            ])
+            ->sortByDesc('total_piutang')
+            ->values();
+
+        return view('keuangan.kas_bon_pegawai.index', compact(
+            'rows',
+            'summary',
+            'byPegawai',
+            'startDate',
+            'endDate'
+        ));
+    }
+
     public function storeCashTransaction(Request $request): RedirectResponse
     {
         $validated = $request->validate([
@@ -438,6 +498,20 @@ class KeuanganController extends Controller
                 ->withErrors(['kategori' => 'Pinjam Modal Jons Group harus dicatat sebagai debit.']);
         }
 
+        if ($validated['kategori'] === self::EMPLOYEE_CASH_ADVANCE_CATEGORY) {
+            if ($kredit <= 0 || $debit > 0) {
+                return back()
+                    ->withInput()
+                    ->withErrors(['kategori' => 'Kas Bon Pegawai harus dicatat sebagai kredit.']);
+            }
+
+            if (blank($validated['deskripsi'] ?? null)) {
+                return back()
+                    ->withInput()
+                    ->withErrors(['deskripsi' => 'Nama pegawai wajib diisi untuk Kas Bon Pegawai.']);
+            }
+        }
+
         DB::transaction(function () use ($validated, $debit, $kredit) {
             $arusKasId = $this->postArusKas(
                 akun: $validated['akun'],
@@ -457,12 +531,26 @@ class KeuanganController extends Controller
                     nominal: $debit
                 );
             }
+
+            if ($validated['kategori'] === self::EMPLOYEE_CASH_ADVANCE_CATEGORY) {
+                $this->recordKasBonPegawai(
+                    arusKasId: $arusKasId,
+                    tanggal: $validated['tanggal'],
+                    akun: $validated['akun'],
+                    namaPegawai: trim((string) $validated['deskripsi']),
+                    nominal: $kredit
+                );
+            }
         });
 
         $message = 'Transaksi '.strtoupper($validated['akun']).' berhasil disimpan.';
 
         if ($validated['kategori'] === self::JONS_GROUP_BORROW_CATEGORY) {
             $message .= ' Hutang Jons Group ikut tercatat.';
+        }
+
+        if ($validated['kategori'] === self::EMPLOYEE_CASH_ADVANCE_CATEGORY) {
+            $message .= ' Piutang Kas Bon Pegawai ikut tercatat.';
         }
 
         return back()->with('success', $message);
@@ -528,6 +616,72 @@ class KeuanganController extends Controller
                 'status' => $newRemainingDebt < 0.01 ? 'lunas' : 'parsial',
                 'new_sisa_hutang' => $newRemainingDebt,
                 'new_sisa_hutang_formatted' => number_format($newRemainingDebt, 2, ',', '.'),
+            ];
+        });
+
+        return response()->json($response);
+    }
+
+    public function bayarKasBonPegawai(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'id_kas_bon_pegawai' => ['required', 'integer', 'exists:kas_bon_pegawai,id_kas_bon_pegawai'],
+            'akun_pembayaran' => ['required', 'in:kas,bank'],
+            'nominal' => ['required', 'numeric', 'gt:0'],
+        ]);
+
+        $nominalBayar = round((float) $validated['nominal'], 2);
+        $response = [];
+
+        DB::transaction(function () use ($validated, $nominalBayar, &$response) {
+            $advance = DB::table('kas_bon_pegawai')
+                ->where('id_kas_bon_pegawai', $validated['id_kas_bon_pegawai'])
+                ->lockForUpdate()
+                ->first();
+
+            if (! $advance) {
+                throw ValidationException::withMessages([
+                    'id_kas_bon_pegawai' => 'Data kas bon pegawai tidak ditemukan.',
+                ]);
+            }
+
+            $remainingReceivable = round((float) $advance->sisa_piutang, 2);
+
+            if ($nominalBayar > $remainingReceivable + 0.01) {
+                throw ValidationException::withMessages([
+                    'nominal' => 'Pembayaran melebihi sisa kas bon pegawai.',
+                ]);
+            }
+
+            $newRemainingReceivable = max(0, round($remainingReceivable - $nominalBayar, 2));
+            $kodeKasBon = 'KBP-'.str_pad((string) $advance->id_kas_bon_pegawai, 5, '0', STR_PAD_LEFT);
+
+            $this->postArusKas(
+                akun: $validated['akun_pembayaran'],
+                tanggal: Carbon::today()->toDateString(),
+                kategori: self::EMPLOYEE_CASH_ADVANCE_PAYMENT_CATEGORY,
+                deskripsi: 'Pelunasan kas bon pegawai '.$advance->nama_pegawai.' ('.$kodeKasBon.') sebesar Rp '.number_format($nominalBayar, 2, ',', '.').'. Sisa piutang Rp '.number_format($newRemainingReceivable, 2, ',', '.').'.',
+                debit: $nominalBayar,
+                kredit: 0
+            );
+
+            if ($newRemainingReceivable < 0.01) {
+                DB::table('kas_bon_pegawai')
+                    ->where('id_kas_bon_pegawai', $advance->id_kas_bon_pegawai)
+                    ->delete();
+            } else {
+                DB::table('kas_bon_pegawai')
+                    ->where('id_kas_bon_pegawai', $advance->id_kas_bon_pegawai)
+                    ->update([
+                        'sisa_piutang' => $newRemainingReceivable,
+                        'updated_at' => now(),
+                    ]);
+            }
+
+            $response = [
+                'status' => $newRemainingReceivable < 0.01 ? 'lunas' : 'parsial',
+                'new_sisa_piutang' => $newRemainingReceivable,
+                'new_sisa_piutang_formatted' => number_format($newRemainingReceivable, 2, ',', '.'),
             ];
         });
 
@@ -666,6 +820,20 @@ class KeuanganController extends Controller
             'deskripsi' => $deskripsi,
             'nominal_awal' => $nominal,
             'sisa_hutang' => $nominal,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+    }
+
+    private function recordKasBonPegawai(int $arusKasId, string $tanggal, string $akun, string $namaPegawai, float $nominal): void
+    {
+        DB::table('kas_bon_pegawai')->insert([
+            'id_kas_sumber' => $arusKasId,
+            'tanggal_pinjam' => $tanggal,
+            'akun_pengeluaran' => $akun,
+            'nama_pegawai' => $namaPegawai,
+            'nominal_awal' => $nominal,
+            'sisa_piutang' => $nominal,
             'created_at' => now(),
             'updated_at' => now(),
         ]);

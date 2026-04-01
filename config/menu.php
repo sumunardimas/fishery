@@ -200,6 +200,12 @@ return [
                     'type' => 'url',
                 ],
                 [
+                    'title' => 'Kas Bon Pegawai',
+                    'icon' => 'ti-user',
+                    'route' => '/keuangan/kas-bon-pegawai',
+                    'type' => 'url',
+                ],
+                [
                     'title' => 'Hutang Jons Group',
                     'icon' => 'ti-receipt',
                     'route' => '/keuangan/hutang-jons-group',
