@@ -119,6 +119,8 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/kas', [KeuanganController::class, 'kas'])->name('kas.index');
         Route::get('/bank', [KeuanganController::class, 'bank'])->name('bank.index');
         Route::post('/cash/transactions', [KeuanganController::class, 'storeCashTransaction'])->name('cash.store');
+        Route::get('/hutang-jons-group', [KeuanganController::class, 'jonsGroupDebt'])->name('hutang-jons-group.index');
+        Route::post('/hutang-jons-group/bayar', [KeuanganController::class, 'bayarJonsGroupDebt'])->name('hutang-jons-group.bayar');
         Route::get('/laba', [KeuanganController::class, 'labaRugi'])->name('laba.index');
         Route::get('/lap-selisih-bongkaran', [KeuanganController::class, 'selisihBongkar'])->name('lap-selisih-bongkaran.index');
         Route::post('/lap-selisih-bongkaran/berat-lelang', [KeuanganController::class, 'storeBeratLelang'])->name('lap-selisih-bongkaran.store');

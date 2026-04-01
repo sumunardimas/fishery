@@ -89,6 +89,10 @@
                                 </option>
                             @endforeach
                         </select>
+                        <small class="form-text text-muted">
+                            Transaksi kategori Pinjam Modal Jons Group otomatis masuk ke
+                            <a href="{{ url('/keuangan/hutang-jons-group') }}">halaman hutang Jons Group</a>.
+                        </small>
                     </div>
 
                     <div class="form-group">

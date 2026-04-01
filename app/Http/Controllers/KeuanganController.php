@@ -3,14 +3,20 @@
 namespace App\Http\Controllers;
 
 use Carbon\CarbonPeriod;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 
 class KeuanganController extends Controller
 {
+    private const JONS_GROUP_BORROW_CATEGORY = 'Pinjam Modal Jons Group';
+
+    private const JONS_GROUP_PAYMENT_CATEGORY = 'Pembayaran Hutang Jons Group';
+
     public function arusKas(Request $request): View
     {
         $validated = $request->validate([
@@ -256,7 +262,7 @@ class KeuanganController extends Controller
             ->with('success', 'Berat lelang ikan berhasil disimpan.');
     }
 
-    public function bayarPiutang(Request $request): \Illuminate\Http\JsonResponse
+    public function bayarPiutang(Request $request): JsonResponse
     {
         $validated = $request->validate([
             'id_penjualan'   => ['required', 'integer', 'exists:penjualan,id_penjualan'],
@@ -361,6 +367,51 @@ class KeuanganController extends Controller
         return $this->renderCashLedger($request, 'bank', 'cash.bank', 'Bank');
     }
 
+    public function jonsGroupDebt(Request $request): View
+    {
+        $validated = $request->validate([
+            'start_date' => ['nullable', 'date'],
+            'end_date' => ['nullable', 'date'],
+        ]);
+
+        $today = Carbon::today();
+
+        $start = ! empty($validated['start_date'])
+            ? Carbon::parse($validated['start_date'])
+            : $today->copy()->subDays(89);
+
+        $end = ! empty($validated['end_date'])
+            ? Carbon::parse($validated['end_date'])
+            : $today->copy();
+
+        if ($start->gt($end)) {
+            [$start, $end] = [$end, $start];
+        }
+
+        $startDate = $start->toDateString();
+        $endDate = $end->toDateString();
+
+        $rows = DB::table('jons_group_debts')
+            ->whereBetween('tanggal_pinjam', [$startDate, $endDate])
+            ->orderByDesc('tanggal_pinjam')
+            ->orderByDesc('id_jons_group_debt')
+            ->get();
+
+        $summary = [
+            'total_hutang' => (float) $rows->sum('sisa_hutang'),
+            'jumlah_transaksi' => $rows->count(),
+            'total_pinjaman' => (float) $rows->sum('nominal_awal'),
+            'total_terbayar' => (float) $rows->sum(fn ($row) => (float) $row->nominal_awal - (float) $row->sisa_hutang),
+        ];
+
+        return view('keuangan.jons_group_debts.index', compact(
+            'rows',
+            'summary',
+            'startDate',
+            'endDate'
+        ));
+    }
+
     public function storeCashTransaction(Request $request): RedirectResponse
     {
         $validated = $request->validate([
@@ -381,8 +432,14 @@ class KeuanganController extends Controller
                 ->withErrors(['nominal' => 'Isi salah satu: Debit atau Kredit (tidak boleh keduanya).']);
         }
 
+        if ($validated['kategori'] === self::JONS_GROUP_BORROW_CATEGORY && ($debit <= 0 || $kredit > 0)) {
+            return back()
+                ->withInput()
+                ->withErrors(['kategori' => 'Pinjam Modal Jons Group harus dicatat sebagai debit.']);
+        }
+
         DB::transaction(function () use ($validated, $debit, $kredit) {
-            $this->postArusKas(
+            $arusKasId = $this->postArusKas(
                 akun: $validated['akun'],
                 tanggal: $validated['tanggal'],
                 kategori: $validated['kategori'],
@@ -390,9 +447,91 @@ class KeuanganController extends Controller
                 debit: $debit,
                 kredit: $kredit
             );
+
+            if ($validated['kategori'] === self::JONS_GROUP_BORROW_CATEGORY) {
+                $this->recordJonsGroupDebt(
+                    arusKasId: $arusKasId,
+                    tanggal: $validated['tanggal'],
+                    akun: $validated['akun'],
+                    deskripsi: $validated['deskripsi'] ?? '-',
+                    nominal: $debit
+                );
+            }
         });
 
-        return back()->with('success', 'Transaksi '.strtoupper($validated['akun']).' berhasil disimpan.');
+        $message = 'Transaksi '.strtoupper($validated['akun']).' berhasil disimpan.';
+
+        if ($validated['kategori'] === self::JONS_GROUP_BORROW_CATEGORY) {
+            $message .= ' Hutang Jons Group ikut tercatat.';
+        }
+
+        return back()->with('success', $message);
+    }
+
+    public function bayarJonsGroupDebt(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'id_jons_group_debt' => ['required', 'integer', 'exists:jons_group_debts,id_jons_group_debt'],
+            'akun_pembayaran' => ['required', 'in:kas,bank'],
+            'nominal' => ['required', 'numeric', 'gt:0'],
+        ]);
+
+        $nominalBayar = round((float) $validated['nominal'], 2);
+        $response = [];
+
+        DB::transaction(function () use ($validated, $nominalBayar, &$response) {
+            $debt = DB::table('jons_group_debts')
+                ->where('id_jons_group_debt', $validated['id_jons_group_debt'])
+                ->lockForUpdate()
+                ->first();
+
+            if (! $debt) {
+                throw ValidationException::withMessages([
+                    'id_jons_group_debt' => 'Data hutang tidak ditemukan.',
+                ]);
+            }
+
+            $remainingDebt = round((float) $debt->sisa_hutang, 2);
+
+            if ($nominalBayar > $remainingDebt + 0.01) {
+                throw ValidationException::withMessages([
+                    'nominal' => 'Pembayaran melebihi sisa hutang.',
+                ]);
+            }
+
+            $newRemainingDebt = max(0, round($remainingDebt - $nominalBayar, 2));
+            $kodeHutang = 'HJG-'.str_pad((string) $debt->id_jons_group_debt, 5, '0', STR_PAD_LEFT);
+
+            $this->postArusKas(
+                akun: $validated['akun_pembayaran'],
+                tanggal: Carbon::today()->toDateString(),
+                kategori: self::JONS_GROUP_PAYMENT_CATEGORY,
+                deskripsi: 'Pembayaran hutang Jons Group '.$kodeHutang.' sebesar Rp '.number_format($nominalBayar, 2, ',', '.').'. Sisa hutang Rp '.number_format($newRemainingDebt, 2, ',', '.').'.',
+                debit: 0,
+                kredit: $nominalBayar
+            );
+
+            if ($newRemainingDebt < 0.01) {
+                DB::table('jons_group_debts')
+                    ->where('id_jons_group_debt', $debt->id_jons_group_debt)
+                    ->delete();
+            } else {
+                DB::table('jons_group_debts')
+                    ->where('id_jons_group_debt', $debt->id_jons_group_debt)
+                    ->update([
+                        'sisa_hutang' => $newRemainingDebt,
+                        'updated_at' => now(),
+                    ]);
+            }
+
+            $response = [
+                'status' => $newRemainingDebt < 0.01 ? 'lunas' : 'parsial',
+                'new_sisa_hutang' => $newRemainingDebt,
+                'new_sisa_hutang_formatted' => number_format($newRemainingDebt, 2, ',', '.'),
+            ];
+        });
+
+        return response()->json($response);
     }
 
     public function piutang(Request $request): View
@@ -518,12 +657,26 @@ class KeuanganController extends Controller
             ->value('saldo') ?? 0);
     }
 
-    private function postArusKas(string $akun, string $tanggal, string $kategori, string $deskripsi, float $debit, float $kredit): void
+    private function recordJonsGroupDebt(int $arusKasId, string $tanggal, string $akun, string $deskripsi, float $nominal): void
+    {
+        DB::table('jons_group_debts')->insert([
+            'id_kas_sumber' => $arusKasId,
+            'tanggal_pinjam' => $tanggal,
+            'akun_penerimaan' => $akun,
+            'deskripsi' => $deskripsi,
+            'nominal_awal' => $nominal,
+            'sisa_hutang' => $nominal,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+    }
+
+    private function postArusKas(string $akun, string $tanggal, string $kategori, string $deskripsi, float $debit, float $kredit): int
     {
         $lastSaldo = $this->getLastSaldoByAkun($akun);
         $saldoBaru = $lastSaldo + $debit - $kredit;
 
-        DB::table('arus_kas')->insert([
+        return (int) DB::table('arus_kas')->insertGetId([
             'akun' => $akun,
             'tanggal' => $tanggal,
             'jenis_transaksi' => $debit > 0 ? 'Masuk' : 'Keluar',

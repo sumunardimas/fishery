@@ -177,6 +177,37 @@ return [
             ],
         ],
         [
+            'title' => 'Keuangan',
+            'icon' => 'ti-money',
+            'route' => '#',
+            'children' => [
+                [
+                    'title' => 'Kas',
+                    'icon' => 'ti-wallet',
+                    'route' => '/keuangan/kas',
+                    'type' => 'url',
+                ],
+                [
+                    'title' => 'Bank',
+                    'icon' => 'ti-credit-card',
+                    'route' => '/keuangan/bank',
+                    'type' => 'url',
+                ],
+                [
+                    'title' => 'Piutang',
+                    'icon' => 'ti-alert',
+                    'route' => '/keuangan/piutang',
+                    'type' => 'url',
+                ],
+                [
+                    'title' => 'Hutang Jons Group',
+                    'icon' => 'ti-receipt',
+                    'route' => '/keuangan/hutang-jons-group',
+                    'type' => 'url',
+                ],
+            ],
+        ],
+        [
             'title' => 'Laporan',
             'icon' => 'ti-briefcase',
             'route' => '#',
@@ -194,18 +225,6 @@ return [
                     'type' => 'url',
                 ],
                 [
-                    'title' => 'Kas',
-                    'icon' => 'ti-wallet',
-                    'route' => '/keuangan/kas',
-                    'type' => 'url',
-                ],
-                [
-                    'title' => 'Bank',
-                    'icon' => 'ti-credit-card',
-                    'route' => '/keuangan/bank',
-                    'type' => 'url',
-                ],
-                [
                     'title' => 'Laba Rugi',
                     'icon' => 'ti-cash',
                     'route' => '/keuangan/laba',
@@ -215,12 +234,6 @@ return [
                     'title' => 'Lap Selisih Bongkaran',
                     'icon' => 'ti-arrows-diff',
                     'route' => '/keuangan/lap-selisih-bongkaran',
-                    'type' => 'url',
-                ],
-                [
-                    'title' => 'Piutang',
-                    'icon' => 'ti-alert',
-                    'route' => '/keuangan/piutang',
                     'type' => 'url',
                 ],
             ],
