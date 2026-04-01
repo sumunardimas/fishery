@@ -77,6 +77,7 @@
                                     'Biaya Operasional',
                                     'Transfer Antar Akun',
                                     'Penyesuaian',
+                                    'Pinjam Modal Jons Group',
                                 ];
                                 $selectedKategori = old('kategori');
                             @endphp
