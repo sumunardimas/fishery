@@ -234,11 +234,31 @@ class PenjualanController extends Controller
 
     public function riwayat(Request $request): View
     {
-        $date = $request->input('date', now()->toDateString());
+        $validated = $request->validate([
+            'start_date' => ['nullable', 'date'],
+            'end_date' => ['nullable', 'date'],
+        ]);
+
+        $today = now()->toDateString();
+        $defaultStart = now()->subDays(6)->toDateString();
+
+        $startDate = $validated['start_date'] ?? $defaultStart;
+        $endDate = $validated['end_date'] ?? $today;
+
+        $startCarbon = Carbon::parse($startDate);
+        $endCarbon = Carbon::parse($endDate);
+
+        if ($startCarbon->gt($endCarbon)) {
+            [$startCarbon, $endCarbon] = [$endCarbon, $startCarbon];
+        }
+
+        $startDate = $startCarbon->toDateString();
+        $endDate = $endCarbon->toDateString();
 
         $sales = Penjualan::query()
             ->leftJoin('master_customer as mc', 'mc.id_customer', '=', 'penjualan.id_customer')
-            ->whereDate('tanggal_penjualan', $date)
+            ->whereBetween('tanggal_penjualan', [$startDate, $endDate])
+            ->orderByDesc('tanggal_penjualan')
             ->orderByDesc('penjualan.created_at')
             ->select(
                 'penjualan.*',
@@ -256,7 +276,7 @@ class PenjualanController extends Controller
             'total_piutang' => (float) $sales->sum('piutang'),
         ];
 
-        return view('penjualan.riwayat', compact('sales', 'summary', 'date'));
+        return view('penjualan.riwayat', compact('sales', 'summary', 'startDate', 'endDate'));
     }
 
     public function downloadInvoice(int $id): Response

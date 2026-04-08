@@ -32,7 +32,7 @@
                     <div class="card-body d-flex justify-content-between align-items-center">
                         <div>
                             <h4 class="card-title mb-1">Riwayat Transaksi Penjualan</h4>
-                            <p class="card-description mb-0">Daftar transaksi penjualan berdasarkan tanggal.</p>
+                            <p class="card-description mb-0">Daftar transaksi penjualan dengan filter rentang tanggal. Default menampilkan 7 hari terakhir.</p>
                         </div>
                         <a href="{{ route('penjualan.index') }}" class="btn btn-primary">
                             <i class="ti-write mr-1"></i> POS Transaksi Baru
@@ -43,11 +43,21 @@
                 {{-- Date filter --}}
                 <div class="card mb-4">
                     <div class="card-body py-3">
-                        <form method="GET" action="{{ route('penjualan.riwayat') }}" class="form-inline">
-                            <label for="date" class="mr-2">Tanggal:</label>
-                            <input type="date" name="date" id="date" class="form-control mr-2"
-                                value="{{ $date }}">
-                            <button type="submit" class="btn btn-outline-primary">Tampilkan</button>
+                        <form method="GET" action="{{ route('penjualan.riwayat') }}" class="row align-items-end">
+                            <div class="col-md-4 form-group mb-md-0">
+                                <label for="start_date" class="mb-1">Dari Tanggal</label>
+                                <input type="date" name="start_date" id="start_date" class="form-control"
+                                    value="{{ $startDate }}">
+                            </div>
+                            <div class="col-md-4 form-group mb-md-0">
+                                <label for="end_date" class="mb-1">Sampai Tanggal</label>
+                                <input type="date" name="end_date" id="end_date" class="form-control"
+                                    value="{{ $endDate }}">
+                            </div>
+                            <div class="col-md-4 d-flex flex-wrap gap-2">
+                                <button type="submit" class="btn btn-outline-primary mr-2">Terapkan Filter</button>
+                                <a href="{{ route('penjualan.riwayat') }}" class="btn btn-outline-secondary">Reset</a>
+                            </div>
                         </form>
                     </div>
                 </div>
@@ -93,8 +103,14 @@
                 {{-- Transactions table --}}
                 <div class="card">
                     <div class="card-body">
+                        @php
+                            $rangeLabel = $startDate === $endDate
+                                ? \Carbon\Carbon::parse($startDate)->translatedFormat('d F Y')
+                                : \Carbon\Carbon::parse($startDate)->translatedFormat('d F Y') . ' - ' .
+                                    \Carbon\Carbon::parse($endDate)->translatedFormat('d F Y');
+                        @endphp
                         <h5 class="card-title">
-                            Transaksi — {{ \Carbon\Carbon::parse($date)->translatedFormat('d F Y') }}
+                            Transaksi — {{ $rangeLabel }}
                         </h5>
                         <div class="table-responsive">
                             <table class="table table-striped">
@@ -170,7 +186,7 @@
                                     @empty
                                         <tr>
                                             <td colspan="7" class="text-center text-muted">
-                                                Tidak ada transaksi pada tanggal ini.
+                                                Tidak ada transaksi pada rentang tanggal ini.
                                             </td>
                                         </tr>
                                     @endforelse
