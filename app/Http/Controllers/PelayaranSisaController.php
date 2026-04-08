@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\MasterIkanTangkapan;
 use App\Models\Pelayaran;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -64,7 +65,14 @@ class PelayaranSisaController extends Controller
 
         $perbekalanRows = collect();
         $existingSisa = [];
-        $masterIkan = DB::table('master_ikan')->orderBy('nama_ikan')->get();
+        $masterIkanTangkapan = MasterIkanTangkapan::query()
+            ->whereHas('masterIkan')
+            ->with(['masterIkan' => function ($query) {
+                $query->select('id_ikan', 'id_ikan_tangkapan', 'nama_ikan')
+                    ->orderBy('nama_ikan');
+            }])
+            ->orderBy('nama_ikan_tangkapan')
+            ->get();
         $existingHasilIkanByKategori = [];
         $masterOperasional = DB::table('master_operasional')
             ->orderBy('nama_operasional')
@@ -96,13 +104,24 @@ class PelayaranSisaController extends Controller
                 ->map(fn ($value) => (float) $value)
                 ->toArray();
 
-            $existingHasilIkanByKategori = DB::table('ikan_hasil_pelayaran')
-                ->where('id_pelayaran', $selectedPelayaran->id_pelayaran)
-                ->get(['kategori_tangkapan', 'id_ikan', 'berat_hasil', 'harga_per_kg'])
+            $existingHasilIkanByKategori = DB::table('ikan_hasil_pelayaran as ihp')
+                ->leftJoin('master_ikan as mi', 'mi.id_ikan', '=', 'ihp.id_ikan')
+                ->where('ihp.id_pelayaran', $selectedPelayaran->id_pelayaran)
+                ->selectRaw(
+                    'ihp.kategori_tangkapan,
+                    COALESCE(mi.id_ikan_tangkapan, ihp.id_ikan) as form_ikan_key,
+                    SUM(ihp.berat_hasil) as berat_hasil,
+                    CASE
+                        WHEN SUM(ihp.berat_hasil) = 0 THEN 0
+                        ELSE SUM(ihp.berat_hasil * COALESCE(ihp.harga_per_kg, 0)) / SUM(ihp.berat_hasil)
+                    END as harga_per_kg'
+                )
+                ->groupBy('ihp.kategori_tangkapan', DB::raw('COALESCE(mi.id_ikan_tangkapan, ihp.id_ikan)'))
+                ->get()
                 ->groupBy('kategori_tangkapan')
                 ->map(function ($rows) {
                     return $rows->mapWithKeys(function ($row) {
-                        return [(int) $row->id_ikan => [
+                        return [(int) $row->form_ikan_key => [
                             'berat_hasil' => (float) $row->berat_hasil,
                             'harga_per_kg' => (float) ($row->harga_per_kg ?? 0),
                         ]];
@@ -151,7 +170,7 @@ class PelayaranSisaController extends Controller
 
             $completionStatus = [
                 'perbekalan' => $plannedCount === 0 ? true : $filledSisaCount >= $plannedCount,
-                'tangkapan' => $masterIkan->count() === 0
+                'tangkapan' => $masterIkanTangkapan->count() === 0
                     ? true
                     : collect(array_keys(self::KATEGORI_TANGKAPAN))->every(function (string $kategori) use ($existingHasilIkanByKategori) {
                         return !empty($existingHasilIkanByKategori[$kategori] ?? []);
@@ -171,7 +190,7 @@ class PelayaranSisaController extends Controller
             'activeTab',
             'perbekalanRows',
             'existingSisa',
-            'masterIkan',
+            'masterIkanTangkapan',
             'existingHasilIkanByKategori',
             'masterOperasional',
             'existingOperasional',
@@ -268,9 +287,51 @@ class PelayaranSisaController extends Controller
 
         $hasilIkan = $this->extractNumericMap($request->input('hasil_ikan', []), false);
         $hargaIkan = $this->extractNumericMap($request->input('harga_ikan', []), true);
-        $validIkanIds = DB::table('master_ikan')->pluck('id_ikan')->map(fn ($id) => (int) $id)->all();
-        $hasilIkan = $hasilIkan->only($validIkanIds)->filter(fn (float $berat) => $berat > 0);
-        $hargaIkan = $hargaIkan->only($validIkanIds);
+
+        $ikanTangkapanCollection = MasterIkanTangkapan::query()
+            ->whereHas('masterIkan')
+            ->with(['masterIkan' => function ($query) {
+                $query->select('id_ikan', 'id_ikan_tangkapan')->orderBy('id_ikan');
+            }])
+            ->get();
+
+        $validIkanTangkapanIds = $ikanTangkapanCollection->pluck('id_ikan_tangkapan')
+            ->map(fn ($id) => (int) $id)
+            ->all();
+
+        $hasilIkan = $hasilIkan->only($validIkanTangkapanIds)->filter(fn (float $berat) => $berat > 0);
+        $hargaIkan = $hargaIkan->only($validIkanTangkapanIds);
+
+        $relasiIkanMap = $ikanTangkapanCollection->mapWithKeys(function (MasterIkanTangkapan $item) {
+            $representativeIkan = $item->masterIkan->sortBy('id_ikan')->first();
+
+            return $representativeIkan
+                ? [(int) $item->id_ikan_tangkapan => (int) $representativeIkan->id_ikan]
+                : [];
+        })->all();
+
+        $unmappedIds = $hasilIkan->keys()
+            ->filter(fn (int $idIkanTangkapan) => !isset($relasiIkanMap[$idIkanTangkapan]))
+            ->values()
+            ->all();
+
+        if ($unmappedIds !== []) {
+            throw ValidationException::withMessages([
+                'hasil_ikan' => 'Beberapa Master Ikan Tangkapan belum terhubung ke Master Ikan penjualan. Lengkapi relasinya terlebih dahulu.',
+            ]);
+        }
+
+        $hasilIkan = $hasilIkan->mapWithKeys(function (float $beratHasil, int $idIkanTangkapan) use ($relasiIkanMap) {
+            return [(int) $relasiIkanMap[$idIkanTangkapan] => $beratHasil];
+        });
+
+        $hargaIkan = $hargaIkan->mapWithKeys(function (float $harga, int $idIkanTangkapan) use ($relasiIkanMap) {
+            if (!isset($relasiIkanMap[$idIkanTangkapan])) {
+                return [];
+            }
+
+            return [(int) $relasiIkanMap[$idIkanTangkapan] => $harga];
+        });
 
         DB::transaction(function () use ($idPelayaran, $kategoriTangkapan, $hasilIkan, $hargaIkan) {
             $existingIkanIds = DB::table('ikan_hasil_pelayaran')
@@ -410,7 +471,7 @@ class PelayaranSisaController extends Controller
             ->where('id_pelayaran', $idPelayaran)
             ->distinct('kategori_tangkapan')
             ->count('kategori_tangkapan');
-        $masterIkanCount = DB::table('master_ikan')->count();
+        $masterIkanCount = DB::table('master_ikan_tangkapan')->count();
         $operasionalCount = DB::table('operasional')
             ->where('id_pelayaran', $idPelayaran)
             ->count();
@@ -480,32 +541,95 @@ class PelayaranSisaController extends Controller
      */
     private function recalculateStokIkan(string $periode, array $affectedIkanIds): void
     {
-        if (empty($affectedIkanIds)) {
+        $affectedIkanIds = collect($affectedIkanIds)
+            ->map(fn ($id) => (int) $id)
+            ->filter(fn (int $id) => $id > 0)
+            ->unique()
+            ->values();
+
+        if ($affectedIkanIds->isEmpty()) {
             return;
         }
 
-        $salesByIkan = DB::table('penjualan')
-            ->whereIn('id_ikan', $affectedIkanIds)
-            ->whereRaw("DATE_FORMAT(tanggal_penjualan, '%Y-%m') = ?", [$periode])
-            ->groupBy('id_ikan')
-            ->selectRaw('id_ikan, SUM(berat) as total_penjualan')
-            ->pluck('total_penjualan', 'id_ikan');
+        $seedIkan = DB::table('master_ikan')
+            ->whereIn('id_ikan', $affectedIkanIds->all())
+            ->get(['id_ikan', 'id_ikan_tangkapan']);
 
-        $catchByIkan = DB::table('ikan_hasil_pelayaran as ihp')
-            ->join('pelayaran as p', 'p.id_pelayaran', '=', 'ihp.id_pelayaran')
-            ->whereIn('ihp.id_ikan', $affectedIkanIds)
-            ->whereRaw("DATE_FORMAT(COALESCE(p.tanggal_selesai, p.tanggal_tiba), '%Y-%m') = ?", [$periode])
-            ->groupBy('ihp.id_ikan')
-            ->selectRaw('ihp.id_ikan, SUM(ihp.berat_hasil) as total_tangkapan')
-            ->pluck('total_tangkapan', 'id_ikan');
+        $relationIds = $seedIkan->pluck('id_ikan_tangkapan')
+            ->filter()
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->values();
+
+        $targetIkan = DB::table('master_ikan')
+            ->when($relationIds->isNotEmpty(), function ($query) use ($relationIds, $affectedIkanIds) {
+                $query->whereIn('id_ikan', $affectedIkanIds->all())
+                    ->orWhereIn('id_ikan_tangkapan', $relationIds->all());
+            }, function ($query) use ($affectedIkanIds) {
+                $query->whereIn('id_ikan', $affectedIkanIds->all());
+            })
+            ->get(['id_ikan', 'id_ikan_tangkapan']);
+
+        $directIkanIds = $targetIkan
+            ->filter(fn ($ikan) => empty($ikan->id_ikan_tangkapan))
+            ->pluck('id_ikan')
+            ->map(fn ($id) => (int) $id)
+            ->all();
+
+        $salesByRelation = $relationIds->isEmpty()
+            ? collect()
+            : DB::table('penjualan_items as pi')
+                ->join('penjualan as p', 'p.id_penjualan', '=', 'pi.id_penjualan')
+                ->join('master_ikan as mi', 'mi.id_ikan', '=', 'pi.id_ikan')
+                ->whereIn('mi.id_ikan_tangkapan', $relationIds->all())
+                ->whereRaw("DATE_FORMAT(p.tanggal_penjualan, '%Y-%m') = ?", [$periode])
+                ->groupBy('mi.id_ikan_tangkapan')
+                ->selectRaw('mi.id_ikan_tangkapan as group_key, SUM(pi.berat) as total_penjualan')
+                ->pluck('total_penjualan', 'group_key');
+
+        $catchByRelation = $relationIds->isEmpty()
+            ? collect()
+            : DB::table('ikan_hasil_pelayaran as ihp')
+                ->join('pelayaran as p', 'p.id_pelayaran', '=', 'ihp.id_pelayaran')
+                ->join('master_ikan as mi', 'mi.id_ikan', '=', 'ihp.id_ikan')
+                ->whereIn('mi.id_ikan_tangkapan', $relationIds->all())
+                ->whereRaw("DATE_FORMAT(COALESCE(p.tanggal_selesai, p.tanggal_tiba), '%Y-%m') = ?", [$periode])
+                ->groupBy('mi.id_ikan_tangkapan')
+                ->selectRaw('mi.id_ikan_tangkapan as group_key, SUM(ihp.berat_hasil) as total_tangkapan')
+                ->pluck('total_tangkapan', 'group_key');
+
+        $salesByIkan = empty($directIkanIds)
+            ? collect()
+            : DB::table('penjualan_items as pi')
+                ->join('penjualan as p', 'p.id_penjualan', '=', 'pi.id_penjualan')
+                ->whereIn('pi.id_ikan', $directIkanIds)
+                ->whereRaw("DATE_FORMAT(p.tanggal_penjualan, '%Y-%m') = ?", [$periode])
+                ->groupBy('pi.id_ikan')
+                ->selectRaw('pi.id_ikan as ikan_key, SUM(pi.berat) as total_penjualan')
+                ->pluck('total_penjualan', 'ikan_key');
+
+        $catchByIkan = empty($directIkanIds)
+            ? collect()
+            : DB::table('ikan_hasil_pelayaran as ihp')
+                ->join('pelayaran as p', 'p.id_pelayaran', '=', 'ihp.id_pelayaran')
+                ->whereIn('ihp.id_ikan', $directIkanIds)
+                ->whereRaw("DATE_FORMAT(COALESCE(p.tanggal_selesai, p.tanggal_tiba), '%Y-%m') = ?", [$periode])
+                ->groupBy('ihp.id_ikan')
+                ->selectRaw('ihp.id_ikan as ikan_key, SUM(ihp.berat_hasil) as total_tangkapan')
+                ->pluck('total_tangkapan', 'ikan_key');
 
         $now = now();
-        $rows = collect($affectedIkanIds)->map(function (int $idIkan) use ($catchByIkan, $salesByIkan, $periode, $now) {
-            $totalTangkapan = (float) ($catchByIkan[$idIkan] ?? 0);
-            $totalPenjualan = (float) ($salesByIkan[$idIkan] ?? 0);
+        $rows = $targetIkan->map(function ($ikan) use ($catchByIkan, $catchByRelation, $salesByIkan, $salesByRelation, $periode, $now) {
+            $relationId = $ikan->id_ikan_tangkapan ? (int) $ikan->id_ikan_tangkapan : null;
+            $totalTangkapan = $relationId
+                ? (float) ($catchByRelation[$relationId] ?? 0)
+                : (float) ($catchByIkan[$ikan->id_ikan] ?? 0);
+            $totalPenjualan = $relationId
+                ? (float) ($salesByRelation[$relationId] ?? 0)
+                : (float) ($salesByIkan[$ikan->id_ikan] ?? 0);
 
             return [
-                'id_ikan' => $idIkan,
+                'id_ikan' => (int) $ikan->id_ikan,
                 'periode' => $periode,
                 'total_tangkapan' => $totalTangkapan,
                 'total_penjualan' => $totalPenjualan,

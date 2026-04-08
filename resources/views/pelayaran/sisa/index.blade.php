@@ -309,49 +309,61 @@
                                         <table class="table table-bordered">
                                             <thead>
                                                 <tr>
-                                                    <th>Nama Ikan</th>
+                                                    <th>Nama Ikan Tangkapan</th>
                                                     <th>Berat Tangkapan (kg)</th>
                                                     <th>Harga per Kg (Rp)</th>
                                                     <th>Estimasi Nilai (Rp)</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
-                                                @forelse ($masterIkan as $ikan)
+                                                @forelse ($masterIkanTangkapan as $ikanTangkapan)
                                                     @php
                                                         $existingByCategory =
                                                             $existingHasilIkanByKategori[$meta['key']][
-                                                                $ikan->id_ikan
+                                                                $ikanTangkapan->id_ikan_tangkapan
                                                             ] ?? null;
                                                         $defaultHasil = $existingByCategory['berat_hasil'] ?? null;
                                                         $defaultHarga = $existingByCategory['harga_per_kg'] ?? null;
+                                                        $relasiPenjualan = $ikanTangkapan->masterIkan
+                                                            ->pluck('nama_ikan')
+                                                            ->filter()
+                                                            ->values();
                                                     @endphp
                                                     <tr>
-                                                        <td>{{ $ikan->nama_ikan }}</td>
+                                                        <td>
+                                                            <div>{{ $ikanTangkapan->nama_ikan_tangkapan }}</div>
+                                                            @if ($relasiPenjualan->isNotEmpty())
+                                                                <small class="text-muted d-block">Grade penjualan:
+                                                                    {{ $relasiPenjualan->join(', ') }}</small>
+                                                            @endif
+                                                        </td>
                                                         <td>
                                                             <input type="number" class="form-control js-berat-input"
-                                                                name="hasil_ikan[{{ $ikan->id_ikan }}]" min="0"
-                                                                step="0.01" placeholder="0"
-                                                                value="{{ old('hasil_ikan.' . $ikan->id_ikan, $defaultHasil) }}"
-                                                                data-target="#nilai_{{ $meta['key'] }}_{{ $ikan->id_ikan }}"
+                                                                name="hasil_ikan[{{ $ikanTangkapan->id_ikan_tangkapan }}]"
+                                                                min="0" step="0.01" placeholder="0"
+                                                                value="{{ old('hasil_ikan.' . $ikanTangkapan->id_ikan_tangkapan, $defaultHasil) }}"
+                                                                data-target="#nilai_{{ $meta['key'] }}_{{ $ikanTangkapan->id_ikan_tangkapan }}"
                                                                 data-role="berat">
                                                         </td>
                                                         <td>
                                                             <input type="number" class="form-control js-harga-input"
-                                                                name="harga_ikan[{{ $ikan->id_ikan }}]" min="0"
-                                                                step="0.01" placeholder="0"
-                                                                value="{{ old('harga_ikan.' . $ikan->id_ikan, $defaultHarga) }}"
-                                                                data-target="#nilai_{{ $meta['key'] }}_{{ $ikan->id_ikan }}"
+                                                                name="harga_ikan[{{ $ikanTangkapan->id_ikan_tangkapan }}]"
+                                                                min="0" step="0.01" placeholder="0"
+                                                                value="{{ old('harga_ikan.' . $ikanTangkapan->id_ikan_tangkapan, $defaultHarga) }}"
+                                                                data-target="#nilai_{{ $meta['key'] }}_{{ $ikanTangkapan->id_ikan_tangkapan }}"
                                                                 data-role="harga">
                                                         </td>
                                                         <td>
                                                             <div class="font-weight-bold text-muted js-nilai-output"
-                                                                id="nilai_{{ $meta['key'] }}_{{ $ikan->id_ikan }}">Rp 0
+                                                                id="nilai_{{ $meta['key'] }}_{{ $ikanTangkapan->id_ikan_tangkapan }}">
+                                                                Rp 0
                                                             </div>
                                                         </td>
                                                     </tr>
                                                 @empty
                                                     <tr>
                                                         <td colspan="4" class="text-center text-muted">Master ikan
+                                                            tangkapan
                                                             belum tersedia.</td>
                                                     </tr>
                                                 @endforelse
