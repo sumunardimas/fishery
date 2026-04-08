@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\MasterIkan;
+use App\Models\MasterIkanTangkapan;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -12,15 +13,23 @@ class MasterIkanController extends Controller
 {
     public function index(): View
     {
-        $items = MasterIkan::query()->orderByDesc('created_at')->get();
+        $items = MasterIkan::query()
+            ->with('ikanTangkapan')
+            ->orderByDesc('created_at')
+            ->get();
 
-        return view('master.ikan.index', compact('items'));
+        $ikanTangkapanOptions = MasterIkanTangkapan::query()
+            ->orderBy('nama_ikan_tangkapan')
+            ->get();
+
+        return view('master.ikan.index', compact('items', 'ikanTangkapanOptions'));
     }
 
     public function store(Request $request): RedirectResponse
     {
         $data = $request->validate([
             'nama_ikan' => ['required', 'string', 'max:255'],
+            'id_ikan_tangkapan' => ['nullable', 'integer', 'exists:master_ikan_tangkapan,id_ikan_tangkapan'],
         ]);
 
         MasterIkan::create($data);
@@ -32,6 +41,7 @@ class MasterIkanController extends Controller
     {
         $data = $request->validate([
             'nama_ikan' => ['required', 'string', 'max:255'],
+            'id_ikan_tangkapan' => ['nullable', 'integer', 'exists:master_ikan_tangkapan,id_ikan_tangkapan'],
         ]);
 
         $ikan->update($data);

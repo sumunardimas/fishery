@@ -20,12 +20,24 @@
                     <form action="{{ route('master.ikan.store') }}" method="POST">
                         @csrf
                         <div class="form-row">
-                            <div class="form-group col-md-10">
+                            <div class="form-group col-md-7">
                                 <label for="nama_ikan">Nama Ikan</label>
                                 <input type="text" id="nama_ikan" name="nama_ikan" class="form-control"
                                     value="{{ old('nama_ikan') }}" required>
                             </div>
-                            <div class="form-group col-md-2 d-flex align-items-end">
+                            <div class="form-group col-md-4">
+                                <label for="id_ikan_tangkapan">Ikan Tangkapan</label>
+                                <select id="id_ikan_tangkapan" name="id_ikan_tangkapan" class="form-control">
+                                    <option value="">- Pilih Ikan Tangkapan -</option>
+                                    @foreach ($ikanTangkapanOptions as $option)
+                                        <option value="{{ $option->id_ikan_tangkapan }}"
+                                            @selected((string) old('id_ikan_tangkapan') === (string) $option->id_ikan_tangkapan)>
+                                            {{ $option->nama_ikan_tangkapan }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="form-group col-md-1 d-flex align-items-end">
                                 <button type="submit" class="btn btn-success w-100">Tambah</button>
                             </div>
                         </div>
@@ -42,6 +54,7 @@
                                 <tr>
                                     <th>ID</th>
                                     <th>Nama Ikan</th>
+                                    <th>Ikan Tangkapan</th>
                                     <th class="text-right">Aksi</th>
                                 </tr>
                             </thead>
@@ -50,6 +63,7 @@
                                     <tr>
                                         <td>#{{ $item->id_ikan }}</td>
                                         <td>{{ $item->nama_ikan }}</td>
+                                        <td>{{ $item->ikanTangkapan?->nama_ikan_tangkapan ?: '-' }}</td>
 
                                         <td class="text-right">
                                             <button type="button" class="btn btn-outline-primary btn-sm"
@@ -80,10 +94,22 @@
                                                     @csrf
                                                     @method('PUT')
                                                     <div class="modal-body">
-                                                        <div class="form-group mb-0">
+                                                        <div class="form-group">
                                                             <label>Nama Ikan</label>
                                                             <input type="text" name="nama_ikan" class="form-control"
                                                                 value="{{ $item->nama_ikan }}" required>
+                                                        </div>
+                                                        <div class="form-group mb-0">
+                                                            <label>Ikan Tangkapan</label>
+                                                            <select name="id_ikan_tangkapan" class="form-control">
+                                                                <option value="">- Pilih Ikan Tangkapan -</option>
+                                                                @foreach ($ikanTangkapanOptions as $option)
+                                                                    <option value="{{ $option->id_ikan_tangkapan }}"
+                                                                        @selected((string) $item->id_ikan_tangkapan === (string) $option->id_ikan_tangkapan)>
+                                                                        {{ $option->nama_ikan_tangkapan }}
+                                                                    </option>
+                                                                @endforeach
+                                                            </select>
                                                         </div>
                                                     </div>
                                                     <div class="modal-footer">
@@ -98,7 +124,7 @@
                                     </div>
                                 @empty
                                     <tr>
-                                        <td colspan="3" class="text-center text-muted">Belum ada data ikan.</td>
+                                        <td colspan="4" class="text-center text-muted">Belum ada data ikan.</td>
                                     </tr>
                                 @endforelse
                             </tbody>

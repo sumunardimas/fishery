@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\MasterIkanTangkapan;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 
 class MasterIkanTangkapanController extends Controller
@@ -42,6 +43,12 @@ class MasterIkanTangkapanController extends Controller
 
     public function destroy(MasterIkanTangkapan $ikanTangkapan): RedirectResponse
     {
+        if (DB::table('master_ikan')->where('id_ikan_tangkapan', $ikanTangkapan->id_ikan_tangkapan)->exists()) {
+            return redirect()->route('master.ikan-tangkapan.index')->withErrors([
+                'message' => 'Data tidak bisa dihapus karena sudah digunakan pada master ikan.',
+            ]);
+        }
+
         $ikanTangkapan->delete();
 
         return redirect()->route('master.ikan-tangkapan.index')->with('success', 'Master ikan tangkapan berhasil dihapus.');
