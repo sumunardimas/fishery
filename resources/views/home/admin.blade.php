@@ -145,7 +145,8 @@
                             Pengguna</a>
                         <a href="{{ route('master.ikan.index') }}" class="btn btn-outline-primary btn-block mb-2">Kelola
                             Master Ikan</a>
-                        <a href="{{ route('master.ikan-tangkapan.index') }}" class="btn btn-outline-primary btn-block mb-2">Kelola
+                        <a href="{{ route('master.ikan-tangkapan.index') }}"
+                            class="btn btn-outline-primary btn-block mb-2">Kelola
                             Master Ikan Tangkapan</a>
                         <a href="{{ route('master.customer.index') }}"
                             class="btn btn-outline-primary btn-block mb-2">Kelola Customer</a>

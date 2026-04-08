@@ -98,7 +98,8 @@
                                     </div>
                                 @empty
                                     <tr>
-                                        <td colspan="3" class="text-center text-muted">Belum ada data ikan tangkapan.</td>
+                                        <td colspan="3" class="text-center text-muted">Belum ada data ikan tangkapan.
+                                        </td>
                                     </tr>
                                 @endforelse
                             </tbody>
