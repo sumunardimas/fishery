@@ -30,8 +30,7 @@
                                 <select id="id_ikan_tangkapan" name="id_ikan_tangkapan" class="form-control">
                                     <option value="">- Pilih Ikan Tangkapan -</option>
                                     @foreach ($ikanTangkapanOptions as $option)
-                                        <option value="{{ $option->id_ikan_tangkapan }}"
-                                            @selected((string) old('id_ikan_tangkapan') === (string) $option->id_ikan_tangkapan)>
+                                        <option value="{{ $option->id_ikan_tangkapan }}" @selected((string) old('id_ikan_tangkapan') === (string) $option->id_ikan_tangkapan)>
                                             {{ $option->nama_ikan_tangkapan }}
                                         </option>
                                     @endforeach
