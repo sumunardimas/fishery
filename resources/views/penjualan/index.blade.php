@@ -2,6 +2,11 @@
 
 @section('title', 'POS Penjualan Ikan')
 
+@push('styles')
+    <link rel="stylesheet" href="{{ asset('vendors/select2/select2.min.css') }}">
+    <link rel="stylesheet" href="{{ asset('vendors/select2-bootstrap-theme/select2-bootstrap.min.css') }}">
+@endpush
+
 @section('content')
     <div class="row" x-data="{
         createNewCustomer: false,
@@ -9,14 +14,20 @@
         items: [{ id_ikan: '', berat: 0, harga_per_kg: 0 }],
         bayarTunai: {{ (float) old('bayar_tunai', 0) }},
         bayarTransfer: {{ (float) old('bayar_transfer', 0) }},
-        addItem() { this.items.push({ id_ikan: '', berat: 0, harga_per_kg: 0 }); },
-        removeItem(idx) { if (this.items.length > 1) this.items.splice(idx, 1); },
+        addItem() {
+            this.items.push({ id_ikan: '', berat: 0, harga_per_kg: 0 });
+            window.requestAnimationFrame(() => window.initFishSearchableSelect && window.initFishSearchableSelect());
+        },
+        removeItem(idx) {
+            if (this.items.length > 1) this.items.splice(idx, 1);
+            window.requestAnimationFrame(() => window.initFishSearchableSelect && window.initFishSearchableSelect());
+        },
         subtotal(item) { return item.berat * item.harga_per_kg; },
         totalHarga() { return this.items.reduce((sum, it) => sum + this.subtotal(it), 0); },
         piutang() { return Math.max(0, this.totalHarga() - this.bayarTunai - this.bayarTransfer); },
         statusPembayaran() { return this.piutang() <= 0 ? 'Lunas' : 'Piutang'; },
         stokByItem(item) { return !item.id_ikan ? 0 : (this.ikanMap[item.id_ikan]?.stok_tersedia ?? 0); },
-    }">
+    }" x-init="window.requestAnimationFrame(() => window.initFishSearchableSelect && window.initFishSearchableSelect())">
         <div class="col-12">
             @if ($errors->has('message'))
                 <x-alert type="danger" :message="$errors->first('message') ?? null" />
@@ -115,7 +126,8 @@
                                     <div class="col-md-5 form-group mb-2">
                                         <label class="required-asterisk">Pilih Ikan</label>
                                         <select :name="'items[' + index + '][id_ikan]'" x-model="item.id_ikan"
-                                            class="form-control" required>
+                                            class="form-control js-ikan-select" data-placeholder="Cari ikan / stok"
+                                            required>
                                             <option value="">Pilih ikan</option>
                                             @foreach ($ikanStock as $ikan)
                                                 <option value="{{ $ikan->id_ikan }}">
@@ -216,3 +228,32 @@
         </div>
     </div>
 @endsection
+
+@push('scripts')
+    <script src="{{ asset('vendors/select2/select2.min.js') }}"></script>
+    <script>
+        window.initFishSearchableSelect = function() {
+            if (!window.jQuery || !jQuery.fn.select2) {
+                return;
+            }
+
+            $('.js-ikan-select').each(function() {
+                var $select = $(this);
+
+                if ($select.hasClass('select2-hidden-accessible')) {
+                    return;
+                }
+
+                $select.select2({
+                    width: '100%',
+                    theme: 'bootstrap',
+                    placeholder: $select.data('placeholder') || 'Cari ikan',
+                });
+            });
+        };
+
+        document.addEventListener('DOMContentLoaded', function() {
+            window.initFishSearchableSelect();
+        });
+    </script>
+@endpush
