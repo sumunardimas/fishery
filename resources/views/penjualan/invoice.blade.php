@@ -372,7 +372,7 @@
                 </tr>
                 @if (($trx->piutang ?? 0) > 0)
                     <tr class="piutang-row">
-                        <td class="label">Piutang (A/R)</td>
+                        <td class="label">Kurang Bayar</td>
                         <td class="value">Rp {{ number_format($trx->piutang, 2, ',', '.') }}</td>
                     </tr>
                 @endif
