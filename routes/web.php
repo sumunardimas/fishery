@@ -6,6 +6,7 @@ use App\Http\Controllers\PengaturanController;
 use App\Http\Controllers\KeuanganController;
 use App\Http\Controllers\MasterCustomerController;
 use App\Http\Controllers\MasterIkanController;
+use App\Http\Controllers\MasterIkanTangkapanController;
 use App\Http\Controllers\MasterItemPembelianController;
 use App\Http\Controllers\MasterOperasionalController;
 use App\Http\Controllers\MasterPerbekalanController;
@@ -164,6 +165,13 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/', [MasterIkanController::class, 'store'])->name('store');
         Route::put('/{ikan}', [MasterIkanController::class, 'update'])->name('update');
         Route::delete('/{ikan}', [MasterIkanController::class, 'destroy'])->name('destroy');
+    });
+
+    Route::prefix('master/ikan-tangkapan')->name('master.ikan-tangkapan.')->group(function () {
+        Route::get('/', [MasterIkanTangkapanController::class, 'index'])->name('index');
+        Route::post('/', [MasterIkanTangkapanController::class, 'store'])->name('store');
+        Route::put('/{ikanTangkapan}', [MasterIkanTangkapanController::class, 'update'])->name('update');
+        Route::delete('/{ikanTangkapan}', [MasterIkanTangkapanController::class, 'destroy'])->name('destroy');
     });
 
     Route::prefix('master/customer')->name('master.customer.')->group(function () {

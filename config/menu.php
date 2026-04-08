@@ -256,6 +256,12 @@ return [
                     'type' => 'route',
                 ],
                 [
+                    'title' => 'Master Ikan Tangkapan',
+                    'icon' => 'ti-layout-grid2-thumb',
+                    'route' => 'master.ikan-tangkapan.index',
+                    'type' => 'route',
+                ],
+                [
                     'title' => 'Master Customer',
                     'icon' => 'ti-id-badge',
                     'route' => 'master.customer.index',
