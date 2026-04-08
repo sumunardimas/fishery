@@ -40,6 +40,23 @@
             background-color: #fff4e5;
         }
 
+        .trip-table-dynamic {
+            width: 100%;
+            table-layout: auto;
+        }
+
+        .trip-table-dynamic th,
+        .trip-table-dynamic td {
+            white-space: normal;
+            word-break: break-word;
+            vertical-align: top;
+        }
+
+        .trip-table-cell-wrap {
+            min-width: 220px;
+            line-height: 1.4;
+        }
+
         @media (max-width: 767.98px) {
             .trip-tabs {
                 flex-wrap: wrap;
@@ -224,7 +241,7 @@
                                     value="{{ $activeTab }}">
 
                                 <div class="table-responsive">
-                                    <table class="table table-bordered">
+                                    <table class="table table-bordered trip-table-dynamic">
                                         <thead>
                                             <tr>
                                                 <th>Nama Barang</th>
@@ -306,7 +323,7 @@
                                         value="{{ $activeTab }}">
 
                                     <div class="table-responsive">
-                                        <table class="table table-bordered">
+                                        <table class="table table-bordered trip-table-dynamic">
                                             <thead>
                                                 <tr>
                                                     <th>Nama Ikan Tangkapan</th>
@@ -330,11 +347,16 @@
                                                             ->values();
                                                     @endphp
                                                     <tr>
-                                                        <td>
-                                                            <div>{{ $ikanTangkapan->nama_ikan_tangkapan }}</div>
+                                                        <td class="trip-table-cell-wrap">
+                                                            <div class="font-weight-bold">
+                                                                {{ $ikanTangkapan->nama_ikan_tangkapan }}</div>
                                                             @if ($relasiPenjualan->isNotEmpty())
-                                                                <small class="text-muted d-block">Grade penjualan:
-                                                                    {{ $relasiPenjualan->join(', ') }}</small>
+                                                                <small class="text-muted d-block mt-1">Grade
+                                                                    penjualan:</small>
+                                                                @foreach ($relasiPenjualan as $gradePenjualan)
+                                                                    <small class="text-muted d-block">-
+                                                                        {{ $gradePenjualan }}</small>
+                                                                @endforeach
                                                             @endif
                                                         </td>
                                                         <td>
@@ -397,7 +419,7 @@
                                     value="{{ $activeTab }}">
 
                                 <div class="table-responsive">
-                                    <table class="table table-bordered">
+                                    <table class="table table-bordered trip-table-dynamic">
                                         <thead>
                                             <tr>
                                                 <th>Jenis Operasional</th>
@@ -494,7 +516,7 @@
                             </div>
 
                             <div class="table-responsive">
-                                <table class="table table-bordered table-sm">
+                                <table class="table table-bordered table-sm trip-table-dynamic">
                                     <thead>
                                         <tr>
                                             <th>Tanggal</th>
