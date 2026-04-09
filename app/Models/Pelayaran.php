@@ -19,6 +19,7 @@ class Pelayaran extends Model
         'id_kapal',
         'tanggal_berangkat',
         'tanggal_tiba',
+        'jumlah_trip',
         'keterangan',
         'status_pelayaran',
         'tanggal_selesai',
@@ -28,6 +29,7 @@ class Pelayaran extends Model
         'tanggal_berangkat' => 'date',
         'tanggal_tiba' => 'date',
         'tanggal_selesai' => 'date',
+        'jumlah_trip' => 'integer',
     ];
 
     public function kapal(): BelongsTo

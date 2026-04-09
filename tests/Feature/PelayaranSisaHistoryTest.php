@@ -57,8 +57,6 @@ class PelayaranSisaHistoryTest extends TestCase
             'tanggal_berangkat' => '2026-04-01',
             'tanggal_tiba' => '2026-04-05',
             'tanggal_selesai' => '2026-04-06',
-            'pelabuhan_asal' => 'Ambon',
-            'pelabuhan_tujuan' => 'Tual',
             'jumlah_trip' => 1,
             'keterangan' => 'Trip yang sudah selesai',
             'status_pelayaran' => 'selesai',

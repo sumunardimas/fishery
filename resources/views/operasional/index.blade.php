@@ -20,7 +20,7 @@
                                 <tr>
                                     <th>Sail</th>
                                     <th>Kapal</th>
-                                    <th>Rute</th>
+                                    <th>Keterangan</th>
                                     <th>Periode</th>
                                     <th>Total Item</th>
                                     <th>Total Biaya</th>
@@ -36,7 +36,7 @@
                                     <tr>
                                         <td>#{{ $row->id_pelayaran }}</td>
                                         <td>{{ $row->nama_kapal }}</td>
-                                        <td>{{ $row->pelabuhan_asal }} -> {{ $row->pelabuhan_tujuan }}</td>
+                                        <td>{{ $row->keterangan ?: '-' }}</td>
                                         <td>
                                             {{ \Carbon\Carbon::parse($row->tanggal_berangkat)->format('d-m-Y') }}
                                             s/d

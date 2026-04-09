@@ -23,8 +23,7 @@ class OperasionalController extends Controller
                 'k.nama_kapal',
                 'p.tanggal_berangkat',
                 'p.tanggal_tiba',
-                'p.pelabuhan_asal',
-                'p.pelabuhan_tujuan',
+                'p.keterangan',
                 DB::raw('COUNT(o.id_operasional) as total_item_biaya'),
                 DB::raw('SUM(o.jumlah) as total_biaya')
             )
@@ -33,8 +32,7 @@ class OperasionalController extends Controller
                 'k.nama_kapal',
                 'p.tanggal_berangkat',
                 'p.tanggal_tiba',
-                'p.pelabuhan_asal',
-                'p.pelabuhan_tujuan'
+                'p.keterangan'
             )
             ->orderByDesc('p.tanggal_berangkat')
             ->get();

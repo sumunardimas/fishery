@@ -1,37 +1,57 @@
+@php
+    $defaultTanggalBerangkat =
+        isset($pelayaran) && $pelayaran->tanggal_berangkat
+            ? $pelayaran->tanggal_berangkat->format('Y-m-d')
+            : now()->format('Y-m-d');
+    $defaultTanggalTiba =
+        isset($pelayaran) && $pelayaran->tanggal_tiba
+            ? $pelayaran->tanggal_tiba->format('Y-m-d')
+            : now()->addWeek()->format('Y-m-d');
+@endphp
+
 <div class="form-group">
     <label class="required-asterisk" for="id_kapal">Pilih Kapal</label>
     <select name="id_kapal" id="id_kapal" class="form-control" required>
         <option value="">Pilih salah satu kapal</option>
-        @foreach ($kapals as $kapal)
+        @forelse ($kapals as $kapal)
             <option value="{{ $kapal->id_kapal }}"
                 {{ (string) old('id_kapal', $pelayaran->id_kapal ?? '') === (string) $kapal->id_kapal ? 'selected' : '' }}>
                 {{ $kapal->nama_kapal }} ({{ $kapal->tahun_dibangun }})
             </option>
-        @endforeach
+        @empty
+            <option value="" disabled>Tidak ada kapal tersedia</option>
+        @endforelse
     </select>
+    <small class="text-muted">Hanya kapal yang tidak sedang berlayar ditampilkan.</small>
     <x-input-error :message="$errors->first('id_kapal')" />
 </div>
 
-<div class="form-group">
-    <label class="required-asterisk" for="tanggal_berangkat">Tanggal Berangkat</label>
-    <input type="date" name="tanggal_berangkat" id="tanggal_berangkat" class="form-control"
-        value="{{ old('tanggal_berangkat', isset($pelayaran) ? $pelayaran->tanggal_berangkat?->format('Y-m-d') : null) }}"
-        required>
-    <x-input-error :message="$errors->first('tanggal_berangkat')" />
+<div class="row">
+    <div class="col-md-6">
+        <div class="form-group">
+            <label class="required-asterisk" for="tanggal_berangkat">Tanggal Berangkat</label>
+            <input type="date" name="tanggal_berangkat" id="tanggal_berangkat" class="form-control"
+                value="{{ old('tanggal_berangkat', $defaultTanggalBerangkat) }}" required>
+            <x-input-error :message="$errors->first('tanggal_berangkat')" />
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="form-group">
+            <label class="required-asterisk" for="tanggal_tiba">Tanggal Kembali Estimasi</label>
+            <input type="date" name="tanggal_tiba" id="tanggal_tiba" class="form-control"
+                value="{{ old('tanggal_tiba', $defaultTanggalTiba) }}" required>
+            <x-input-error :message="$errors->first('tanggal_tiba')" />
+        </div>
+    </div>
 </div>
 
-<div class="form-group">
-    <label class="required-asterisk" for="tanggal_tiba">Tanggal Kembali Estimasi</label>
-    <input type="date" name="tanggal_tiba" id="tanggal_tiba" class="form-control"
-        value="{{ old('tanggal_tiba', isset($pelayaran) ? $pelayaran->tanggal_tiba?->format('Y-m-d') : null) }}"
-        required>
-    <x-input-error :message="$errors->first('tanggal_tiba')" />
-</div>
+<input type="hidden" name="jumlah_trip" value="{{ old('jumlah_trip', $pelayaran->jumlah_trip ?? 1) }}">
 
 <div class="form-group">
-    <label class="required-asterisk" for="keterangan">Keterangan Operasional</label>
-    <textarea name="keterangan" id="keterangan" rows="4" class="form-control" required
-        placeholder="Contoh: Rencana trip menangkap tuna, estimasi 9 hari melaut.">{{ old('keterangan', $pelayaran->keterangan ?? null) }}</textarea>
+    <label for="keterangan">Keterangan Operasional <small class="text-muted">(opsional)</small></label>
+    <textarea name="keterangan" id="keterangan" rows="4" class="form-control"
+        placeholder="Contoh: Rencana trip menangkap tuna, estimasi 7 hari melaut.">{{ old('keterangan', $pelayaran->keterangan ?? null) }}</textarea>
     <x-input-error :message="$errors->first('keterangan')" />
 </div>
 

@@ -40,7 +40,7 @@ class PelayaranController extends Controller
      */
     public function create(): View
     {
-        $kapals = Kapal::query()->orderBy('nama_kapal')->get();
+        $kapals = $this->getSelectableKapals();
         $masterPerbekalan = $this->getMasterPerbekalanWithStock();
         $selectedPerbekalan = [];
 
@@ -53,6 +53,7 @@ class PelayaranController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $data = $this->validatePayload($request);
+        $this->ensureKapalIsSelectable((int) $data['id_kapal']);
         $perbekalanQty = $this->extractPerbekalanQty($request);
         $this->validatePerbekalanAvailability($perbekalanQty);
 
@@ -81,7 +82,7 @@ class PelayaranController extends Controller
      */
     public function edit(Pelayaran $pelayaran): View
     {
-        $kapals = Kapal::query()->orderBy('nama_kapal')->get();
+        $kapals = $this->getSelectableKapals((int) $pelayaran->id_kapal);
         $masterPerbekalan = $this->getMasterPerbekalanWithStock();
         $selectedPerbekalan = DB::table('perbekalan_pelayaran')
             ->where('id_pelayaran', $pelayaran->id_pelayaran)
@@ -98,6 +99,7 @@ class PelayaranController extends Controller
     public function update(Request $request, Pelayaran $pelayaran): RedirectResponse
     {
         $data = $this->validatePayload($request);
+        $this->ensureKapalIsSelectable((int) $data['id_kapal'], (int) $pelayaran->id_kapal);
         $perbekalanQty = $this->extractPerbekalanQty($request);
         $this->validatePerbekalanAvailability($perbekalanQty);
 
@@ -150,14 +152,54 @@ class PelayaranController extends Controller
 
     private function validatePayload(Request $request): array
     {
-        return $request->validate([
+        $data = $request->validate([
             'id_kapal' => ['required', 'integer', 'exists:kapal,id_kapal'],
             'tanggal_berangkat' => ['required', 'date'],
             'tanggal_tiba' => ['required', 'date', 'after_or_equal:tanggal_berangkat'],
+            'jumlah_trip' => ['nullable', 'integer', 'min:1'],
             'keterangan' => ['nullable', 'string'],
             'perbekalan_qty' => ['nullable', 'array'],
             'perbekalan_qty.*' => ['nullable', 'numeric', 'min:0'],
         ]);
+
+        $data['jumlah_trip'] = max(1, (int) ($data['jumlah_trip'] ?? 1));
+        $data['keterangan'] = (string) ($data['keterangan'] ?? '');
+
+        return $data;
+    }
+
+    private function getSelectableKapals(?int $currentKapalId = null)
+    {
+        return Kapal::query()
+            ->where(function ($query) use ($currentKapalId) {
+                $query->whereDoesntHave('pelayaran', function ($pelayaranQuery) {
+                    $pelayaranQuery->where('status_pelayaran', 'aktif');
+                });
+
+                if ($currentKapalId !== null) {
+                    $query->orWhere('id_kapal', $currentKapalId);
+                }
+            })
+            ->orderBy('nama_kapal')
+            ->get();
+    }
+
+    private function ensureKapalIsSelectable(int $idKapal, ?int $currentKapalId = null): void
+    {
+        if ($currentKapalId !== null && $idKapal === $currentKapalId) {
+            return;
+        }
+
+        $isStillSailing = Pelayaran::query()
+            ->where('id_kapal', $idKapal)
+            ->where('status_pelayaran', 'aktif')
+            ->exists();
+
+        if ($isStillSailing) {
+            throw ValidationException::withMessages([
+                'id_kapal' => 'Kapal masih dalam pelayaran aktif dan belum bisa dipilih.',
+            ]);
+        }
     }
 
     /**
