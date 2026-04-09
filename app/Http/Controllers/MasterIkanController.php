@@ -58,6 +58,7 @@ class MasterIkanController extends Controller
             'penjualan' => 'penjualan',
             'ikan_hasil_pelayaran' => 'ikan hasil pelayaran',
             'stok_ikan' => 'stok ikan',
+            'stok_ikan_storage' => 'stok ikan per storage kapal',
         ];
 
         $usedIn = [];

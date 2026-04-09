@@ -548,7 +548,8 @@
                                         <div class="small">Item Terpakai:
                                             <strong>{{ $rekapGrandTotals['item_perbekalan_terpakai'] }} item</strong>
                                         </div>
-                                        <div class="small">Total Biaya: <strong>Rp
+                                        <div class="small">Total Biaya:
+                                            <strong>Rp
                                                 {{ number_format((float) $rekapGrandTotals['total_perbekalan_terpakai'], 2, ',', '.') }}</strong>
                                         </div>
                                     </div>
@@ -560,7 +561,8 @@
                                         <div class="small">Total Item:
                                             <strong>{{ $rekapOperasional['total_item_biaya'] }}</strong>
                                         </div>
-                                        <div class="small">Total Biaya: <strong>Rp
+                                        <div class="small">Total Biaya:
+                                            <strong>Rp
                                                 {{ number_format((float) $rekapOperasional['total_biaya'], 2, ',', '.') }}</strong>
                                         </div>
                                     </div>

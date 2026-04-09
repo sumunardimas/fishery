@@ -9,55 +9,75 @@ class StokController extends Controller
 {
     public function ikan(): View
     {
-        $latestPeriodePerIkan = DB::table('stok_ikan')
-            ->select('id_ikan', DB::raw('MAX(periode) as periode'))
-            ->groupBy('id_ikan');
-
-        $latestPeriodePerTangkapan = DB::table('stok_ikan as si')
-            ->join('master_ikan as mi', 'mi.id_ikan', '=', 'si.id_ikan')
-            ->whereNotNull('mi.id_ikan_tangkapan')
-            ->select('mi.id_ikan_tangkapan', DB::raw('MAX(si.periode) as periode'))
-            ->groupBy('mi.id_ikan_tangkapan');
-
-        $linkedItems = DB::table('master_ikan_tangkapan as mit')
-            ->leftJoinSub($latestPeriodePerTangkapan, 'sipt', function ($join) {
-                $join->on('sipt.id_ikan_tangkapan', '=', 'mit.id_ikan_tangkapan');
-            })
-            ->leftJoin('master_ikan as mi', 'mi.id_ikan_tangkapan', '=', 'mit.id_ikan_tangkapan')
-            ->leftJoin('stok_ikan as si', function ($join) {
-                $join->on('si.id_ikan', '=', 'mi.id_ikan')
-                    ->on('si.periode', '=', 'sipt.periode');
-            })
-            ->select(
-                DB::raw('mit.id_ikan_tangkapan as id_ikan'),
-                DB::raw('mit.nama_ikan_tangkapan as nama_ikan'),
-                DB::raw('COALESCE(MAX(si.stok_akhir), 0) as stok_aktual'),
-                DB::raw("COALESCE(sipt.periode, '-') as periode_terakhir")
-            )
-            ->groupBy('mit.id_ikan_tangkapan', 'mit.nama_ikan_tangkapan', 'sipt.periode');
-
-        $unmappedItems = DB::table('master_ikan as mi')
-            ->leftJoinSub($latestPeriodePerIkan, 'sip', function ($join) {
-                $join->on('sip.id_ikan', '=', 'mi.id_ikan');
-            })
-            ->leftJoin('stok_ikan as si', function ($join) {
-                $join->on('si.id_ikan', '=', 'mi.id_ikan')
-                    ->on('si.periode', '=', 'sip.periode');
-            })
-            ->whereNull('mi.id_ikan_tangkapan')
-            ->select(
-                'mi.id_ikan',
-                'mi.nama_ikan',
-                DB::raw('COALESCE(si.stok_akhir, 0) as stok_aktual'),
-                DB::raw("COALESCE(sip.periode, '-') as periode_terakhir")
-            );
-
-        $items = $linkedItems
-            ->unionAll($unmappedItems)
-            ->orderBy('nama_ikan')
+        $storages = DB::table('storage_ikan as si')
+            ->join('kapal as k', 'k.id_kapal', '=', 'si.id_kapal')
+            ->select('si.id_storage', 'si.nama_storage', 'k.nama_kapal')
+            ->orderBy('k.nama_kapal')
             ->get();
 
-        return view('stok.ikan.index', compact('items'));
+        $groupedFish = DB::table('master_ikan_tangkapan')
+            ->orderBy('nama_ikan_tangkapan')
+            ->get(['id_ikan_tangkapan', 'nama_ikan_tangkapan'])
+            ->map(function ($item) {
+                return (object) [
+                    'row_key' => 'group:' . $item->id_ikan_tangkapan,
+                    'id_ikan' => (int) $item->id_ikan_tangkapan,
+                    'nama_ikan' => $item->nama_ikan_tangkapan,
+                ];
+            });
+
+        $directFish = DB::table('master_ikan')
+            ->whereNull('id_ikan_tangkapan')
+            ->orderBy('nama_ikan')
+            ->get(['id_ikan', 'nama_ikan'])
+            ->map(function ($item) {
+                return (object) [
+                    'row_key' => 'single:' . $item->id_ikan,
+                    'id_ikan' => (int) $item->id_ikan,
+                    'nama_ikan' => $item->nama_ikan,
+                ];
+            });
+
+        $fishDefinitions = $groupedFish
+            ->concat($directFish)
+            ->sortBy('nama_ikan', SORT_NATURAL | SORT_FLAG_CASE)
+            ->values();
+
+        $stockRows = DB::table('stok_ikan_storage as sis')
+            ->join('master_ikan as mi', 'mi.id_ikan', '=', 'sis.id_ikan')
+            ->selectRaw(
+                "CASE
+                    WHEN mi.id_ikan_tangkapan IS NULL THEN CONCAT('single:', mi.id_ikan)
+                    ELSE CONCAT('group:', mi.id_ikan_tangkapan)
+                END as row_key,
+                sis.id_storage,
+                SUM(sis.stok_aktual) as stok_aktual"
+            )
+            ->groupBy('row_key', 'sis.id_storage')
+            ->get();
+
+        $stockByKey = $stockRows
+            ->groupBy('row_key')
+            ->map(function ($rows) {
+                return $rows->mapWithKeys(function ($row) {
+                    return [(int) $row->id_storage => (float) $row->stok_aktual];
+                });
+            });
+
+        $items = $fishDefinitions->map(function ($fish) use ($storages, $stockByKey) {
+            $stokPerStorage = $storages->mapWithKeys(function ($storage) use ($fish, $stockByKey) {
+                return [(int) $storage->id_storage => (float) ($stockByKey[$fish->row_key][(int) $storage->id_storage] ?? 0)];
+            })->all();
+
+            return (object) [
+                'id_ikan' => $fish->id_ikan,
+                'nama_ikan' => $fish->nama_ikan,
+                'stok_per_storage' => $stokPerStorage,
+                'stok_aktual' => array_sum($stokPerStorage),
+            ];
+        });
+
+        return view('stok.ikan.index', compact('items', 'storages'));
     }
 
     public function barang(): View

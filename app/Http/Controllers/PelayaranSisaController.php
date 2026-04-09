@@ -377,10 +377,14 @@ class PelayaranSisaController extends Controller
                 ]);
         }
 
-        $pelayaran->update([
-            'status_pelayaran' => 'selesai',
-            'tanggal_selesai' => now()->toDateString(),
-        ]);
+        DB::transaction(function () use ($pelayaran) {
+            $this->storeCatchToKapalStorage($pelayaran);
+
+            $pelayaran->update([
+                'status_pelayaran' => 'selesai',
+                'tanggal_selesai' => now()->toDateString(),
+            ]);
+        });
 
         return redirect()
             ->route('pelayaran.index')
@@ -627,6 +631,73 @@ class PelayaranSisaController extends Controller
         return $pelayaran;
     }
 
+    private function storeCatchToKapalStorage(Pelayaran $pelayaran): void
+    {
+        $pelayaran->loadMissing('kapal');
+
+        $idStorage = $this->getOrCreateStorageIdForKapal(
+            (int) $pelayaran->id_kapal,
+            (string) ($pelayaran->kapal->nama_kapal ?? ('Kapal #' . $pelayaran->id_kapal))
+        );
+
+        $catchRows = DB::table('ikan_hasil_pelayaran')
+            ->where('id_pelayaran', (int) $pelayaran->id_pelayaran)
+            ->selectRaw('id_ikan, SUM(berat_hasil) as total_berat')
+            ->groupBy('id_ikan')
+            ->get();
+
+        if ($catchRows->isEmpty()) {
+            return;
+        }
+
+        $existingStocks = DB::table('stok_ikan_storage')
+            ->where('id_storage', $idStorage)
+            ->whereIn('id_ikan', $catchRows->pluck('id_ikan')->all())
+            ->lockForUpdate()
+            ->get()
+            ->keyBy(fn ($row) => (int) $row->id_ikan);
+
+        $now = now();
+        $rows = $catchRows->map(function ($row) use ($idStorage, $existingStocks, $now) {
+            $existingStock = $existingStocks->get((int) $row->id_ikan);
+            $stokSaatIni = (float) ($existingStock->stok_aktual ?? 0);
+
+            return [
+                'id_storage' => $idStorage,
+                'id_ikan' => (int) $row->id_ikan,
+                'stok_aktual' => $stokSaatIni + (float) $row->total_berat,
+                'created_at' => $existingStock->created_at ?? $now,
+                'updated_at' => $now,
+            ];
+        })->values()->all();
+
+        DB::table('stok_ikan_storage')->upsert(
+            $rows,
+            ['id_storage', 'id_ikan'],
+            ['stok_aktual', 'updated_at']
+        );
+
+        $this->recalculateStokIkan(now()->format('Y-m'), $catchRows->pluck('id_ikan')->map(fn ($id) => (int) $id)->all());
+    }
+
+    private function getOrCreateStorageIdForKapal(int $idKapal, string $namaKapal): int
+    {
+        $existingId = DB::table('storage_ikan')
+            ->where('id_kapal', $idKapal)
+            ->value('id_storage');
+
+        if ($existingId !== null) {
+            return (int) $existingId;
+        }
+
+        return (int) DB::table('storage_ikan')->insertGetId([
+            'id_kapal' => $idKapal,
+            'nama_storage' => 'Storage ' . $namaKapal,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+    }
+
     private function extractNumericMap(array $input, bool $allowZero): Collection
     {
         return collect($input)
@@ -656,6 +727,9 @@ class PelayaranSisaController extends Controller
         if ($affectedIkanIds->isEmpty()) {
             return;
         }
+
+        $periodeStart = now()->createFromFormat('Y-m', $periode)->startOfMonth()->toDateString();
+        $periodeEnd = now()->createFromFormat('Y-m', $periode)->endOfMonth()->toDateString();
 
         $seedIkan = DB::table('master_ikan')
             ->whereIn('id_ikan', $affectedIkanIds->all())
@@ -688,7 +762,7 @@ class PelayaranSisaController extends Controller
                 ->join('penjualan as p', 'p.id_penjualan', '=', 'pi.id_penjualan')
                 ->join('master_ikan as mi', 'mi.id_ikan', '=', 'pi.id_ikan')
                 ->whereIn('mi.id_ikan_tangkapan', $relationIds->all())
-                ->whereRaw("DATE_FORMAT(p.tanggal_penjualan, '%Y-%m') = ?", [$periode])
+                ->whereBetween('p.tanggal_penjualan', [$periodeStart, $periodeEnd])
                 ->groupBy('mi.id_ikan_tangkapan')
                 ->selectRaw('mi.id_ikan_tangkapan as group_key, SUM(pi.berat) as total_penjualan')
                 ->pluck('total_penjualan', 'group_key');
@@ -699,7 +773,7 @@ class PelayaranSisaController extends Controller
                 ->join('pelayaran as p', 'p.id_pelayaran', '=', 'ihp.id_pelayaran')
                 ->join('master_ikan as mi', 'mi.id_ikan', '=', 'ihp.id_ikan')
                 ->whereIn('mi.id_ikan_tangkapan', $relationIds->all())
-                ->whereRaw("DATE_FORMAT(COALESCE(p.tanggal_selesai, p.tanggal_tiba), '%Y-%m') = ?", [$periode])
+                ->whereRaw('DATE(COALESCE(p.tanggal_selesai, p.tanggal_tiba)) BETWEEN ? AND ?', [$periodeStart, $periodeEnd])
                 ->groupBy('mi.id_ikan_tangkapan')
                 ->selectRaw('mi.id_ikan_tangkapan as group_key, SUM(ihp.berat_hasil) as total_tangkapan')
                 ->pluck('total_tangkapan', 'group_key');
@@ -709,7 +783,7 @@ class PelayaranSisaController extends Controller
             : DB::table('penjualan_items as pi')
                 ->join('penjualan as p', 'p.id_penjualan', '=', 'pi.id_penjualan')
                 ->whereIn('pi.id_ikan', $directIkanIds)
-                ->whereRaw("DATE_FORMAT(p.tanggal_penjualan, '%Y-%m') = ?", [$periode])
+                ->whereBetween('p.tanggal_penjualan', [$periodeStart, $periodeEnd])
                 ->groupBy('pi.id_ikan')
                 ->selectRaw('pi.id_ikan as ikan_key, SUM(pi.berat) as total_penjualan')
                 ->pluck('total_penjualan', 'ikan_key');
@@ -719,7 +793,7 @@ class PelayaranSisaController extends Controller
             : DB::table('ikan_hasil_pelayaran as ihp')
                 ->join('pelayaran as p', 'p.id_pelayaran', '=', 'ihp.id_pelayaran')
                 ->whereIn('ihp.id_ikan', $directIkanIds)
-                ->whereRaw("DATE_FORMAT(COALESCE(p.tanggal_selesai, p.tanggal_tiba), '%Y-%m') = ?", [$periode])
+                ->whereRaw('DATE(COALESCE(p.tanggal_selesai, p.tanggal_tiba)) BETWEEN ? AND ?', [$periodeStart, $periodeEnd])
                 ->groupBy('ihp.id_ikan')
                 ->selectRaw('ihp.id_ikan as ikan_key, SUM(ihp.berat_hasil) as total_tangkapan')
                 ->pluck('total_tangkapan', 'ikan_key');
