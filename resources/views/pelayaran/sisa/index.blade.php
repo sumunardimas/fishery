@@ -530,7 +530,7 @@
                                         $totalBeratKategori = (float) ($rekapRow->total_berat ?? 0);
                                         $totalNilaiKategori = (float) ($rekapRow->total_nilai ?? 0);
                                     @endphp
-                                    <div class="col-md-4 mb-3">
+                                    <div class="col-lg-4 col-md-6 mb-3">
                                         <div class="border rounded p-3 h-100">
                                             <div class="text-muted mb-1">{{ $kategoriLabel }}</div>
                                             <div class="small">Total Berat:
@@ -541,25 +541,145 @@
                                         </div>
                                     </div>
                                 @endforeach
-                            </div>
 
-                            <div class="row mb-3">
-                                <div class="col-md-6">
-                                    <div class="border rounded p-3">
-                                        <div class="text-muted">Total Item Biaya</div>
-                                        <div class="h4 mb-0">{{ $rekapOperasional['total_item_biaya'] }}</div>
+                                <div class="col-lg-4 col-md-6 mb-3">
+                                    <div class="border rounded p-3 h-100 bg-light">
+                                        <div class="text-muted mb-1">Perbekalan Terpakai</div>
+                                        <div class="small">Item Terpakai:
+                                            <strong>{{ $rekapGrandTotals['item_perbekalan_terpakai'] }} item</strong>
+                                        </div>
+                                        <div class="small">Total Biaya: <strong>Rp
+                                                {{ number_format((float) $rekapGrandTotals['total_perbekalan_terpakai'], 2, ',', '.') }}</strong>
+                                        </div>
                                     </div>
                                 </div>
-                                <div class="col-md-6">
-                                    <div class="border rounded p-3">
-                                        <div class="text-muted">Total Biaya Operasional</div>
-                                        <div class="h4 mb-0">Rp
-                                            {{ number_format((float) $rekapOperasional['total_biaya'], 2, ',', '.') }}
+
+                                <div class="col-lg-4 col-md-6 mb-3">
+                                    <div class="border rounded p-3 h-100 bg-light">
+                                        <div class="text-muted mb-1">Operasional Trip</div>
+                                        <div class="small">Total Item:
+                                            <strong>{{ $rekapOperasional['total_item_biaya'] }}</strong>
+                                        </div>
+                                        <div class="small">Total Biaya: <strong>Rp
+                                                {{ number_format((float) $rekapOperasional['total_biaya'], 2, ',', '.') }}</strong>
                                         </div>
                                     </div>
                                 </div>
                             </div>
 
+                            <div class="row mb-4">
+                                <div class="col-lg-6 mb-3">
+                                    <div class="border rounded p-3 h-100 border-warning">
+                                        <div class="text-muted">Grand Total Semua Komponen</div>
+                                        <div class="h4 mb-1">Rp
+                                            {{ number_format((float) $rekapGrandTotals['grand_total_semua_komponen'], 2, ',', '.') }}
+                                        </div>
+                                        <small class="text-muted">Perbekalan terpakai + semua kategori tangkapan +
+                                            operasional trip.</small>
+                                    </div>
+                                </div>
+                                <div class="col-lg-6 mb-3">
+                                    <div
+                                        class="border rounded p-3 h-100 {{ (float) $rekapGrandTotals['estimasi_selisih_bersih'] >= 0 ? 'border-success' : 'border-danger' }}">
+                                        <div class="text-muted">Estimasi Selisih Bersih</div>
+                                        <div
+                                            class="h4 mb-1 {{ (float) $rekapGrandTotals['estimasi_selisih_bersih'] >= 0 ? 'text-success' : 'text-danger' }}">
+                                            Rp
+                                            {{ number_format((float) $rekapGrandTotals['estimasi_selisih_bersih'], 2, ',', '.') }}
+                                        </div>
+                                        <small class="text-muted">Total nilai tangkapan dikurangi biaya perbekalan dan
+                                            operasional.</small>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="table-responsive mb-4">
+                                <table class="table table-bordered table-sm trip-table-dynamic">
+                                    <thead>
+                                        <tr>
+                                            <th>Komponen Rekap</th>
+                                            <th class="text-right">Nominal</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach ($kategoriTangkapanMap as $kategoriKey => $kategoriLabel)
+                                            @php
+                                                $rekapRow = $rekapTangkapan[$kategoriKey] ?? null;
+                                            @endphp
+                                            <tr>
+                                                <td>Total Nilai {{ $kategoriLabel }}</td>
+                                                <td class="text-right">Rp
+                                                    {{ number_format((float) ($rekapRow->total_nilai ?? 0), 2, ',', '.') }}
+                                                </td>
+                                            </tr>
+                                        @endforeach
+                                        <tr>
+                                            <td>Total Biaya Perbekalan Terpakai</td>
+                                            <td class="text-right">Rp
+                                                {{ number_format((float) $rekapGrandTotals['total_perbekalan_terpakai'], 2, ',', '.') }}
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td>Total Biaya Operasional Trip</td>
+                                            <td class="text-right">Rp
+                                                {{ number_format((float) $rekapGrandTotals['total_operasional'], 2, ',', '.') }}
+                                            </td>
+                                        </tr>
+                                        <tr class="table-warning font-weight-bold">
+                                            <td>Grand Total Semua Komponen</td>
+                                            <td class="text-right">Rp
+                                                {{ number_format((float) $rekapGrandTotals['grand_total_semua_komponen'], 2, ',', '.') }}
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <h6 class="mb-2">Rekap Pemakaian Perbekalan</h6>
+                            <p class="text-muted mb-3">Biaya dihitung dari jumlah terpakai = jumlah awal - jumlah sisa,
+                                lalu dikalikan harga beli terakhir.</p>
+
+                            <div class="table-responsive mb-4">
+                                <table class="table table-bordered table-sm trip-table-dynamic">
+                                    <thead>
+                                        <tr>
+                                            <th>Nama Barang</th>
+                                            <th>Satuan</th>
+                                            <th>Jumlah Awal</th>
+                                            <th>Jumlah Sisa</th>
+                                            <th>Jumlah Terpakai</th>
+                                            <th>Harga Beli</th>
+                                            <th>Total Biaya</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @forelse ($rekapPerbekalan as $row)
+                                            <tr>
+                                                <td>{{ $row->nama_barang }}</td>
+                                                <td>{{ $row->satuan }}</td>
+                                                <td>{{ number_format((float) $row->jumlah_awal, 2, ',', '.') }}</td>
+                                                <td>
+                                                    @if ($row->has_sisa)
+                                                        {{ number_format((float) $row->jumlah_sisa, 2, ',', '.') }}
+                                                    @else
+                                                        <span class="text-muted">Belum diisi</span>
+                                                    @endif
+                                                </td>
+                                                <td>{{ number_format((float) $row->jumlah_terpakai, 2, ',', '.') }}</td>
+                                                <td>Rp {{ number_format((float) $row->harga_beli, 2, ',', '.') }}</td>
+                                                <td>Rp {{ number_format((float) $row->total_biaya, 2, ',', '.') }}</td>
+                                            </tr>
+                                        @empty
+                                            <tr>
+                                                <td colspan="7" class="text-center text-muted">Belum ada data
+                                                    perbekalan untuk trip ini.</td>
+                                            </tr>
+                                        @endforelse
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <h6 class="mb-2">Detail Operasional Trip</h6>
                             <div class="table-responsive">
                                 <table class="table table-bordered table-sm trip-table-dynamic">
                                     <thead>

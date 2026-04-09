@@ -435,6 +435,15 @@ class PelayaranSisaController extends Controller
             'operasional' => false,
         ];
         $rekapTangkapan = collect();
+        $rekapPerbekalan = collect();
+        $rekapGrandTotals = [
+            'item_perbekalan_terpakai' => 0,
+            'total_perbekalan_terpakai' => 0,
+            'total_tangkapan' => 0,
+            'total_operasional' => 0,
+            'grand_total_semua_komponen' => 0,
+            'estimasi_selisih_bersih' => 0,
+        ];
 
         if ($selectedPelayaran) {
             $perbekalanRows = DB::table('perbekalan_pelayaran as pp')
@@ -449,6 +458,45 @@ class PelayaranSisaController extends Controller
                 ->pluck('jumlah_sisa', 'id_barang')
                 ->map(fn ($value) => (float) $value)
                 ->toArray();
+
+            $cutoffDate = $selectedPelayaran->tanggal_selesai?->toDateString()
+                ?: $selectedPelayaran->tanggal_tiba?->toDateString()
+                ?: now()->toDateString();
+
+            $hargaPerbekalanMap = $perbekalanRows->isEmpty()
+                ? collect()
+                : DB::table('perbekalan_transaction as pt')
+                    ->where('pt.jenis_transaksi', 'in')
+                    ->whereIn('pt.id_barang', $perbekalanRows->pluck('id_barang')->all())
+                    ->whereNotNull('pt.harga_satuan')
+                    ->where('pt.harga_satuan', '>', 0)
+                    ->whereDate('pt.tanggal_transaksi', '<=', $cutoffDate)
+                    ->orderByDesc('pt.tanggal_transaksi')
+                    ->orderByDesc('pt.id_transaction')
+                    ->get(['pt.id_barang', 'pt.harga_satuan'])
+                    ->groupBy('id_barang')
+                    ->map(fn ($rows) => (float) ($rows->first()->harga_satuan ?? 0));
+
+            $rekapPerbekalan = $perbekalanRows->map(function ($row) use ($existingSisa, $hargaPerbekalanMap) {
+                $idBarang = (int) $row->id_barang;
+                $jumlahAwal = (float) $row->jumlah_awal;
+                $hasSisa = array_key_exists($idBarang, $existingSisa);
+                $jumlahSisa = $hasSisa ? min((float) $existingSisa[$idBarang], $jumlahAwal) : null;
+                $jumlahTerpakai = $hasSisa ? max(0, $jumlahAwal - (float) $jumlahSisa) : 0;
+                $hargaBeli = (float) ($hargaPerbekalanMap[$idBarang] ?? 0);
+
+                return (object) [
+                    'id_barang' => $idBarang,
+                    'nama_barang' => $row->nama_barang,
+                    'satuan' => $row->satuan,
+                    'jumlah_awal' => $jumlahAwal,
+                    'jumlah_sisa' => $jumlahSisa,
+                    'jumlah_terpakai' => $jumlahTerpakai,
+                    'harga_beli' => $hargaBeli,
+                    'total_biaya' => $jumlahTerpakai * $hargaBeli,
+                    'has_sisa' => $hasSisa,
+                ];
+            });
 
             $existingHasilIkanByKategori = DB::table('ikan_hasil_pelayaran as ihp')
                 ->leftJoin('master_ikan as mi', 'mi.id_ikan', '=', 'ihp.id_ikan')
@@ -509,6 +557,19 @@ class PelayaranSisaController extends Controller
                 'detail' => $rekapDetail,
             ];
 
+            $totalNilaiTangkapan = (float) $rekapTangkapan->sum(fn ($row) => (float) ($row->total_nilai ?? 0));
+            $totalPerbekalanTerpakai = (float) $rekapPerbekalan->sum('total_biaya');
+            $totalOperasional = (float) $rekapOperasional['total_biaya'];
+
+            $rekapGrandTotals = [
+                'item_perbekalan_terpakai' => $rekapPerbekalan->filter(fn ($row) => (float) $row->jumlah_terpakai > 0)->count(),
+                'total_perbekalan_terpakai' => $totalPerbekalanTerpakai,
+                'total_tangkapan' => $totalNilaiTangkapan,
+                'total_operasional' => $totalOperasional,
+                'grand_total_semua_komponen' => $totalPerbekalanTerpakai + $totalNilaiTangkapan + $totalOperasional,
+                'estimasi_selisih_bersih' => $totalNilaiTangkapan - $totalPerbekalanTerpakai - $totalOperasional,
+            ];
+
             $plannedCount = $perbekalanRows->count();
             $filledSisaCount = DB::table('sisa_trip')
                 ->where('id_pelayaran', $selectedPelayaran->id_pelayaran)
@@ -542,6 +603,8 @@ class PelayaranSisaController extends Controller
             'existingOperasional' => $existingOperasional,
             'rekapOperasional' => $rekapOperasional,
             'rekapTangkapan' => $rekapTangkapan,
+            'rekapPerbekalan' => $rekapPerbekalan,
+            'rekapGrandTotals' => $rekapGrandTotals,
             'completionStatus' => $completionStatus,
             'canClose' => $canClose,
             'kategoriTangkapanMap' => $kategoriTangkapanMap,
