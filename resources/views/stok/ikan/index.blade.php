@@ -14,10 +14,9 @@
                             <thead>
                                 <tr>
                                     <th>ID</th>
-                                    <th>Nama Ikan</th>
-
+                                    <th>Nama Ikan Tangkapan</th>
                                     <th>Stok Aktual (Kg)</th>
-                                    <th>Periode Terakhir</th>
+                                    {{-- <th>Periode Terakhir</th> --}}
                                 </tr>
                             </thead>
                             <tbody>
@@ -26,7 +25,7 @@
                                         <td>{{ $item->id_ikan }}</td>
                                         <td>{{ $item->nama_ikan }}</td>
                                         <td>{{ number_format((float) $item->stok_aktual, 2, ',', '.') }}</td>
-                                        <td>{{ $item->periode_terakhir }}</td>
+                                        {{-- <td>{{ $item->periode_terakhir }}</td> --}}
                                     </tr>
                                 @endforeach
                             </tbody>
@@ -45,6 +44,7 @@
                 ...window.dataTableGeneralConfig,
                 processing: false,
                 serverSide: false,
+                pageLength: 50,
             });
         });
     </script>
