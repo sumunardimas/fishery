@@ -82,6 +82,12 @@
             $tabTangkapanBersama => ['key' => 'pancingan_bersama', 'label' => 'Pancingan Bersama'],
             $tabTangkapanJaringan => ['key' => 'jaringan', 'label' => 'Jaringan'],
         ];
+
+        $isReadOnly = $isReadOnly ?? false;
+        $pageHeading = $isReadOnly ? 'Detail Riwayat Pelayaran' : 'Pelayaran Selesai';
+        $pageDescription = $isReadOnly
+            ? 'Lihat detail card penutupan trip dalam mode baca saja.'
+            : 'Lengkapi Perbekalan, Tangkapan, dan Operasional Trip sebelum menutup pelayaran.';
     @endphp
 
     <div class="row">
@@ -98,34 +104,44 @@
 
             <div class="card mb-4">
                 <div class="card-body">
-                    <h4 class="card-title mb-1">Pelayaran Selesai</h4>
-                    <p class="card-description mb-0">Lengkapi Perbekalan, Tangkapan, dan Operasional Trip sebelum menutup
-                        pelayaran.
-                    </p>
+                    <h4 class="card-title mb-1">{{ $pageHeading }}</h4>
+                    <p class="card-description mb-0">{{ $pageDescription }}</p>
                 </div>
             </div>
 
             <div class="card mb-4">
                 <div class="card-body">
-                    <form method="GET" action="{{ route('pelayaran.sisa.index') }}" class="row g-2 align-items-end">
-                        <div class="col-md-8">
-                            <label for="pelayaran_id" class="form-label required-asterisk">Pilih Pelayaran Aktif</label>
-                            <select name="pelayaran_id" id="pelayaran_id" class="form-control" required>
-                                @forelse ($activePelayaran as $trip)
-                                    <option value="{{ $trip->id_pelayaran }}"
-                                        {{ (string) ($selectedPelayaran->id_pelayaran ?? '') === (string) $trip->id_pelayaran ? 'selected' : '' }}>
-                                        #{{ $trip->id_pelayaran }} - {{ $trip->kapal->nama_kapal ?? '-' }}
-                                    </option>
-                                @empty
-                                    <option value="">Tidak ada pelayaran aktif</option>
-                                @endforelse
-                            </select>
-                            <input type="hidden" name="tab" id="active_tab_selector" value="{{ $activeTab }}">
+                    @if (!$isReadOnly)
+                        <form method="GET" action="{{ route('pelayaran.sisa.index') }}" class="row g-2 align-items-end">
+                            <div class="col-md-8">
+                                <label for="pelayaran_id" class="form-label required-asterisk">Pilih Pelayaran Aktif</label>
+                                <select name="pelayaran_id" id="pelayaran_id" class="form-control" required>
+                                    @forelse ($activePelayaran as $trip)
+                                        <option value="{{ $trip->id_pelayaran }}"
+                                            {{ (string) ($selectedPelayaran->id_pelayaran ?? '') === (string) $trip->id_pelayaran ? 'selected' : '' }}>
+                                            #{{ $trip->id_pelayaran }} - {{ $trip->kapal->nama_kapal ?? '-' }}
+                                        </option>
+                                    @empty
+                                        <option value="">Tidak ada pelayaran aktif</option>
+                                    @endforelse
+                                </select>
+                                <input type="hidden" name="tab" id="active_tab_selector" value="{{ $activeTab }}">
+                            </div>
+                            <div class="col-md-4">
+                                <button type="submit" class="btn btn-primary w-100">Muat Form</button>
+                            </div>
+                        </form>
+                    @else
+                        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
+                            <div>
+                                <h5 class="mb-1">Mode Lihat Detail</h5>
+                                <p class="text-muted mb-0">Trip ini sudah ditutup dan hanya ditampilkan dalam mode baca
+                                    saja.</p>
+                            </div>
+                            <a href="{{ route('pelayaran.sisa.history') }}" class="btn btn-outline-primary">Kembali ke
+                                Riwayat</a>
                         </div>
-                        <div class="col-md-4">
-                            <button type="submit" class="btn btn-primary w-100">Muat Form</button>
-                        </div>
-                    </form>
+                    @endif
                 </div>
             </div>
 
@@ -144,7 +160,10 @@
                 <div class="card mb-4">
                     <div class="card-body pb-0">
                         <div class="d-flex flex-wrap justify-content-between align-items-center mb-3">
-                            <h5 class="mb-2">Trip #{{ $selectedPelayaran->id_pelayaran }}</h5>
+                            <div class="mb-2">
+                                <h5 class="mb-1">Trip #{{ $selectedPelayaran->id_pelayaran }}</h5>
+                                <small class="text-muted">Kapal: {{ $selectedPelayaran->kapal->nama_kapal ?? '-' }}</small>
+                            </div>
                             <div class="d-flex flex-wrap gap-2 mb-2">
                                 <span
                                     class="badge {{ $completionStatus['perbekalan'] ? 'badge-success' : 'badge-secondary' }}">
@@ -158,6 +177,9 @@
                                     class="badge {{ $completionStatus['operasional'] ? 'badge-success' : 'badge-secondary' }}">
                                     Operasional {{ $completionStatus['operasional'] ? 'Terisi' : 'Belum' }}
                                 </span>
+                                @if ($isReadOnly)
+                                    <span class="badge badge-warning">Mode Lihat Detail</span>
+                                @endif
                             </div>
                         </div>
 
@@ -240,51 +262,60 @@
                                 <input type="hidden" name="tab" class="js-active-tab-input"
                                     value="{{ $activeTab }}">
 
-                                <div class="table-responsive">
-                                    <table class="table table-bordered trip-table-dynamic">
-                                        <thead>
-                                            <tr>
-                                                <th>Nama Barang</th>
-                                                <th>Satuan</th>
-                                                <th>Jumlah Awal</th>
-                                                <th>Jumlah Sisa</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            @forelse ($perbekalanRows as $row)
-                                                @php
-                                                    $defaultSisa = $existingSisa[$row->id_barang] ?? null;
-                                                @endphp
+                                <fieldset {{ $isReadOnly ? 'disabled' : '' }}>
+                                    <div class="table-responsive">
+                                        <table class="table table-bordered trip-table-dynamic">
+                                            <thead>
                                                 <tr>
-                                                    <td>{{ $row->nama_barang }}</td>
-                                                    <td>{{ $row->satuan }}</td>
-                                                    <td>{{ number_format($row->jumlah_awal, 2) }}</td>
-                                                    <td>
-                                                        <input type="number" class="form-control"
-                                                            name="sisa_qty[{{ $row->id_barang }}]" min="0"
-                                                            max="{{ $row->jumlah_awal }}" step="0.01" placeholder="0"
-                                                            value="{{ old('sisa_qty.' . $row->id_barang, $defaultSisa) }}">
-                                                    </td>
+                                                    <th>Nama Barang</th>
+                                                    <th>Satuan</th>
+                                                    <th>Jumlah Awal</th>
+                                                    <th>Jumlah Sisa</th>
                                                 </tr>
-                                            @empty
-                                                <tr>
-                                                    <td colspan="4" class="text-center text-muted">Belum ada perbekalan
-                                                        terencana untuk pelayaran ini.</td>
-                                                </tr>
-                                            @endforelse
-                                        </tbody>
-                                    </table>
-                                </div>
+                                            </thead>
+                                            <tbody>
+                                                @forelse ($perbekalanRows as $row)
+                                                    @php
+                                                        $defaultSisa = $existingSisa[$row->id_barang] ?? null;
+                                                    @endphp
+                                                    <tr>
+                                                        <td>{{ $row->nama_barang }}</td>
+                                                        <td>{{ $row->satuan }}</td>
+                                                        <td>{{ number_format($row->jumlah_awal, 2) }}</td>
+                                                        <td>
+                                                            <input type="number" class="form-control"
+                                                                name="sisa_qty[{{ $row->id_barang }}]" min="0"
+                                                                max="{{ $row->jumlah_awal }}" step="0.01"
+                                                                placeholder="0"
+                                                                value="{{ old('sisa_qty.' . $row->id_barang, $defaultSisa) }}">
+                                                        </td>
+                                                    </tr>
+                                                @empty
+                                                    <tr>
+                                                        <td colspan="4" class="text-center text-muted">Belum ada
+                                                            perbekalan
+                                                            terencana untuk pelayaran ini.</td>
+                                                    </tr>
+                                                @endforelse
+                                            </tbody>
+                                        </table>
+                                    </div>
 
-                                <div class="form-group mt-3">
-                                    <label for="catatan_sisa">Catatan Sisa Trip</label>
-                                    <textarea name="catatan_sisa" id="catatan_sisa" rows="3" class="form-control"
-                                        placeholder="Opsional: catatan kondisi sisa perbekalan.">{{ old('catatan_sisa') }}</textarea>
-                                </div>
+                                    <div class="form-group mt-3">
+                                        <label for="catatan_sisa">Catatan Sisa Trip</label>
+                                        <textarea name="catatan_sisa" id="catatan_sisa" rows="3" class="form-control"
+                                            placeholder="Opsional: catatan kondisi sisa perbekalan.">{{ old('catatan_sisa') }}</textarea>
+                                    </div>
 
-                                <div class="mt-2">
-                                    <button type="submit" class="btn btn-primary">Simpan Card Sisa Perbekalan</button>
-                                </div>
+                                    <div class="mt-2">
+                                        @if (!$isReadOnly)
+                                            <button type="submit" class="btn btn-primary">Simpan Card Sisa
+                                                Perbekalan</button>
+                                        @else
+                                            <span class="badge badge-light border">Card ini hanya untuk dilihat.</span>
+                                        @endif
+                                    </div>
+                                </fieldset>
                             </form>
                         </div>
                     </div>
@@ -322,81 +353,87 @@
                                     <input type="hidden" name="tab" class="js-active-tab-input"
                                         value="{{ $activeTab }}">
 
-                                    <div class="table-responsive">
-                                        <table class="table table-bordered trip-table-dynamic">
-                                            <thead>
-                                                <tr>
-                                                    <th>Nama Ikan Tangkapan</th>
-                                                    <th>Berat Tangkapan (kg)</th>
-                                                    <th>Harga per Kg (Rp)</th>
-                                                    <th>Estimasi Nilai (Rp)</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                @forelse ($masterIkanTangkapan as $ikanTangkapan)
-                                                    @php
-                                                        $existingByCategory =
-                                                            $existingHasilIkanByKategori[$meta['key']][
-                                                                $ikanTangkapan->id_ikan_tangkapan
-                                                            ] ?? null;
-                                                        $defaultHasil = $existingByCategory['berat_hasil'] ?? null;
-                                                        $defaultHarga = $existingByCategory['harga_per_kg'] ?? null;
-                                                        $relasiPenjualan = $ikanTangkapan->masterIkan
-                                                            ->pluck('nama_ikan')
-                                                            ->filter()
-                                                            ->values();
-                                                    @endphp
+                                    <fieldset {{ $isReadOnly ? 'disabled' : '' }}>
+                                        <div class="table-responsive">
+                                            <table class="table table-bordered trip-table-dynamic">
+                                                <thead>
                                                     <tr>
-                                                        <td class="trip-table-cell-wrap">
-                                                            <div class="font-weight-bold">
-                                                                {{ $ikanTangkapan->nama_ikan_tangkapan }}</div>
-                                                            @if ($relasiPenjualan->isNotEmpty())
-                                                                <small class="text-muted d-block mt-1">Grade
-                                                                    penjualan:</small>
-                                                                @foreach ($relasiPenjualan as $gradePenjualan)
-                                                                    <small class="text-muted d-block">-
-                                                                        {{ $gradePenjualan }}</small>
-                                                                @endforeach
-                                                            @endif
-                                                        </td>
-                                                        <td>
-                                                            <input type="number" class="form-control js-berat-input"
-                                                                name="hasil_ikan[{{ $ikanTangkapan->id_ikan_tangkapan }}]"
-                                                                min="0" step="0.01" placeholder="0"
-                                                                value="{{ old('hasil_ikan.' . $ikanTangkapan->id_ikan_tangkapan, $defaultHasil) }}"
-                                                                data-target="#nilai_{{ $meta['key'] }}_{{ $ikanTangkapan->id_ikan_tangkapan }}"
-                                                                data-role="berat">
-                                                        </td>
-                                                        <td>
-                                                            <input type="number" class="form-control js-harga-input"
-                                                                name="harga_ikan[{{ $ikanTangkapan->id_ikan_tangkapan }}]"
-                                                                min="0" step="0.01" placeholder="0"
-                                                                value="{{ old('harga_ikan.' . $ikanTangkapan->id_ikan_tangkapan, $defaultHarga) }}"
-                                                                data-target="#nilai_{{ $meta['key'] }}_{{ $ikanTangkapan->id_ikan_tangkapan }}"
-                                                                data-role="harga">
-                                                        </td>
-                                                        <td>
-                                                            <div class="font-weight-bold text-muted js-nilai-output"
-                                                                id="nilai_{{ $meta['key'] }}_{{ $ikanTangkapan->id_ikan_tangkapan }}">
-                                                                Rp 0
-                                                            </div>
-                                                        </td>
+                                                        <th>Nama Ikan Tangkapan</th>
+                                                        <th>Berat Tangkapan (kg)</th>
+                                                        <th>Harga per Kg (Rp)</th>
+                                                        <th>Estimasi Nilai (Rp)</th>
                                                     </tr>
-                                                @empty
-                                                    <tr>
-                                                        <td colspan="4" class="text-center text-muted">Master ikan
-                                                            tangkapan
-                                                            belum tersedia.</td>
-                                                    </tr>
-                                                @endforelse
-                                            </tbody>
-                                        </table>
-                                    </div>
+                                                </thead>
+                                                <tbody>
+                                                    @forelse ($masterIkanTangkapan as $ikanTangkapan)
+                                                        @php
+                                                            $existingByCategory =
+                                                                $existingHasilIkanByKategori[$meta['key']][
+                                                                    $ikanTangkapan->id_ikan_tangkapan
+                                                                ] ?? null;
+                                                            $defaultHasil = $existingByCategory['berat_hasil'] ?? null;
+                                                            $defaultHarga = $existingByCategory['harga_per_kg'] ?? null;
+                                                            $relasiPenjualan = $ikanTangkapan->masterIkan
+                                                                ->pluck('nama_ikan')
+                                                                ->filter()
+                                                                ->values();
+                                                        @endphp
+                                                        <tr>
+                                                            <td class="trip-table-cell-wrap">
+                                                                <div class="font-weight-bold">
+                                                                    {{ $ikanTangkapan->nama_ikan_tangkapan }}</div>
+                                                                @if ($relasiPenjualan->isNotEmpty())
+                                                                    <small class="text-muted d-block mt-1">Grade
+                                                                        penjualan:</small>
+                                                                    @foreach ($relasiPenjualan as $gradePenjualan)
+                                                                        <small class="text-muted d-block">-
+                                                                            {{ $gradePenjualan }}</small>
+                                                                    @endforeach
+                                                                @endif
+                                                            </td>
+                                                            <td>
+                                                                <input type="number" class="form-control js-berat-input"
+                                                                    name="hasil_ikan[{{ $ikanTangkapan->id_ikan_tangkapan }}]"
+                                                                    min="0" step="0.01" placeholder="0"
+                                                                    value="{{ old('hasil_ikan.' . $ikanTangkapan->id_ikan_tangkapan, $defaultHasil) }}"
+                                                                    data-target="#nilai_{{ $meta['key'] }}_{{ $ikanTangkapan->id_ikan_tangkapan }}"
+                                                                    data-role="berat">
+                                                            </td>
+                                                            <td>
+                                                                <input type="number" class="form-control js-harga-input"
+                                                                    name="harga_ikan[{{ $ikanTangkapan->id_ikan_tangkapan }}]"
+                                                                    min="0" step="0.01" placeholder="0"
+                                                                    value="{{ old('harga_ikan.' . $ikanTangkapan->id_ikan_tangkapan, $defaultHarga) }}"
+                                                                    data-target="#nilai_{{ $meta['key'] }}_{{ $ikanTangkapan->id_ikan_tangkapan }}"
+                                                                    data-role="harga">
+                                                            </td>
+                                                            <td>
+                                                                <div class="font-weight-bold text-muted js-nilai-output"
+                                                                    id="nilai_{{ $meta['key'] }}_{{ $ikanTangkapan->id_ikan_tangkapan }}">
+                                                                    Rp 0
+                                                                </div>
+                                                            </td>
+                                                        </tr>
+                                                    @empty
+                                                        <tr>
+                                                            <td colspan="4" class="text-center text-muted">Master ikan
+                                                                tangkapan
+                                                                belum tersedia.</td>
+                                                        </tr>
+                                                    @endforelse
+                                                </tbody>
+                                            </table>
+                                        </div>
 
-                                    <div class="mt-2">
-                                        <button type="submit" class="btn btn-primary">Simpan
-                                            {{ $meta['label'] }}</button>
-                                    </div>
+                                        <div class="mt-2">
+                                            @if (!$isReadOnly)
+                                                <button type="submit" class="btn btn-primary">Simpan
+                                                    {{ $meta['label'] }}</button>
+                                            @else
+                                                <span class="badge badge-light border">Card ini hanya untuk dilihat.</span>
+                                            @endif
+                                        </div>
+                                    </fieldset>
                                 </form>
                             </div>
                         </div>
@@ -418,56 +455,64 @@
                                 <input type="hidden" name="tab" class="js-active-tab-input"
                                     value="{{ $activeTab }}">
 
-                                <div class="table-responsive">
-                                    <table class="table table-bordered trip-table-dynamic">
-                                        <thead>
-                                            <tr>
-                                                <th>Jenis Operasional</th>
-                                                <th>Deskripsi Master</th>
-                                                <th>Tanggal Biaya</th>
-                                                <th>Jumlah</th>
-                                                <th>Catatan</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            @forelse ($masterOperasional as $master)
+                                <fieldset {{ $isReadOnly ? 'disabled' : '' }}>
+                                    <div class="table-responsive">
+                                        <table class="table table-bordered trip-table-dynamic">
+                                            <thead>
                                                 <tr>
-                                                    <td>{{ $master->nama_operasional }}</td>
-                                                    <td>{{ $master->deskripsi ?: '-' }}</td>
-                                                    <td style="min-width: 170px;">
-                                                        <input type="date"
-                                                            name="tanggal[{{ $master->id_master_operasional }}]"
-                                                            class="form-control"
-                                                            value="{{ old('tanggal.' . $master->id_master_operasional, now()->toDateString()) }}">
-                                                    </td>
-                                                    <td style="min-width: 170px;">
-                                                        <input type="number"
-                                                            name="jumlah[{{ $master->id_master_operasional }}]"
-                                                            class="form-control" step="0.01" min="0"
-                                                            value="{{ old('jumlah.' . $master->id_master_operasional, $existingOperasional[$master->id_master_operasional] ?? null) }}"
-                                                            placeholder="Isi jika ada biaya">
-                                                    </td>
-                                                    <td style="min-width: 260px;">
-                                                        <input type="text"
-                                                            name="deskripsi[{{ $master->id_master_operasional }}]"
-                                                            class="form-control"
-                                                            value="{{ old('deskripsi.' . $master->id_master_operasional) }}"
-                                                            placeholder="Catatan tambahan">
-                                                    </td>
+                                                    <th>Jenis Operasional</th>
+                                                    <th>Deskripsi Master</th>
+                                                    <th>Tanggal Biaya</th>
+                                                    <th>Jumlah</th>
+                                                    <th>Catatan</th>
                                                 </tr>
-                                            @empty
-                                                <tr>
-                                                    <td colspan="5" class="text-center text-muted">Master operasional
-                                                        belum tersedia.</td>
-                                                </tr>
-                                            @endforelse
-                                        </tbody>
-                                    </table>
-                                </div>
+                                            </thead>
+                                            <tbody>
+                                                @forelse ($masterOperasional as $master)
+                                                    <tr>
+                                                        <td>{{ $master->nama_operasional }}</td>
+                                                        <td>{{ $master->deskripsi ?: '-' }}</td>
+                                                        <td style="min-width: 170px;">
+                                                            <input type="date"
+                                                                name="tanggal[{{ $master->id_master_operasional }}]"
+                                                                class="form-control"
+                                                                value="{{ old('tanggal.' . $master->id_master_operasional, now()->toDateString()) }}">
+                                                        </td>
+                                                        <td style="min-width: 170px;">
+                                                            <input type="number"
+                                                                name="jumlah[{{ $master->id_master_operasional }}]"
+                                                                class="form-control" step="0.01" min="0"
+                                                                value="{{ old('jumlah.' . $master->id_master_operasional, $existingOperasional[$master->id_master_operasional] ?? null) }}"
+                                                                placeholder="Isi jika ada biaya">
+                                                        </td>
+                                                        <td style="min-width: 260px;">
+                                                            <input type="text"
+                                                                name="deskripsi[{{ $master->id_master_operasional }}]"
+                                                                class="form-control"
+                                                                value="{{ old('deskripsi.' . $master->id_master_operasional) }}"
+                                                                placeholder="Catatan tambahan">
+                                                        </td>
+                                                    </tr>
+                                                @empty
+                                                    <tr>
+                                                        <td colspan="5" class="text-center text-muted">Master
+                                                            operasional
+                                                            belum tersedia.</td>
+                                                    </tr>
+                                                @endforelse
+                                            </tbody>
+                                        </table>
+                                    </div>
 
-                                <div class="mt-2">
-                                    <button type="submit" class="btn btn-primary">Simpan Operasional Trip</button>
-                                </div>
+                                    <div class="mt-2">
+                                        @if (!$isReadOnly)
+                                            <button type="submit" class="btn btn-primary">Simpan Operasional
+                                                Trip</button>
+                                        @else
+                                            <span class="badge badge-light border">Card ini hanya untuk dilihat.</span>
+                                        @endif
+                                    </div>
+                                </fieldset>
                             </form>
                         </div>
                     </div>
@@ -549,23 +594,29 @@
                 <div class="card">
                     <div class="card-body d-flex flex-wrap justify-content-between align-items-center gap-2">
                         <div>
-                            <h6 class="mb-1">Finalisasi Pelayaran</h6>
-                            <p class="text-muted mb-0">Tombol hanya aktif jika Perbekalan, Tangkapan, dan Operasional Trip
-                                sudah diisi.</p>
+                            <h6 class="mb-1">{{ $isReadOnly ? 'Aksi Riwayat Pelayaran' : 'Finalisasi Pelayaran' }}</h6>
+                            <p class="text-muted mb-0">
+                                {{ $isReadOnly ? 'Trip ini sudah ditutup. Gunakan halaman ini untuk melihat detail card penutupan.' : 'Tombol hanya aktif jika Perbekalan, Tangkapan, dan Operasional Trip sudah diisi.' }}
+                            </p>
                         </div>
 
                         <div class="d-flex gap-2">
-                            <form action="{{ route('pelayaran.sisa.close') }}" method="POST" class="d-inline">
-                                @csrf
-                                <input type="hidden" name="id_pelayaran"
-                                    value="{{ $selectedPelayaran->id_pelayaran }}">
-                                <input type="hidden" name="tab" class="js-active-tab-input"
-                                    value="{{ $activeTab }}">
-                                <button type="submit" class="btn btn-success" {{ $canClose ? '' : 'disabled' }}>
-                                    Simpan Dan Tutup Pelayaran
-                                </button>
-                            </form>
-                            <a href="{{ route('pelayaran.index') }}" class="btn btn-light">Batal</a>
+                            @if (!$isReadOnly)
+                                <form action="{{ route('pelayaran.sisa.close') }}" method="POST" class="d-inline">
+                                    @csrf
+                                    <input type="hidden" name="id_pelayaran"
+                                        value="{{ $selectedPelayaran->id_pelayaran }}">
+                                    <input type="hidden" name="tab" class="js-active-tab-input"
+                                        value="{{ $activeTab }}">
+                                    <button type="submit" class="btn btn-success" {{ $canClose ? '' : 'disabled' }}>
+                                        Simpan Dan Tutup Pelayaran
+                                    </button>
+                                </form>
+                                <a href="{{ route('pelayaran.index') }}" class="btn btn-light">Batal</a>
+                            @else
+                                <a href="{{ route('pelayaran.sisa.history') }}" class="btn btn-primary">Kembali ke
+                                    Riwayat</a>
+                            @endif
                         </div>
                     </div>
                 </div>

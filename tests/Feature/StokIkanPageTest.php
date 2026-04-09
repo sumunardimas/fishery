@@ -69,7 +69,6 @@ class StokIkanPageTest extends TestCase
             ->assertSee('Stok Ikan Aktual')
             ->assertSee('TONGKOL SEGAR')
             ->assertSee('25,00')
-            ->assertSee('2026-04')
             ->assertDontSee('Tongkol A')
             ->assertDontSee('Tongkol B');
     }

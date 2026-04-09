@@ -40,33 +40,21 @@ return [
         [
             'title' => 'Pelayaran Selesai',
             'icon' => 'ti-calendar',
-            'route' => '/pelayaran/sisa',
-            // 'children' => [
-            //     [
-            //         'title' => 'Perbekalan',
-            //         'icon' => 'ti-package',
-            //         'route' => '/pelayaran/sisa?tab=perbekalan',
-            //         'type' => 'url',
-            //     ],
-            //     [
-            //         'title' => 'Tangkapan',
-            //         'icon' => 'ti-fish',
-            //         'route' => '/pelayaran/sisa?tab=tangkapan',
-            //         'type' => 'url',
-            //     ],
-            //     [
-            //         'title' => 'Operasional Trip',
-            //         'icon' => 'ti-write',
-            //         'route' => '/pelayaran/sisa?tab=operasional',
-            //         'type' => 'url',
-            //     ],
-            //     [
-            //         'title' => 'Rekap Trip',
-            //         'icon' => 'ti-bar-chart',
-            //         'route' => '/pelayaran/sisa?tab=rekap',
-            //         'type' => 'url',
-            //     ],
-            // ],
+            'route' => '#',
+            'children' => [
+                [
+                    'title' => 'Laporkan',
+                    'icon' => 'ti-write',
+                    'route' => 'pelayaran.sisa.index',
+                    'type' => 'route',
+                ],
+                [
+                    'title' => 'Riwayat',
+                    'icon' => 'ti-exchange-vertical',
+                    'route' => 'pelayaran.sisa.history',
+                    'type' => 'route',
+                ],
+            ],
         ],
         [
             'title' => 'Penjualan Ikan',

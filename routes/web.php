@@ -75,6 +75,8 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/create', [PelayaranController::class, 'create'])->name('create');
         Route::post('/', [PelayaranController::class, 'store'])->name('store');
         Route::get('/sisa', [PelayaranSisaController::class, 'index'])->name('sisa.index');
+        Route::get('/sisa/history', [PelayaranSisaController::class, 'history'])->name('sisa.history');
+        Route::get('/sisa/history/{pelayaran}', [PelayaranSisaController::class, 'showHistoryDetail'])->name('sisa.history.show');
         Route::post('/sisa/perbekalan', [PelayaranSisaController::class, 'storePerbekalan'])->name('sisa.perbekalan.store');
         Route::post('/sisa/tangkapan', [PelayaranSisaController::class, 'storeTangkapan'])->name('sisa.tangkapan.store');
         Route::post('/sisa/operasional', [PelayaranSisaController::class, 'storeOperasional'])->name('sisa.operasional.store');

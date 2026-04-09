@@ -44,161 +44,42 @@ class PelayaranSisaController extends Controller
             ->get();
 
         $selectedPelayaranId = (int) ($request->integer('pelayaran_id') ?: ($activePelayaran->first()->id_pelayaran ?? 0));
-        $activeTab = $request->string('tab')->toString();
-        if ($activeTab === 'tangkapan') {
-            $activeTab = self::TAB_TANGKAPAN_PRIBADI;
-        }
-        $validTabs = [
-            self::TAB_PERBEKALAN,
-            self::TAB_TANGKAPAN_PRIBADI,
-            self::TAB_TANGKAPAN_BERSAMA,
-            self::TAB_TANGKAPAN_JARINGAN,
-            self::TAB_OPERASIONAL,
-            self::TAB_REKAP,
-        ];
-        if (!in_array($activeTab, $validTabs, true)) {
-            $activeTab = self::TAB_PERBEKALAN;
-        }
+        $activeTab = $this->normalizeActiveTab($request->string('tab')->toString());
+        $selectedPelayaran = $activePelayaran->firstWhere('id_pelayaran', $selectedPelayaranId);
 
-        $selectedPelayaran = $activePelayaran
-            ->firstWhere('id_pelayaran', $selectedPelayaranId);
+        return view('pelayaran.sisa.index', $this->buildIndexViewData(
+            $activePelayaran,
+            $selectedPelayaran,
+            $activeTab,
+            false
+        ));
+    }
 
-        $perbekalanRows = collect();
-        $existingSisa = [];
-        $masterIkanTangkapan = MasterIkanTangkapan::query()
-            ->whereHas('masterIkan')
-            ->with(['masterIkan' => function ($query) {
-                $query->select('id_ikan', 'id_ikan_tangkapan', 'nama_ikan')
-                    ->orderBy('nama_ikan');
-            }])
-            ->orderBy('nama_ikan_tangkapan')
+    public function history(): View
+    {
+        $items = Pelayaran::query()
+            ->with('kapal')
+            ->where('status_pelayaran', 'selesai')
+            ->orderByDesc('tanggal_selesai')
+            ->orderByDesc('tanggal_tiba')
+            ->orderByDesc('id_pelayaran')
             ->get();
-        $existingHasilIkanByKategori = [];
-        $masterOperasional = DB::table('master_operasional')
-            ->orderBy('nama_operasional')
-            ->get();
-        $existingOperasional = [];
-        $rekapOperasional = [
-            'total_item_biaya' => 0,
-            'total_biaya' => 0,
-            'detail' => collect(),
-        ];
-        $completionStatus = [
-            'perbekalan' => false,
-            'tangkapan' => false,
-            'operasional' => false,
-        ];
-        $rekapTangkapan = collect();
 
-        if ($selectedPelayaran) {
-            $perbekalanRows = DB::table('perbekalan_pelayaran as pp')
-                ->join('master_perbekalan as mp', 'mp.id_barang', '=', 'pp.id_barang')
-                ->where('pp.id_pelayaran', $selectedPelayaran->id_pelayaran)
-                ->orderBy('mp.nama_barang')
-                ->select('pp.id_barang', 'mp.nama_barang', 'mp.satuan', 'pp.jumlah as jumlah_awal')
-                ->get();
+        return view('pelayaran.sisa.history', compact('items'));
+    }
 
-            $existingSisa = DB::table('sisa_trip')
-                ->where('id_pelayaran', $selectedPelayaran->id_pelayaran)
-                ->pluck('jumlah_sisa', 'id_barang')
-                ->map(fn ($value) => (float) $value)
-                ->toArray();
+    public function showHistoryDetail(Request $request, Pelayaran $pelayaran): View
+    {
+        abort_unless($pelayaran->status_pelayaran === 'selesai', 404);
 
-            $existingHasilIkanByKategori = DB::table('ikan_hasil_pelayaran as ihp')
-                ->leftJoin('master_ikan as mi', 'mi.id_ikan', '=', 'ihp.id_ikan')
-                ->where('ihp.id_pelayaran', $selectedPelayaran->id_pelayaran)
-                ->selectRaw(
-                    'ihp.kategori_tangkapan,
-                    COALESCE(mi.id_ikan_tangkapan, ihp.id_ikan) as form_ikan_key,
-                    SUM(ihp.berat_hasil) as berat_hasil,
-                    CASE
-                        WHEN SUM(ihp.berat_hasil) = 0 THEN 0
-                        ELSE SUM(ihp.berat_hasil * COALESCE(ihp.harga_per_kg, 0)) / SUM(ihp.berat_hasil)
-                    END as harga_per_kg'
-                )
-                ->groupBy('ihp.kategori_tangkapan', DB::raw('COALESCE(mi.id_ikan_tangkapan, ihp.id_ikan)'))
-                ->get()
-                ->groupBy('kategori_tangkapan')
-                ->map(function ($rows) {
-                    return $rows->mapWithKeys(function ($row) {
-                        return [(int) $row->form_ikan_key => [
-                            'berat_hasil' => (float) $row->berat_hasil,
-                            'harga_per_kg' => (float) ($row->harga_per_kg ?? 0),
-                        ]];
-                    })->toArray();
-                })
-                ->toArray();
+        $pelayaran->load('kapal');
+        $activeTab = $this->normalizeActiveTab($request->string('tab')->toString());
 
-            $rekapTangkapan = DB::table('ikan_hasil_pelayaran')
-                ->where('id_pelayaran', $selectedPelayaran->id_pelayaran)
-                ->selectRaw('kategori_tangkapan, SUM(berat_hasil) as total_berat, SUM(berat_hasil * harga_per_kg) as total_nilai')
-                ->groupBy('kategori_tangkapan')
-                ->get()
-                ->keyBy('kategori_tangkapan');
-
-            $existingOperasional = DB::table('operasional')
-                ->where('id_pelayaran', $selectedPelayaran->id_pelayaran)
-                ->pluck('jumlah', 'id_master_operasional')
-                ->map(fn ($value) => (float) $value)
-                ->toArray();
-
-            $rekapDetail = DB::table('operasional as o')
-                ->leftJoin('master_operasional as mo', 'mo.id_master_operasional', '=', 'o.id_master_operasional')
-                ->where('o.id_pelayaran', $selectedPelayaran->id_pelayaran)
-                ->select(
-                    'o.id_operasional',
-                    'o.tanggal',
-                    'o.jumlah',
-                    'o.jenis_biaya',
-                    'o.deskripsi',
-                    'mo.nama_operasional'
-                )
-                ->orderByDesc('o.tanggal')
-                ->orderByDesc('o.id_operasional')
-                ->get();
-
-            $rekapOperasional = [
-                'total_item_biaya' => $rekapDetail->count(),
-                'total_biaya' => (float) $rekapDetail->sum('jumlah'),
-                'detail' => $rekapDetail,
-            ];
-
-            $plannedCount = $perbekalanRows->count();
-            $filledSisaCount = DB::table('sisa_trip')
-                ->where('id_pelayaran', $selectedPelayaran->id_pelayaran)
-                ->count();
-
-            $completionStatus = [
-                'perbekalan' => $plannedCount === 0 ? true : $filledSisaCount >= $plannedCount,
-                'tangkapan' => $masterIkanTangkapan->count() === 0
-                    ? true
-                    : collect(array_keys(self::KATEGORI_TANGKAPAN))->every(function (string $kategori) use ($existingHasilIkanByKategori) {
-                        return !empty($existingHasilIkanByKategori[$kategori] ?? []);
-                    }),
-                'operasional' => $masterOperasional->count() === 0 ? true : !empty($existingOperasional),
-            ];
-        }
-
-        $canClose = $selectedPelayaran
-            ? ($completionStatus['perbekalan'] && $completionStatus['tangkapan'] && $completionStatus['operasional'])
-            : false;
-        $kategoriTangkapanMap = self::KATEGORI_TANGKAPAN;
-
-        return view('pelayaran.sisa.index', compact(
-            'activePelayaran',
-            'selectedPelayaran',
-            'activeTab',
-            'perbekalanRows',
-            'existingSisa',
-            'masterIkanTangkapan',
-            'existingHasilIkanByKategori',
-            'masterOperasional',
-            'existingOperasional',
-            'rekapOperasional',
-            'rekapTangkapan',
-            'completionStatus',
-            'canClose',
-            'kategoriTangkapanMap'
+        return view('pelayaran.sisa.index', $this->buildIndexViewData(
+            collect(),
+            $pelayaran,
+            $activeTab,
+            true
         ));
     }
 
@@ -504,6 +385,168 @@ class PelayaranSisaController extends Controller
         return redirect()
             ->route('pelayaran.index')
             ->with('success', 'Pelayaran berhasil ditutup.');
+    }
+
+    private function normalizeActiveTab(string $activeTab): string
+    {
+        if ($activeTab === 'tangkapan') {
+            $activeTab = self::TAB_TANGKAPAN_PRIBADI;
+        }
+
+        $validTabs = [
+            self::TAB_PERBEKALAN,
+            self::TAB_TANGKAPAN_PRIBADI,
+            self::TAB_TANGKAPAN_BERSAMA,
+            self::TAB_TANGKAPAN_JARINGAN,
+            self::TAB_OPERASIONAL,
+            self::TAB_REKAP,
+        ];
+
+        return in_array($activeTab, $validTabs, true)
+            ? $activeTab
+            : self::TAB_PERBEKALAN;
+    }
+
+    private function buildIndexViewData(Collection $activePelayaran, ?Pelayaran $selectedPelayaran, string $activeTab, bool $isReadOnly = false): array
+    {
+        $perbekalanRows = collect();
+        $existingSisa = [];
+        $masterIkanTangkapan = MasterIkanTangkapan::query()
+            ->whereHas('masterIkan')
+            ->with(['masterIkan' => function ($query) {
+                $query->select('id_ikan', 'id_ikan_tangkapan', 'nama_ikan')
+                    ->orderBy('nama_ikan');
+            }])
+            ->orderBy('nama_ikan_tangkapan')
+            ->get();
+        $existingHasilIkanByKategori = [];
+        $masterOperasional = DB::table('master_operasional')
+            ->orderBy('nama_operasional')
+            ->get();
+        $existingOperasional = [];
+        $rekapOperasional = [
+            'total_item_biaya' => 0,
+            'total_biaya' => 0,
+            'detail' => collect(),
+        ];
+        $completionStatus = [
+            'perbekalan' => false,
+            'tangkapan' => false,
+            'operasional' => false,
+        ];
+        $rekapTangkapan = collect();
+
+        if ($selectedPelayaran) {
+            $perbekalanRows = DB::table('perbekalan_pelayaran as pp')
+                ->join('master_perbekalan as mp', 'mp.id_barang', '=', 'pp.id_barang')
+                ->where('pp.id_pelayaran', $selectedPelayaran->id_pelayaran)
+                ->orderBy('mp.nama_barang')
+                ->select('pp.id_barang', 'mp.nama_barang', 'mp.satuan', 'pp.jumlah as jumlah_awal')
+                ->get();
+
+            $existingSisa = DB::table('sisa_trip')
+                ->where('id_pelayaran', $selectedPelayaran->id_pelayaran)
+                ->pluck('jumlah_sisa', 'id_barang')
+                ->map(fn ($value) => (float) $value)
+                ->toArray();
+
+            $existingHasilIkanByKategori = DB::table('ikan_hasil_pelayaran as ihp')
+                ->leftJoin('master_ikan as mi', 'mi.id_ikan', '=', 'ihp.id_ikan')
+                ->where('ihp.id_pelayaran', $selectedPelayaran->id_pelayaran)
+                ->selectRaw(
+                    'ihp.kategori_tangkapan,
+                    COALESCE(mi.id_ikan_tangkapan, ihp.id_ikan) as form_ikan_key,
+                    SUM(ihp.berat_hasil) as berat_hasil,
+                    CASE
+                        WHEN SUM(ihp.berat_hasil) = 0 THEN 0
+                        ELSE SUM(ihp.berat_hasil * COALESCE(ihp.harga_per_kg, 0)) / SUM(ihp.berat_hasil)
+                    END as harga_per_kg'
+                )
+                ->groupBy('ihp.kategori_tangkapan', DB::raw('COALESCE(mi.id_ikan_tangkapan, ihp.id_ikan)'))
+                ->get()
+                ->groupBy('kategori_tangkapan')
+                ->map(function ($rows) {
+                    return $rows->mapWithKeys(function ($row) {
+                        return [(int) $row->form_ikan_key => [
+                            'berat_hasil' => (float) $row->berat_hasil,
+                            'harga_per_kg' => (float) ($row->harga_per_kg ?? 0),
+                        ]];
+                    })->toArray();
+                })
+                ->toArray();
+
+            $rekapTangkapan = DB::table('ikan_hasil_pelayaran')
+                ->where('id_pelayaran', $selectedPelayaran->id_pelayaran)
+                ->selectRaw('kategori_tangkapan, SUM(berat_hasil) as total_berat, SUM(berat_hasil * harga_per_kg) as total_nilai')
+                ->groupBy('kategori_tangkapan')
+                ->get()
+                ->keyBy('kategori_tangkapan');
+
+            $existingOperasional = DB::table('operasional')
+                ->where('id_pelayaran', $selectedPelayaran->id_pelayaran)
+                ->pluck('jumlah', 'id_master_operasional')
+                ->map(fn ($value) => (float) $value)
+                ->toArray();
+
+            $rekapDetail = DB::table('operasional as o')
+                ->leftJoin('master_operasional as mo', 'mo.id_master_operasional', '=', 'o.id_master_operasional')
+                ->where('o.id_pelayaran', $selectedPelayaran->id_pelayaran)
+                ->select(
+                    'o.id_operasional',
+                    'o.tanggal',
+                    'o.jumlah',
+                    'o.jenis_biaya',
+                    'o.deskripsi',
+                    'mo.nama_operasional'
+                )
+                ->orderByDesc('o.tanggal')
+                ->orderByDesc('o.id_operasional')
+                ->get();
+
+            $rekapOperasional = [
+                'total_item_biaya' => $rekapDetail->count(),
+                'total_biaya' => (float) $rekapDetail->sum('jumlah'),
+                'detail' => $rekapDetail,
+            ];
+
+            $plannedCount = $perbekalanRows->count();
+            $filledSisaCount = DB::table('sisa_trip')
+                ->where('id_pelayaran', $selectedPelayaran->id_pelayaran)
+                ->count();
+
+            $completionStatus = [
+                'perbekalan' => $plannedCount === 0 ? true : $filledSisaCount >= $plannedCount,
+                'tangkapan' => $masterIkanTangkapan->count() === 0
+                    ? true
+                    : collect(array_keys(self::KATEGORI_TANGKAPAN))->every(function (string $kategori) use ($existingHasilIkanByKategori) {
+                        return !empty($existingHasilIkanByKategori[$kategori] ?? []);
+                    }),
+                'operasional' => $masterOperasional->count() === 0 ? true : !empty($existingOperasional),
+            ];
+        }
+
+        $canClose = !$isReadOnly && $selectedPelayaran
+            ? ($completionStatus['perbekalan'] && $completionStatus['tangkapan'] && $completionStatus['operasional'])
+            : false;
+        $kategoriTangkapanMap = self::KATEGORI_TANGKAPAN;
+
+        return [
+            'activePelayaran' => $activePelayaran,
+            'selectedPelayaran' => $selectedPelayaran,
+            'activeTab' => $activeTab,
+            'perbekalanRows' => $perbekalanRows,
+            'existingSisa' => $existingSisa,
+            'masterIkanTangkapan' => $masterIkanTangkapan,
+            'existingHasilIkanByKategori' => $existingHasilIkanByKategori,
+            'masterOperasional' => $masterOperasional,
+            'existingOperasional' => $existingOperasional,
+            'rekapOperasional' => $rekapOperasional,
+            'rekapTangkapan' => $rekapTangkapan,
+            'completionStatus' => $completionStatus,
+            'canClose' => $canClose,
+            'kategoriTangkapanMap' => $kategoriTangkapanMap,
+            'isReadOnly' => $isReadOnly,
+        ];
     }
 
     private function getActivePelayaranOrFail(int $idPelayaran): Pelayaran
