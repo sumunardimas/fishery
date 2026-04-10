@@ -41,6 +41,11 @@ class PembelianController extends Controller
     public function riwayat(Request $request): View
     {
         $selectedItemId = $request->integer('show_item');
+        $defaultStart = now()->subDays(29)->toDateString();
+        $defaultEnd = now()->toDateString();
+
+        $startDate = $request->input('start_date', $defaultStart);
+        $endDate = $request->input('end_date', $defaultEnd);
 
         $items = DB::table('master_item_pembelian as mip')
             ->leftJoin('item_pembelian_stock as s', 's.id_item_pembelian', '=', 'mip.id_item_pembelian')
@@ -57,21 +62,34 @@ class PembelianController extends Controller
             ->get();
 
         $selectedItem = null;
-        $transactions = collect();
+
+        $transactionsQuery = DB::table('pembelian_transaction as t')
+            ->join('master_item_pembelian as mip', 'mip.id_item_pembelian', '=', 't.id_item_pembelian')
+            ->whereDate('t.tanggal_transaksi', '>=', $startDate)
+            ->whereDate('t.tanggal_transaksi', '<=', $endDate)
+            ->select('t.*', 'mip.nama_item', 'mip.satuan')
+            ->orderByDesc('t.tanggal_transaksi')
+            ->orderByDesc('t.id_transaction');
 
         if ($selectedItemId > 0) {
             $selectedItem = MasterItemPembelian::query()->find($selectedItemId);
             if ($selectedItem) {
-                $transactions = DB::table('pembelian_transaction as t')
-                    ->where('t.id_item_pembelian', $selectedItem->id_item_pembelian)
-                    ->orderByDesc('t.tanggal_transaksi')
-                    ->orderByDesc('t.id_transaction')
-                    ->select('t.*')
-                    ->get();
+                $transactionsQuery->where('t.id_item_pembelian', (int) $selectedItem->id_item_pembelian);
+            } else {
+                $selectedItemId = 0;
             }
         }
 
-        return view('pembelian.riwayat', compact('items', 'selectedItem', 'transactions', 'selectedItemId'));
+        $transactions = $transactionsQuery->get();
+
+        return view('pembelian.riwayat', compact(
+            'items',
+            'selectedItem',
+            'transactions',
+            'selectedItemId',
+            'startDate',
+            'endDate'
+        ));
     }
 
     public function storeItem(Request $request): RedirectResponse
@@ -210,8 +228,12 @@ class PembelianController extends Controller
             ->with('success', 'Transaksi pembelian berhasil disimpan.');
     }
 
-    public function destroyTransaction(PembelianTransaction $transaction): RedirectResponse
+    public function destroyTransaction(Request $request, PembelianTransaction $transaction): RedirectResponse
     {
+        $selectedItemId = $request->integer('show_item');
+        $startDate = $request->input('start_date');
+        $endDate = $request->input('end_date');
+
         DB::transaction(function () use ($transaction) {
             $stock = ItemPembelianStock::query()
                 ->where('id_item_pembelian', (int) $transaction->id_item_pembelian)
@@ -260,7 +282,18 @@ class PembelianController extends Controller
             $transaction->delete();
         });
 
-        return redirect()->route('pembelian.riwayat', ['show_item' => (int) $transaction->id_item_pembelian])
+        $redirectParams = [];
+        if ($selectedItemId > 0) {
+            $redirectParams['show_item'] = $selectedItemId;
+        }
+        if (!empty($startDate)) {
+            $redirectParams['start_date'] = $startDate;
+        }
+        if (!empty($endDate)) {
+            $redirectParams['end_date'] = $endDate;
+        }
+
+        return redirect()->route('pembelian.riwayat', $redirectParams)
             ->with('success', 'Transaksi berhasil dihapus dan stok telah disesuaikan.');
     }
 

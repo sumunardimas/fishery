@@ -15,100 +15,128 @@
                 <x-alert type="danger" :message="$errors->first()" />
             @endif
 
+            <div class="card mb-4">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div>
+                            <h4 class="card-title mb-1">Riwayat IN/OUT Pembelian</h4>
+                            <p class="card-description mb-0">Lihat histori transaksi masuk dan keluar per item pembelian.</p>
+                        </div>
+                        <a href="{{ route('master.item-pembelian.index') }}" class="btn btn-outline-primary">Kembali ke Master</a>
+                    </div>
+
+                    <form method="GET" action="{{ route('pembelian.riwayat') }}" class="mb-0">
+                        <div class="form-row align-items-end">
+                            <div class="form-group col-md-3">
+                                <label for="start_date">Start Date</label>
+                                <input type="date" id="start_date" name="start_date" class="form-control"
+                                    value="{{ $startDate }}">
+                            </div>
+                            <div class="form-group col-md-3">
+                                <label for="end_date">End Date</label>
+                                <input type="date" id="end_date" name="end_date" class="form-control"
+                                    value="{{ $endDate }}">
+                            </div>
+                            <div class="form-group col-md-4">
+                                <label for="show_item">Filter Item</label>
+                                <select id="show_item" name="show_item" class="form-control">
+                                    <option value="">Semua Item Pembelian</option>
+                                    @foreach ($items as $item)
+                                        <option value="{{ $item->id_item_pembelian }}" @selected((int) $selectedItemId === (int) $item->id_item_pembelian)>
+                                            {{ $item->nama_item }} ({{ $item->satuan }}) - Stok
+                                            {{ number_format((float) $item->total_stok, 2, ',', '.') }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="form-group col-md-2 d-flex">
+                                <button type="submit" class="btn btn-primary mr-1 flex-fill">Terapkan</button>
+                                <a href="{{ route('pembelian.riwayat') }}" class="btn btn-light">Reset</a>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
             <div class="card">
                 <div class="card-body">
-                    <h5 class="card-title">Daftar Item dan Sisa Stok</h5>
+                    <h5 class="card-title">
+                        Riwayat IN/OUT:
+                        @if ($selectedItem)
+                            {{ $selectedItem->nama_item }}
+                        @else
+                            Semua Item Pembelian
+                        @endif
+                        <small class="text-muted font-weight-normal">({{ \Carbon\Carbon::parse($startDate)->format('d-m-Y') }} &ndash; {{ \Carbon\Carbon::parse($endDate)->format('d-m-Y') }})</small>
+                    </h5>
+
                     <div class="table-responsive">
-                        <table class="table table-striped">
+                        <table class="table table-bordered">
                             <thead>
                                 <tr>
-                                    <th>ID</th>
+                                    <th>Tanggal</th>
                                     <th>Item</th>
-                                    <th>Kategori</th>
-                                    <th>Satuan</th>
-                                    <th>Sisa Stok</th>
+                                    <th>Jenis</th>
+                                    <th>Akun Bayar</th>
+                                    <th>Jumlah</th>
+                                    <th>Harga Satuan</th>
+                                    <th>Total</th>
+                                    <th>Sumber/Tujuan</th>
                                     <th>Keterangan</th>
                                     <th class="text-right">Aksi</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                @forelse ($items as $item)
+                                @forelse ($transactions as $trx)
                                     <tr>
-                                        <td>#{{ $item->id_item_pembelian }}</td>
-                                        <td>{{ $item->nama_item }}</td>
-                                        <td>{{ $item->kategori }}</td>
-                                        <td>{{ $item->satuan }}</td>
-                                        <td>{{ number_format((float) $item->total_stok, 2, ',', '.') }}</td>
-                                        <td>{{ $item->keterangan ?: '-' }}</td>
+                                        <td>{{ \Carbon\Carbon::parse($trx->tanggal_transaksi)->format('d-m-Y') }}</td>
+                                        <td>{{ $trx->nama_item }} <small class="text-muted">({{ $trx->satuan }})</small></td>
+                                        <td>
+                                            <span class="badge {{ $trx->jenis_transaksi === 'in' ? 'badge-success' : 'badge-danger' }}">
+                                                {{ strtoupper($trx->jenis_transaksi) }}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            @if ($trx->akun_pembayaran)
+                                                <span class="badge badge-info">{{ strtoupper($trx->akun_pembayaran) }}</span>
+                                            @else
+                                                <span class="text-muted">-</span>
+                                            @endif
+                                        </td>
+                                        <td>{{ number_format((float) $trx->jumlah, 2, ',', '.') }}</td>
+                                        <td>
+                                            @if ($trx->harga_satuan !== null)
+                                                Rp {{ number_format((float) $trx->harga_satuan, 2, ',', '.') }}
+                                            @else
+                                                -
+                                            @endif
+                                        </td>
+                                        <td>Rp {{ number_format((float) $trx->total_harga, 2, ',', '.') }}</td>
+                                        <td>{{ $trx->sumber_tujuan ?: '-' }}</td>
+                                        <td>{{ $trx->keterangan ?: '-' }}</td>
                                         <td class="text-right">
-                                            <a href="{{ route('pembelian.riwayat', ['show_item' => $item->id_item_pembelian]) }}"
-                                                class="btn btn-outline-info btn-sm">Riwayat Transaksi</a>
-
-                                            <button type="button" class="btn btn-outline-primary btn-sm"
-                                                data-toggle="modal"
-                                                data-target="#editItem{{ $item->id_item_pembelian }}">Edit</button>
-
-                                            <form action="{{ route('pembelian.items.destroy', $item->id_item_pembelian) }}"
-                                                method="POST" class="d-inline"
-                                                onsubmit="return confirm('Hapus master item {{ addslashes($item->nama_item) }}?')">
+                                            <form action="{{ route('pembelian.transactions.destroy', $trx->id_transaction) }}"
+                                                method="POST"
+                                                onsubmit="return confirm('Hapus transaksi ini? Stok akan disesuaikan otomatis.')">
                                                 @csrf
                                                 @method('DELETE')
+                                                @if ($selectedItemId)
+                                                    <input type="hidden" name="show_item" value="{{ $selectedItemId }}">
+                                                @endif
+                                                <input type="hidden" name="start_date" value="{{ $startDate }}">
+                                                <input type="hidden" name="end_date" value="{{ $endDate }}">
                                                 <button type="submit" class="btn btn-outline-danger btn-sm">Hapus</button>
                                             </form>
                                         </td>
                                     </tr>
-
-                                    <div class="modal fade" id="editItem{{ $item->id_item_pembelian }}" tabindex="-1"
-                                        role="dialog" aria-hidden="true">
-                                        <div class="modal-dialog" role="document">
-                                            <div class="modal-content">
-                                                <div class="modal-header">
-                                                    <h5 class="modal-title">Edit Master Item</h5>
-                                                    <button type="button" class="close" data-dismiss="modal"
-                                                        aria-label="Close">
-                                                        <span aria-hidden="true">&times;</span>
-                                                    </button>
-                                                </div>
-                                                <form
-                                                    action="{{ route('pembelian.items.update', $item->id_item_pembelian) }}"
-                                                    method="POST">
-                                                    @csrf
-                                                    @method('PUT')
-                                                    <div class="modal-body">
-                                                        <div class="form-group">
-                                                            <label>Nama Item</label>
-                                                            <input type="text" name="nama_item" class="form-control"
-                                                                value="{{ $item->nama_item }}" required>
-                                                        </div>
-                                                        <div class="form-group">
-                                                            <label>Kategori</label>
-                                                            <input type="text" name="kategori" class="form-control"
-                                                                value="{{ $item->kategori }}" required>
-                                                        </div>
-                                                        <div class="form-group">
-                                                            <label>Satuan</label>
-                                                            <input type="text" name="satuan" class="form-control"
-                                                                value="{{ $item->satuan }}" required>
-                                                        </div>
-                                                        <div class="form-group mb-0">
-                                                            <label>Keterangan</label>
-                                                            <input type="text" name="keterangan" class="form-control"
-                                                                value="{{ $item->keterangan }}">
-                                                        </div>
-                                                    </div>
-                                                    <div class="modal-footer">
-                                                        <button type="button" class="btn btn-light"
-                                                            data-dismiss="modal">Batal</button>
-                                                        <button type="submit" class="btn btn-primary">Simpan
-                                                            Perubahan</button>
-                                                    </div>
-                                                </form>
-                                            </div>
-                                        </div>
-                                    </div>
                                 @empty
                                     <tr>
-                                        <td colspan="7" class="text-center text-muted">Belum ada master item pembelian.
+                                        <td colspan="10" class="text-center text-muted">
+                                            @if ($selectedItem)
+                                                Belum ada transaksi untuk item ini pada periode yang dipilih.
+                                            @else
+                                                Belum ada transaksi pembelian pada periode yang dipilih.
+                                            @endif
                                         </td>
                                     </tr>
                                 @endforelse
@@ -117,106 +145,6 @@
                     </div>
                 </div>
             </div>
-
-            @if ($selectedItem)
-                <div class="modal fade" id="riwayatTransaksiModal" tabindex="-1" role="dialog" aria-hidden="true">
-                    <div class="modal-dialog modal-xl" role="document">
-                        <div class="modal-content">
-                            <div class="modal-header">
-                                <h5 class="modal-title">Riwayat Transaksi: {{ $selectedItem->nama_item }}</h5>
-                                <a href="{{ route('pembelian.riwayat') }}" class="close" aria-label="Close">
-                                    <span aria-hidden="true">&times;</span>
-                                </a>
-                            </div>
-                            <div class="modal-body">
-                                <div class="table-responsive">
-                                    <table class="table table-bordered">
-                                        <thead>
-                                            <tr>
-                                                <th>Tanggal</th>
-                                                <th>Jenis</th>
-                                                <th>Akun Bayar</th>
-                                                <th>Jumlah</th>
-                                                <th>Harga Satuan</th>
-                                                <th>Total</th>
-                                                <th>Sumber/Tujuan</th>
-                                                <th>Keterangan</th>
-                                                <th class="text-right">Aksi</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            @forelse ($transactions as $trx)
-                                                <tr>
-                                                    <td>{{ \Carbon\Carbon::parse($trx->tanggal_transaksi)->format('d-m-Y') }}
-                                                    </td>
-                                                    <td>
-                                                        <span
-                                                            class="badge {{ $trx->jenis_transaksi === 'in' ? 'badge-success' : 'badge-danger' }}">
-                                                            {{ strtoupper($trx->jenis_transaksi) }}
-                                                        </span>
-                                                    </td>
-                                                    <td>
-                                                        @if ($trx->akun_pembayaran)
-                                                            <span
-                                                                class="badge badge-info">{{ strtoupper($trx->akun_pembayaran) }}</span>
-                                                        @else
-                                                            <span class="text-muted">-</span>
-                                                        @endif
-                                                    </td>
-                                                    <td>{{ number_format((float) $trx->jumlah, 2, ',', '.') }}</td>
-                                                    <td>
-                                                        @if ($trx->harga_satuan !== null)
-                                                            Rp {{ number_format((float) $trx->harga_satuan, 2, ',', '.') }}
-                                                        @else
-                                                            -
-                                                        @endif
-                                                    </td>
-                                                    <td>Rp {{ number_format((float) $trx->total_harga, 2, ',', '.') }}</td>
-                                                    <td>{{ $trx->sumber_tujuan ?: '-' }}</td>
-                                                    <td>{{ $trx->keterangan ?: '-' }}</td>
-                                                    <td class="text-right">
-                                                        <form
-                                                            action="{{ route('pembelian.transactions.destroy', $trx->id_transaction) }}"
-                                                            method="POST"
-                                                            onsubmit="return confirm('Hapus transaksi ini? Stok akan disesuaikan otomatis.')">
-                                                            @csrf
-                                                            @method('DELETE')
-                                                            <button type="submit"
-                                                                class="btn btn-outline-danger btn-sm">Hapus</button>
-                                                        </form>
-                                                    </td>
-                                                </tr>
-                                            @empty
-                                                <tr>
-                                                    <td colspan="9" class="text-center text-muted">Belum ada transaksi
-                                                        untuk item
-                                                        ini.</td>
-                                                </tr>
-                                            @endforelse
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                            <div class="modal-footer">
-                                <a href="{{ route('pembelian.riwayat') }}" class="btn btn-light">Tutup</a>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            @endif
         </div>
     </div>
 @endsection
-
-@if ($selectedItem)
-    @push('scripts')
-        <script>
-            (function() {
-                $('#riwayatTransaksiModal').modal('show');
-                $('#riwayatTransaksiModal').on('hidden.bs.modal', function() {
-                    window.location.href = @json(route('pembelian.riwayat'));
-                });
-            })();
-        </script>
-    @endpush
-@endif
