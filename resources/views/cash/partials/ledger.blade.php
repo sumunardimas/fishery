@@ -77,6 +77,7 @@
                                     'Biaya Operasional',
                                     'Transfer Antar Akun',
                                     'Penyesuaian',
+                                    'Pinjam Modal Bu Uum',
                                     'Pinjam Modal Jons Group',
                                     'Kas Bon Pegawai',
                                 ];
@@ -91,8 +92,8 @@
                             @endforeach
                         </select>
                         <small class="form-text text-muted">
-                            Transaksi kategori Pinjam Modal Jons Group otomatis masuk ke
-                            <a href="{{ url('/keuangan/hutang-jons-group') }}">halaman hutang Jons Group</a>.
+                            Transaksi kategori Pinjam Modal Bu Uum dan Pinjam Modal Jons Group otomatis masuk ke
+                            <a href="{{ url('/keuangan/hutang-modal') }}">halaman Hutang Modal</a>.
                             Kategori Kas Bon Pegawai otomatis masuk ke
                             <a href="{{ url('/keuangan/kas-bon-pegawai') }}">halaman Kas Bon Pegawai</a>.
                         </small>
@@ -190,6 +191,34 @@
 @push('scripts')
     <script>
         $(document).ready(function() {
+            const forceCreditCategories = [
+                'Pinjam Modal Bu Uum',
+                'Pinjam Modal Jons Group',
+                'Kas Bon Pegawai',
+            ];
+
+            const $kategori = $('#kategori');
+            const $debit = $('#debit');
+            const $kredit = $('#kredit');
+
+            const syncNominalRule = () => {
+                const kategori = $kategori.val();
+                const forceCredit = forceCreditCategories.includes(kategori);
+
+                if (forceCredit) {
+                    $debit.val('');
+                    $debit.prop('disabled', true);
+                    $debit.attr('placeholder', 'Tidak digunakan untuk kategori ini');
+                    $kredit.focus();
+                } else {
+                    $debit.prop('disabled', false);
+                    $debit.attr('placeholder', '0');
+                }
+            };
+
+            $kategori.on('change', syncNominalRule);
+            syncNominalRule();
+
             $('#ledger-table').DataTable({
                 ...window.dataTableGeneralConfig,
                 processing: false,

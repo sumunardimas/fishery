@@ -1,6 +1,6 @@
 @extends('layouts.layout')
 
-@section('title', 'Hutang Jons Group')
+@section('title', 'Hutang Modal')
 
 @section('content')
     <div x-data="jonsGroupDebtApp()">
@@ -8,7 +8,7 @@
             <div
                 style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
                         background:#fff; border-radius:8px; padding:24px; max-width:440px; width:90%;">
-                <h5 class="mb-1">Bayar Hutang Jons Group</h5>
+                <h5 class="mb-1">Bayar Hutang Modal</h5>
                 <p class="text-muted small mb-3">
                     <span x-text="bayarTrx.kode"></span> &mdash; <span x-text="bayarTrx.deskripsi"></span>
                 </p>
@@ -105,7 +105,7 @@
                     <div class="card-body">
                         <h4 class="card-title mb-3">Filter</h4>
 
-                        <form method="GET" action="{{ url('/keuangan/hutang-jons-group') }}">
+                        <form method="GET" action="{{ url('/keuangan/hutang-modal') }}">
                             <div class="form-group">
                                 <label for="start_date">Dari Tanggal</label>
                                 <input type="date" id="start_date" name="start_date" class="form-control"
@@ -118,13 +118,14 @@
                             </div>
                             <div class="d-flex align-items-center">
                                 <button type="submit" class="btn btn-primary mr-2">Terapkan</button>
-                                <a href="{{ url('/keuangan/hutang-jons-group') }}" class="btn btn-light">Reset</a>
+                                <a href="{{ url('/keuangan/hutang-modal') }}" class="btn btn-light">Reset</a>
                             </div>
                         </form>
 
                         <hr>
                         <p class="text-muted small mb-0">
-                            Setiap transaksi kategori Pinjam Modal Jons Group pada Kas atau Bank otomatis muncul di sini.
+                            Setiap transaksi kategori Pinjam Modal Bu Uum dan Pinjam Modal Jons Group pada Kas atau
+                            Bank otomatis muncul di sini.
                             Pembayaran akan membentuk kredit baru pada akun yang dipilih.
                         </p>
                     </div>
@@ -134,9 +135,9 @@
             <div class="col-md-9 grid-margin stretch-card">
                 <div class="card">
                     <div class="card-body">
-                        <h4 class="card-title mb-1">Daftar Hutang ke Jons Group</h4>
+                        <h4 class="card-title mb-1">Daftar Hutang Modal</h4>
                         <p class="card-description mb-3">
-                            Daftar pinjaman modal Jons Group yang masih memiliki sisa hutang pada periode
+                            Daftar pinjaman modal yang masih memiliki sisa hutang pada periode
                             {{ \Carbon\Carbon::parse($startDate)->format('d M Y') }} –
                             {{ \Carbon\Carbon::parse($endDate)->format('d M Y') }}.
                         </p>
@@ -190,7 +191,7 @@
                                     @empty
                                         <tr>
                                             <td colspan="7" class="text-center text-muted py-4">
-                                                Tidak ada hutang aktif ke Jons Group pada periode ini.
+                                                Tidak ada hutang modal aktif pada periode ini.
                                             </td>
                                         </tr>
                                     @endforelse
@@ -206,7 +207,7 @@
 
 @push('scripts')
     <script>
-        const BAYAR_JONS_GROUP_URL = '{{ route('keuangan.hutang-jons-group.bayar') }}';
+        const BAYAR_JONS_GROUP_URL = '{{ route('keuangan.hutang-modal.bayar') }}';
 
         function jonsGroupDebtApp() {
             return {

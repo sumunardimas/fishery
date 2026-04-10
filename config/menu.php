@@ -194,9 +194,9 @@ return [
                     'type' => 'url',
                 ],
                 [
-                    'title' => 'Hutang Jons Group',
+                    'title' => 'Hutang Modal',
                     'icon' => 'ti-receipt',
-                    'route' => '/keuangan/hutang-jons-group',
+                    'route' => '/keuangan/hutang-modal',
                     'type' => 'url',
                 ],
             ],

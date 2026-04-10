@@ -13,9 +13,12 @@ use Illuminate\View\View;
 
 class KeuanganController extends Controller
 {
-    private const JONS_GROUP_BORROW_CATEGORY = 'Pinjam Modal Jons Group';
+    private const MODAL_BORROW_CATEGORIES = [
+        'Pinjam Modal Bu Uum',
+        'Pinjam Modal Jons Group',
+    ];
 
-    private const JONS_GROUP_PAYMENT_CATEGORY = 'Pembayaran Hutang Jons Group';
+    private const JONS_GROUP_PAYMENT_CATEGORY = 'Pembayaran Hutang Modal';
 
     private const EMPLOYEE_CASH_ADVANCE_CATEGORY = 'Kas Bon Pegawai';
 
@@ -492,10 +495,12 @@ class KeuanganController extends Controller
                 ->withErrors(['nominal' => 'Isi salah satu: Debit atau Kredit (tidak boleh keduanya).']);
         }
 
-        if ($validated['kategori'] === self::JONS_GROUP_BORROW_CATEGORY && ($debit <= 0 || $kredit > 0)) {
-            return back()
-                ->withInput()
-                ->withErrors(['kategori' => 'Pinjam Modal Jons Group harus dicatat sebagai debit.']);
+        if (in_array($validated['kategori'], self::MODAL_BORROW_CATEGORIES, true)) {
+            if ($kredit <= 0 || $debit > 0) {
+                return back()
+                    ->withInput()
+                    ->withErrors(['kategori' => 'Pinjam Modal Bu Uum dan Pinjam Modal Jons Group harus dicatat sebagai kredit.']);
+            }
         }
 
         if ($validated['kategori'] === self::EMPLOYEE_CASH_ADVANCE_CATEGORY) {
@@ -522,13 +527,13 @@ class KeuanganController extends Controller
                 kredit: $kredit
             );
 
-            if ($validated['kategori'] === self::JONS_GROUP_BORROW_CATEGORY) {
+            if (in_array($validated['kategori'], self::MODAL_BORROW_CATEGORIES, true)) {
                 $this->recordJonsGroupDebt(
                     arusKasId: $arusKasId,
                     tanggal: $validated['tanggal'],
                     akun: $validated['akun'],
-                    deskripsi: $validated['deskripsi'] ?? '-',
-                    nominal: $debit
+                    deskripsi: $validated['deskripsi'] ?? $validated['kategori'],
+                    nominal: $kredit
                 );
             }
 
@@ -545,8 +550,8 @@ class KeuanganController extends Controller
 
         $message = 'Transaksi '.strtoupper($validated['akun']).' berhasil disimpan.';
 
-        if ($validated['kategori'] === self::JONS_GROUP_BORROW_CATEGORY) {
-            $message .= ' Hutang Jons Group ikut tercatat.';
+        if (in_array($validated['kategori'], self::MODAL_BORROW_CATEGORIES, true)) {
+            $message .= ' Hutang Modal ikut tercatat.';
         }
 
         if ($validated['kategori'] === self::EMPLOYEE_CASH_ADVANCE_CATEGORY) {
@@ -594,7 +599,7 @@ class KeuanganController extends Controller
                 akun: $validated['akun_pembayaran'],
                 tanggal: Carbon::today()->toDateString(),
                 kategori: self::JONS_GROUP_PAYMENT_CATEGORY,
-                deskripsi: 'Pembayaran hutang Jons Group '.$kodeHutang.' sebesar Rp '.number_format($nominalBayar, 2, ',', '.').'. Sisa hutang Rp '.number_format($newRemainingDebt, 2, ',', '.').'.',
+                deskripsi: 'Pembayaran hutang modal '.$kodeHutang.' sebesar Rp '.number_format($nominalBayar, 2, ',', '.').'. Sisa hutang Rp '.number_format($newRemainingDebt, 2, ',', '.').'.',
                 debit: 0,
                 kredit: $nominalBayar
             );

@@ -124,7 +124,9 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/cash/transactions', [KeuanganController::class, 'storeCashTransaction'])->name('cash.store');
         Route::get('/kas-bon-pegawai', [KeuanganController::class, 'kasBonPegawai'])->name('kas-bon-pegawai.index');
         Route::post('/kas-bon-pegawai/bayar', [KeuanganController::class, 'bayarKasBonPegawai'])->name('kas-bon-pegawai.bayar');
-        Route::get('/hutang-jons-group', [KeuanganController::class, 'jonsGroupDebt'])->name('hutang-jons-group.index');
+        Route::get('/hutang-modal', [KeuanganController::class, 'jonsGroupDebt'])->name('hutang-modal.index');
+        Route::post('/hutang-modal/bayar', [KeuanganController::class, 'bayarJonsGroupDebt'])->name('hutang-modal.bayar');
+        Route::get('/hutang-jons-group', fn () => redirect()->route('keuangan.hutang-modal.index'))->name('hutang-jons-group.index');
         Route::post('/hutang-jons-group/bayar', [KeuanganController::class, 'bayarJonsGroupDebt'])->name('hutang-jons-group.bayar');
         Route::get('/laba', [KeuanganController::class, 'labaRugi'])->name('laba.index');
         Route::get('/lap-selisih-bongkaran', [KeuanganController::class, 'selisihBongkar'])->name('lap-selisih-bongkaran.index');
