@@ -28,20 +28,33 @@
                     </div>
 
                     <form method="GET" action="{{ route('master.perbekalan.history') }}" class="form-row align-items-end">
-                        <div class="form-group col-md-8">
-                            <label for="show_item">Filter Perbekalan</label>
-                            <select id="show_item" name="show_item" class="form-control">
-                                <option value="">Semua perbekalan (default 3 hari terakhir)</option>
-                                @foreach ($items as $item)
-                                    <option value="{{ $item->id_barang }}" @selected((int) $selectedItemId === (int) $item->id_barang)>
-                                        {{ $item->nama_barang }} ({{ $item->satuan }}) - Stok
-                                        {{ number_format((float) $item->stok_aktual, 2, ',', '.') }}
-                                    </option>
-                                @endforeach
-                            </select>
-                        </div>
-                        <div class="form-group col-md-4">
-                            <button type="submit" class="btn btn-primary w-100">Tampilkan Riwayat</button>
+                        <div class="form-row align-items-end">
+                            <div class="form-group col-md-3">
+                                <label for="start_date">Start Date</label>
+                                <input type="date" id="start_date" name="start_date" class="form-control"
+                                    value="{{ $startDate }}">
+                            </div>
+                            <div class="form-group col-md-3">
+                                <label for="end_date">End Date</label>
+                                <input type="date" id="end_date" name="end_date" class="form-control"
+                                    value="{{ $endDate }}">
+                            </div>
+                            <div class="form-group col-md-4">
+                                <label for="show_item">Filter Perbekalan</label>
+                                <select id="show_item" name="show_item" class="form-control">
+                                    <option value="">Semua Perbekalan</option>
+                                    @foreach ($items as $item)
+                                        <option value="{{ $item->id_barang }}" @selected((int) $selectedItemId === (int) $item->id_barang)>
+                                            {{ $item->nama_barang }} ({{ $item->satuan }}) - Stok
+                                            {{ number_format((float) $item->stok_aktual, 2, ',', '.') }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="form-group col-md-2 d-flex">
+                                <button type="submit" class="btn btn-primary mr-1 flex-fill">Terapkan</button>
+                                <a href="{{ route('master.perbekalan.history') }}" class="btn btn-light">Reset</a>
+                            </div>
                         </div>
                     </form>
                 </div>
@@ -54,8 +67,9 @@
                         @if ($selectedItem)
                             {{ $selectedItem->nama_barang }}
                         @else
-                            Semua Perbekalan (3 Hari Terakhir)
+                            Semua Perbekalan
                         @endif
+                        <small class="text-muted font-weight-normal">({{ \Carbon\Carbon::parse($startDate)->format('d-m-Y') }} &ndash; {{ \Carbon\Carbon::parse($endDate)->format('d-m-Y') }})</small>
                     </h5>
                     <div class="table-responsive">
                         <table class="table table-bordered">
@@ -122,9 +136,9 @@
                                     <tr>
                                         <td colspan="10" class="text-center text-muted">
                                             @if ($selectedItem)
-                                                Belum ada transaksi untuk perbekalan ini dalam 3 hari terakhir.
+                                                Belum ada transaksi untuk perbekalan ini pada periode yang dipilih.
                                             @else
-                                                Belum ada transaksi perbekalan dalam 3 hari terakhir.
+                                                Belum ada transaksi perbekalan pada periode yang dipilih.
                                             @endif
                                         </td>
                                     </tr>

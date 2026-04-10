@@ -43,14 +43,20 @@ class MasterPerbekalanController extends Controller
     {
         $selectedItemId = $request->integer('show_item');
 
+        $defaultStart = Carbon::today()->subDays(29)->toDateString();
+        $defaultEnd   = Carbon::today()->toDateString();
+
+        $startDate = $request->input('start_date', $defaultStart);
+        $endDate   = $request->input('end_date', $defaultEnd);
+
         $items = $this->getPerbekalanItems();
 
         $selectedItem = null;
-        $startDate = Carbon::today()->subDays(2)->toDateString();
 
         $transactionsQuery = DB::table('perbekalan_transaction as pt')
             ->join('master_perbekalan as mp', 'mp.id_barang', '=', 'pt.id_barang')
             ->whereDate('pt.tanggal_transaksi', '>=', $startDate)
+            ->whereDate('pt.tanggal_transaksi', '<=', $endDate)
             ->select('pt.*', 'mp.nama_barang', 'mp.satuan')
             ->orderByDesc('pt.tanggal_transaksi')
             ->orderByDesc('pt.id_transaction');
@@ -71,7 +77,9 @@ class MasterPerbekalanController extends Controller
             'items',
             'selectedItem',
             'transactions',
-            'selectedItemId'
+            'selectedItemId',
+            'startDate',
+            'endDate'
         ));
     }
 
