@@ -57,6 +57,16 @@
             line-height: 1.4;
         }
 
+        .trip-close-modal .modal-dialog {
+            display: flex;
+            align-items: center;
+            min-height: calc(100vh - 1rem);
+        }
+
+        .trip-close-modal .modal-content {
+            width: 100%;
+        }
+
         @media (max-width: 767.98px) {
             .trip-tabs {
                 flex-wrap: wrap;
@@ -576,8 +586,8 @@
                                         <div class="h4 mb-1">Rp
                                             {{ number_format((float) $rekapGrandTotals['grand_total_semua_komponen'], 2, ',', '.') }}
                                         </div>
-                                        <small class="text-muted">Perbekalan terpakai + semua kategori tangkapan +
-                                            operasional trip.</small>
+                                        <small class="text-muted">Nominal ini akan dipost sebagai kredit ke menu Arus Kas
+                                            saat trip ditutup.</small>
                                     </div>
                                 </div>
                                 <div class="col-lg-6 mb-3">
@@ -724,15 +734,193 @@
 
                         <div class="d-flex gap-2">
                             @if (!$isReadOnly)
+                                @php
+                                    $grandTotalPenutupan =
+                                        (float) ($rekapGrandTotals['grand_total_semua_komponen'] ?? 0);
+                                    $selectedPaymentMethod = old('payment_method', 'cash');
+                                @endphp
                                 <form action="{{ route('pelayaran.sisa.close') }}" method="POST" class="d-inline">
                                     @csrf
                                     <input type="hidden" name="id_pelayaran"
                                         value="{{ $selectedPelayaran->id_pelayaran }}">
                                     <input type="hidden" name="tab" class="js-active-tab-input"
                                         value="{{ $activeTab }}">
-                                    <button type="submit" class="btn btn-success" {{ $canClose ? '' : 'disabled' }}>
+
+                                    <button type="button" class="btn btn-success" data-toggle="modal"
+                                        data-target="#closePelayaranModal" {{ $canClose ? '' : 'disabled' }}>
                                         Simpan Dan Tutup Pelayaran
                                     </button>
+
+                                    <div class="modal fade trip-close-modal" id="closePelayaranModal" tabindex="-1"
+                                        role="dialog" aria-labelledby="closePelayaranModalLabel" aria-hidden="true">
+                                        <div class="modal-dialog modal-lg modal-dialog-centered" role="document">
+                                            <div class="modal-content">
+                                                <div class="modal-header">
+                                                    <h5 class="modal-title" id="closePelayaranModalLabel">Konfirmasi
+                                                        Penutupan Pelayaran</h5>
+                                                    <button type="button" class="close" data-dismiss="modal"
+                                                        aria-label="Close">
+                                                        <span aria-hidden="true">&times;</span>
+                                                    </button>
+                                                </div>
+                                                <div class="modal-body">
+                                                    <div class="alert alert-info py-2">
+                                                        Grand total penutupan ini akan otomatis masuk ke
+                                                        <a href="{{ route('keuangan.arus-kas.index') }}">menu Arus
+                                                            Kas</a>
+                                                        sebagai transaksi kredit.
+                                                    </div>
+
+                                                    @if ($errors->has('payment_method') || $errors->has('bayar_tunai') || $errors->has('bayar_transfer'))
+                                                        <div class="alert alert-danger py-2">
+                                                            <ul class="mb-0 pl-3">
+                                                                @error('payment_method')
+                                                                    <li>{{ $message }}</li>
+                                                                @enderror
+                                                                @error('bayar_tunai')
+                                                                    <li>{{ $message }}</li>
+                                                                @enderror
+                                                                @error('bayar_transfer')
+                                                                    <li>{{ $message }}</li>
+                                                                @enderror
+                                                            </ul>
+                                                        </div>
+                                                    @endif
+
+                                                    <div class="table-responsive mb-3">
+                                                        <table class="table table-sm table-bordered mb-0">
+                                                            <tbody>
+                                                                <tr>
+                                                                    <th>Total Perbekalan Terpakai</th>
+                                                                    <td class="text-right">Rp
+                                                                        {{ number_format((float) $rekapGrandTotals['total_perbekalan_terpakai'], 2, ',', '.') }}
+                                                                    </td>
+                                                                </tr>
+                                                                @foreach ($kategoriTangkapanMap as $kategoriKey => $kategoriLabel)
+                                                                    @php
+                                                                        $modalRekapRow =
+                                                                            $rekapTangkapan[$kategoriKey] ?? null;
+                                                                    @endphp
+                                                                    <tr>
+                                                                        <th>Total {{ $kategoriLabel }}</th>
+                                                                        <td class="text-right">Rp
+                                                                            {{ number_format((float) ($modalRekapRow->total_nilai ?? 0), 2, ',', '.') }}
+                                                                        </td>
+                                                                    </tr>
+                                                                @endforeach
+                                                                <tr>
+                                                                    <th>Total Operasional Trip</th>
+                                                                    <td class="text-right">Rp
+                                                                        {{ number_format((float) $rekapGrandTotals['total_operasional'], 2, ',', '.') }}
+                                                                    </td>
+                                                                </tr>
+                                                                <tr class="table-warning font-weight-bold">
+                                                                    <th>Grand Total Pembayaran</th>
+                                                                    <td class="text-right">Rp
+                                                                        {{ number_format($grandTotalPenutupan, 2, ',', '.') }}
+                                                                    </td>
+                                                                </tr>
+                                                            </tbody>
+                                                        </table>
+                                                    </div>
+
+                                                    <div class="form-group">
+                                                        <label class="font-weight-bold d-block mb-2">
+                                                            Metode Pembayaran Grand Total
+                                                        </label>
+                                                        <div class="row">
+                                                            <div class="col-md-4 mb-2">
+                                                                <div class="custom-control custom-radio">
+                                                                    <input
+                                                                        class="custom-control-input js-close-payment-method"
+                                                                        type="radio" name="payment_method"
+                                                                        id="payment_method_cash" value="cash"
+                                                                        {{ $selectedPaymentMethod === 'cash' ? 'checked' : '' }}>
+                                                                    <label class="custom-control-label"
+                                                                        for="payment_method_cash">Bayar Tunai / Kas
+                                                                        Penuh</label>
+                                                                </div>
+                                                            </div>
+                                                            <div class="col-md-4 mb-2">
+                                                                <div class="custom-control custom-radio">
+                                                                    <input
+                                                                        class="custom-control-input js-close-payment-method"
+                                                                        type="radio" name="payment_method"
+                                                                        id="payment_method_transfer" value="transfer"
+                                                                        {{ $selectedPaymentMethod === 'transfer' ? 'checked' : '' }}>
+                                                                    <label class="custom-control-label"
+                                                                        for="payment_method_transfer">Bayar Transfer /
+                                                                        Bank Penuh</label>
+                                                                </div>
+                                                            </div>
+                                                            <div class="col-md-4 mb-2">
+                                                                <div class="custom-control custom-radio">
+                                                                    <input
+                                                                        class="custom-control-input js-close-payment-method"
+                                                                        type="radio" name="payment_method"
+                                                                        id="payment_method_both" value="both"
+                                                                        {{ $selectedPaymentMethod === 'both' ? 'checked' : '' }}>
+                                                                    <label class="custom-control-label"
+                                                                        for="payment_method_both">Bayar Gabungan Kas +
+                                                                        Transfer</label>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                        <small class="form-text text-muted">Jika memilih gabungan,
+                                                            total kas dan transfer harus sama dengan grand total.</small>
+                                                    </div>
+
+                                                    <div class="row">
+                                                        <div class="col-md-6">
+                                                            <div class="form-group">
+                                                                <label for="close_bayar_tunai">Bayar Tunai (Kas)</label>
+                                                                <input type="number" min="0" step="0.01"
+                                                                    class="form-control js-close-payment-input"
+                                                                    id="close_bayar_tunai" name="bayar_tunai"
+                                                                    value="{{ old('bayar_tunai', $selectedPaymentMethod === 'cash' ? number_format($grandTotalPenutupan, 2, '.', '') : '') }}"
+                                                                    placeholder="0">
+                                                            </div>
+                                                        </div>
+                                                        <div class="col-md-6">
+                                                            <div class="form-group">
+                                                                <label for="close_bayar_transfer">Bayar Transfer</label>
+                                                                <input type="number" min="0" step="0.01"
+                                                                    class="form-control js-close-payment-input"
+                                                                    id="close_bayar_transfer" name="bayar_transfer"
+                                                                    value="{{ old('bayar_transfer', $selectedPaymentMethod === 'transfer' ? number_format($grandTotalPenutupan, 2, '.', '') : '') }}"
+                                                                    placeholder="0">
+                                                            </div>
+                                                        </div>
+                                                    </div>
+
+                                                    <div class="border rounded p-3 bg-light">
+                                                        <div class="d-flex justify-content-between mb-1">
+                                                            <span>Grand Total</span>
+                                                            <strong>Rp
+                                                                {{ number_format($grandTotalPenutupan, 2, ',', '.') }}</strong>
+                                                        </div>
+                                                        <div class="d-flex justify-content-between mb-1">
+                                                            <span>Total Dialokasikan</span>
+                                                            <strong class="js-close-allocated-total">Rp 0,00</strong>
+                                                        </div>
+                                                        <div class="d-flex justify-content-between">
+                                                            <span>Selisih Alokasi</span>
+                                                            <strong class="js-close-remaining-total text-danger">Rp
+                                                                0,00</strong>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="modal-footer">
+                                                    <button type="button" class="btn btn-light"
+                                                        data-dismiss="modal">Batal</button>
+                                                    <button type="submit"
+                                                        class="btn btn-success js-confirm-close-button">
+                                                        Konfirmasi & Tutup Pelayaran
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </form>
                                 <a href="{{ route('pelayaran.index') }}" class="btn btn-light">Batal</a>
                             @else
@@ -901,6 +1089,103 @@
                 document.querySelectorAll('.js-trip-pane').forEach(function(pane) {
                     updateCategorySubtotal(pane);
                 });
+
+                var closePaymentMethodInputs = document.querySelectorAll('.js-close-payment-method');
+                var closeBayarTunaiInput = document.getElementById('close_bayar_tunai');
+                var closeBayarTransferInput = document.getElementById('close_bayar_transfer');
+                var closeAllocatedOutput = document.querySelector('.js-close-allocated-total');
+                var closeRemainingOutput = document.querySelector('.js-close-remaining-total');
+                var closeConfirmButton = document.querySelector('.js-confirm-close-button');
+                var closeGrandTotal = parseFloat(
+                    '{{ number_format((float) ($rekapGrandTotals['grand_total_semua_komponen'] ?? 0), 2, '.', '') }}'
+                );
+                var hasOldClosePayment =
+                    {{ old('payment_method') !== null || old('bayar_tunai') !== null || old('bayar_transfer') !== null ? 'true' : 'false' }};
+                var shouldOpenCloseModal =
+                    {{ $errors->has('payment_method') || $errors->has('bayar_tunai') || $errors->has('bayar_transfer') ? 'true' : 'false' }};
+
+                var formatRupiah = function(value) {
+                    return 'Rp ' + value.toLocaleString('id-ID', {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2
+                    });
+                };
+
+                var updateClosePaymentSummary = function() {
+                    if (!closeAllocatedOutput || !closeRemainingOutput) {
+                        return;
+                    }
+
+                    var totalTunai = parseFloat((closeBayarTunaiInput && closeBayarTunaiInput.value) || '0');
+                    var totalTransfer = parseFloat((closeBayarTransferInput && closeBayarTransferInput.value) ||
+                        '0');
+                    totalTunai = isNaN(totalTunai) ? 0 : totalTunai;
+                    totalTransfer = isNaN(totalTransfer) ? 0 : totalTransfer;
+
+                    var allocated = totalTunai + totalTransfer;
+                    var difference = closeGrandTotal - allocated;
+                    var differenceText = (difference < 0 ? '- ' : '') + formatRupiah(Math.abs(difference));
+
+                    closeAllocatedOutput.textContent = formatRupiah(allocated);
+                    closeRemainingOutput.textContent = differenceText;
+                    closeRemainingOutput.classList.remove('text-success', 'text-danger');
+                    closeRemainingOutput.classList.add(Math.abs(difference) < 0.01 ? 'text-success' :
+                        'text-danger');
+
+                    if (closeConfirmButton) {
+                        closeConfirmButton.disabled = closeGrandTotal > 0 && Math.abs(difference) > 0.01;
+                    }
+                };
+
+                var syncClosePaymentMode = function(autoFill) {
+                    if (!closeBayarTunaiInput || !closeBayarTransferInput || closePaymentMethodInputs.length ===
+                        0) {
+                        return;
+                    }
+
+                    var selectedMethodInput = document.querySelector('.js-close-payment-method:checked');
+                    var selectedMethod = selectedMethodInput ? selectedMethodInput.value : 'cash';
+
+                    closeBayarTunaiInput.disabled = selectedMethod === 'transfer';
+                    closeBayarTransferInput.disabled = selectedMethod === 'cash';
+
+                    if (autoFill) {
+                        if (selectedMethod === 'cash') {
+                            closeBayarTunaiInput.value = closeGrandTotal > 0 ? closeGrandTotal.toFixed(2) : '';
+                            closeBayarTransferInput.value = '';
+                        } else if (selectedMethod === 'transfer') {
+                            closeBayarTunaiInput.value = '';
+                            closeBayarTransferInput.value = closeGrandTotal > 0 ? closeGrandTotal.toFixed(2) : '';
+                        } else if (selectedMethod === 'both' &&
+                            ((parseFloat(closeBayarTunaiInput.value || '0') || 0) +
+                                (parseFloat(closeBayarTransferInput.value || '0') || 0) <= 0)) {
+                            closeBayarTunaiInput.value = '';
+                            closeBayarTransferInput.value = '';
+                        }
+                    }
+
+                    updateClosePaymentSummary();
+                };
+
+                closePaymentMethodInputs.forEach(function(input) {
+                    input.addEventListener('change', function() {
+                        syncClosePaymentMode(true);
+                    });
+                });
+
+                [closeBayarTunaiInput, closeBayarTransferInput].forEach(function(input) {
+                    if (!input) {
+                        return;
+                    }
+
+                    input.addEventListener('input', updateClosePaymentSummary);
+                });
+
+                syncClosePaymentMode(!hasOldClosePayment);
+
+                if (shouldOpenCloseModal && window.jQuery && typeof window.jQuery.fn.modal === 'function') {
+                    window.jQuery('#closePelayaranModal').modal('show');
+                }
             });
         </script>
     @endif

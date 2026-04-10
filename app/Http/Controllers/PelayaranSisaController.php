@@ -32,6 +32,8 @@ class PelayaranSisaController extends Controller
         self::TAB_TANGKAPAN_JARINGAN => 'jaringan',
     ];
 
+    private const PAYMENT_METHODS = ['cash', 'transfer', 'both'];
+
     /**
      * Show active pelayaran and consolidated closing wizard.
      */
@@ -334,6 +336,9 @@ class PelayaranSisaController extends Controller
     {
         $validated = $request->validate([
             'id_pelayaran' => ['required', 'integer', 'exists:pelayaran,id_pelayaran'],
+            'payment_method' => ['nullable', 'string', 'in:' . implode(',', self::PAYMENT_METHODS)],
+            'bayar_tunai' => ['nullable', 'numeric', 'min:0'],
+            'bayar_transfer' => ['nullable', 'numeric', 'min:0'],
         ]);
 
         $idPelayaran = (int) $validated['id_pelayaran'];
@@ -377,8 +382,25 @@ class PelayaranSisaController extends Controller
                 ]);
         }
 
-        DB::transaction(function () use ($pelayaran) {
+        $closingCashflow = $this->buildClosingCashflowSummary($pelayaran);
+        $paymentAllocation = $this->normalizeClosePaymentAllocation(
+            grandTotal: (float) $closingCashflow['grand_total'],
+            paymentMethod: (string) ($validated['payment_method'] ?? ''),
+            bayarTunai: (float) ($validated['bayar_tunai'] ?? 0),
+            bayarTransfer: (float) ($validated['bayar_transfer'] ?? 0)
+        );
+
+        DB::transaction(function () use ($pelayaran, $closingCashflow, $paymentAllocation) {
             $this->storeCatchToKapalStorage($pelayaran);
+
+            if ((float) $closingCashflow['grand_total'] > 0) {
+                $this->postClosingCashflowEntries(
+                    pelayaran: $pelayaran,
+                    components: $closingCashflow['components'],
+                    bayarTunai: (float) $paymentAllocation['bayar_tunai'],
+                    bayarTransfer: (float) $paymentAllocation['bayar_transfer']
+                );
+            }
 
             $pelayaran->update([
                 'status_pelayaran' => 'selesai',
@@ -386,9 +408,256 @@ class PelayaranSisaController extends Controller
             ]);
         });
 
+        $successMessage = 'Pelayaran berhasil ditutup.';
+
+        if ((float) $closingCashflow['grand_total'] > 0) {
+            $successMessage .= ' Kredit arus kas tercatat: Kas Rp '
+                . number_format((float) $paymentAllocation['bayar_tunai'], 2, ',', '.')
+                . ' dan Transfer Rp '
+                . number_format((float) $paymentAllocation['bayar_transfer'], 2, ',', '.')
+                . '.';
+        }
+
         return redirect()
             ->route('pelayaran.index')
-            ->with('success', 'Pelayaran berhasil ditutup.');
+            ->with('success', $successMessage);
+    }
+
+    private function buildClosingCashflowSummary(Pelayaran $pelayaran): array
+    {
+        $pelayaran->loadMissing('kapal');
+
+        $idPelayaran = (int) $pelayaran->id_pelayaran;
+        $tripLabel = 'Trip #'.$idPelayaran.' - '.($pelayaran->kapal->nama_kapal ?? ('Kapal #'.$pelayaran->id_kapal));
+        $cutoffDate = $pelayaran->tanggal_selesai?->toDateString()
+            ?: $pelayaran->tanggal_tiba?->toDateString()
+            ?: now()->toDateString();
+
+        $perbekalanRows = DB::table('perbekalan_pelayaran as pp')
+            ->join('master_perbekalan as mp', 'mp.id_barang', '=', 'pp.id_barang')
+            ->leftJoin('sisa_trip as st', function ($join) use ($idPelayaran) {
+                $join->on('st.id_barang', '=', 'pp.id_barang')
+                    ->where('st.id_pelayaran', '=', $idPelayaran);
+            })
+            ->where('pp.id_pelayaran', $idPelayaran)
+            ->select('pp.id_barang', 'pp.jumlah as jumlah_awal', 'mp.nama_barang', 'mp.satuan', 'st.jumlah_sisa')
+            ->get();
+
+        $hargaPerbekalanMap = $perbekalanRows->isEmpty()
+            ? collect()
+            : DB::table('perbekalan_transaction as pt')
+                ->where('pt.jenis_transaksi', 'in')
+                ->whereIn('pt.id_barang', $perbekalanRows->pluck('id_barang')->all())
+                ->whereNotNull('pt.harga_satuan')
+                ->where('pt.harga_satuan', '>', 0)
+                ->whereDate('pt.tanggal_transaksi', '<=', $cutoffDate)
+                ->orderByDesc('pt.tanggal_transaksi')
+                ->orderByDesc('pt.id_transaction')
+                ->get(['pt.id_barang', 'pt.harga_satuan'])
+                ->groupBy('id_barang')
+                ->map(fn ($rows) => (float) ($rows->first()->harga_satuan ?? 0));
+
+        $rekapPerbekalan = $perbekalanRows->map(function ($row) use ($hargaPerbekalanMap) {
+            $jumlahAwal = (float) ($row->jumlah_awal ?? 0);
+            $jumlahSisa = min((float) ($row->jumlah_sisa ?? 0), $jumlahAwal);
+            $jumlahTerpakai = max(0, $jumlahAwal - $jumlahSisa);
+            $hargaBeli = (float) ($hargaPerbekalanMap[$row->id_barang] ?? 0);
+
+            return (object) [
+                'nama_barang' => $row->nama_barang,
+                'satuan' => $row->satuan,
+                'jumlah_terpakai' => $jumlahTerpakai,
+                'harga_beli' => $hargaBeli,
+                'total_biaya' => $jumlahTerpakai * $hargaBeli,
+            ];
+        });
+
+        $rekapTangkapan = DB::table('ikan_hasil_pelayaran')
+            ->where('id_pelayaran', $idPelayaran)
+            ->selectRaw('kategori_tangkapan, SUM(berat_hasil) as total_berat, SUM(berat_hasil * COALESCE(harga_per_kg, 0)) as total_nilai')
+            ->groupBy('kategori_tangkapan')
+            ->get()
+            ->keyBy('kategori_tangkapan');
+
+        $rekapOperasional = DB::table('operasional')
+            ->where('id_pelayaran', $idPelayaran)
+            ->selectRaw('COUNT(*) as total_item_biaya, COALESCE(SUM(jumlah), 0) as total_biaya')
+            ->first();
+
+        $components = collect();
+
+        $totalPerbekalan = (float) $rekapPerbekalan->sum('total_biaya');
+        if ($totalPerbekalan > 0) {
+            $components->push([
+                'category' => 'Penutupan Trip - Perbekalan Terpakai',
+                'amount' => $totalPerbekalan,
+                'description' => $tripLabel.' | Pemakaian perbekalan terpakai '.(int) $rekapPerbekalan->filter(fn ($row) => (float) $row->jumlah_terpakai > 0)->count().' item.',
+            ]);
+        }
+
+        foreach (self::KATEGORI_TANGKAPAN as $kategoriKey => $label) {
+            $row = $rekapTangkapan->get($kategoriKey);
+            $amount = (float) ($row->total_nilai ?? 0);
+
+            if ($amount <= 0) {
+                continue;
+            }
+
+            $components->push([
+                'category' => 'Penutupan Trip - '.$label,
+                'amount' => $amount,
+                'description' => $tripLabel.' | Pembelian hasil '.$label.' total '.number_format((float) ($row->total_berat ?? 0), 2, ',', '.').' kg.',
+            ]);
+        }
+
+        $totalOperasional = (float) ($rekapOperasional->total_biaya ?? 0);
+        if ($totalOperasional > 0) {
+            $components->push([
+                'category' => 'Penutupan Trip - Operasional',
+                'amount' => $totalOperasional,
+                'description' => $tripLabel.' | Total '.(int) ($rekapOperasional->total_item_biaya ?? 0).' item biaya operasional trip.',
+            ]);
+        }
+
+        return [
+            'components' => $components->values()->all(),
+            'grand_total' => (float) $components->sum('amount'),
+        ];
+    }
+
+    private function normalizeClosePaymentAllocation(float $grandTotal, string $paymentMethod, float $bayarTunai, float $bayarTransfer): array
+    {
+        $grandTotal = round($grandTotal, 2);
+        $bayarTunai = round($bayarTunai, 2);
+        $bayarTransfer = round($bayarTransfer, 2);
+
+        if ($grandTotal <= 0) {
+            return [
+                'payment_method' => $paymentMethod ?: 'cash',
+                'bayar_tunai' => 0,
+                'bayar_transfer' => 0,
+            ];
+        }
+
+        if (! in_array($paymentMethod, self::PAYMENT_METHODS, true)) {
+            if ($bayarTunai > 0 && $bayarTransfer > 0) {
+                $paymentMethod = 'both';
+            } elseif ($bayarTransfer > 0) {
+                $paymentMethod = 'transfer';
+            } else {
+                $paymentMethod = 'cash';
+            }
+        }
+
+        if ($paymentMethod === 'cash') {
+            $bayarTunai = $grandTotal;
+            $bayarTransfer = 0;
+        } elseif ($paymentMethod === 'transfer') {
+            $bayarTunai = 0;
+            $bayarTransfer = $grandTotal;
+        } elseif ($bayarTunai <= 0 || $bayarTransfer <= 0) {
+            throw ValidationException::withMessages([
+                'bayar_tunai' => 'Untuk metode gabungan, isi nominal kas dan transfer lebih dari 0.',
+            ]);
+        }
+
+        $allocatedTotal = round($bayarTunai + $bayarTransfer, 2);
+        if (abs($allocatedTotal - $grandTotal) > 0.01) {
+            throw ValidationException::withMessages([
+                'bayar_tunai' => 'Total pembayaran harus sama dengan grand total penutupan trip (Rp '.number_format($grandTotal, 2, ',', '.').').',
+            ]);
+        }
+
+        return [
+            'payment_method' => $paymentMethod,
+            'bayar_tunai' => $bayarTunai,
+            'bayar_transfer' => $bayarTransfer,
+        ];
+    }
+
+    private function postClosingCashflowEntries(Pelayaran $pelayaran, array $components, float $bayarTunai, float $bayarTransfer): void
+    {
+        $remainingCash = round($bayarTunai, 2);
+        $remainingTransfer = round($bayarTransfer, 2);
+        $tanggal = now()->toDateString();
+        $componentCount = count($components);
+
+        foreach ($components as $index => $component) {
+            $amount = round((float) ($component['amount'] ?? 0), 2);
+            if ($amount <= 0) {
+                continue;
+            }
+
+            $allocation = $this->allocateClosingAmountByAccount(
+                amount: $amount,
+                remainingCash: $remainingCash,
+                remainingTransfer: $remainingTransfer,
+                isLastComponent: $index === ($componentCount - 1)
+            );
+
+            if ($allocation['kas'] > 0) {
+                $this->postArusKas(
+                    akun: 'kas',
+                    tanggal: $tanggal,
+                    kategori: (string) ($component['category'] ?? 'Penutupan Trip'),
+                    deskripsi: trim((string) ($component['description'] ?? 'Penutupan trip')).' | Dibayar via kas.',
+                    debit: 0,
+                    kredit: (float) $allocation['kas']
+                );
+            }
+
+            if ($allocation['bank'] > 0) {
+                $this->postArusKas(
+                    akun: 'bank',
+                    tanggal: $tanggal,
+                    kategori: (string) ($component['category'] ?? 'Penutupan Trip'),
+                    deskripsi: trim((string) ($component['description'] ?? 'Penutupan trip')).' | Dibayar via transfer.',
+                    debit: 0,
+                    kredit: (float) $allocation['bank']
+                );
+            }
+        }
+    }
+
+    private function allocateClosingAmountByAccount(float $amount, float &$remainingCash, float &$remainingTransfer, bool $isLastComponent = false): array
+    {
+        $amount = round($amount, 2);
+        $cashPortion = 0.0;
+        $transferPortion = 0.0;
+
+        if ($amount <= 0) {
+            return ['kas' => 0, 'bank' => 0];
+        }
+
+        if ($isLastComponent) {
+            $cashPortion = min($amount, $remainingCash);
+            $transferPortion = round($amount - $cashPortion, 2);
+        } else {
+            $remainingGrandTotal = round($remainingCash + $remainingTransfer, 2);
+            $cashRatio = $remainingGrandTotal > 0 ? ($remainingCash / $remainingGrandTotal) : 0;
+
+            $cashPortion = round($amount * $cashRatio, 2);
+            $cashPortion = min($cashPortion, $remainingCash, $amount);
+            $transferPortion = round($amount - $cashPortion, 2);
+
+            if ($transferPortion > $remainingTransfer) {
+                $transferPortion = min($remainingTransfer, $amount);
+                $cashPortion = round($amount - $transferPortion, 2);
+            }
+
+            if ($cashPortion > $remainingCash) {
+                $cashPortion = min($remainingCash, $amount);
+                $transferPortion = round($amount - $cashPortion, 2);
+            }
+        }
+
+        $remainingCash = round(max(0, $remainingCash - $cashPortion), 2);
+        $remainingTransfer = round(max(0, $remainingTransfer - $transferPortion), 2);
+
+        return [
+            'kas' => $cashPortion,
+            'bank' => $transferPortion,
+        ];
     }
 
     private function normalizeActiveTab(string $activeTab): string
@@ -824,5 +1093,32 @@ class PelayaranSisaController extends Controller
             ['id_ikan', 'periode'],
             ['total_tangkapan', 'total_penjualan', 'stok_akhir', 'updated_at']
         );
+    }
+
+    private function getLastSaldoByAkun(string $akun): float
+    {
+        return (float) (DB::table('arus_kas')
+            ->where('akun', $akun)
+            ->orderByDesc('id_kas')
+            ->value('saldo') ?? 0);
+    }
+
+    private function postArusKas(string $akun, string $tanggal, string $kategori, string $deskripsi, float $debit, float $kredit): void
+    {
+        $lastSaldo = $this->getLastSaldoByAkun($akun);
+        $saldoBaru = $lastSaldo + $debit - $kredit;
+
+        DB::table('arus_kas')->insert([
+            'akun' => $akun,
+            'tanggal' => $tanggal,
+            'jenis_transaksi' => $debit > 0 ? 'Masuk' : 'Keluar',
+            'kategori' => $kategori,
+            'deskripsi' => $deskripsi,
+            'uang_masuk' => $debit,
+            'uang_keluar' => $kredit,
+            'saldo' => $saldoBaru,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
     }
 }
