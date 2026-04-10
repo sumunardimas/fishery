@@ -24,14 +24,14 @@
                         <div class="row">
                             <div class="col-md-3">
                                 <div class="form-group">
-                                    <label for="start_date">Start Date</label>
+                                    <label for="start_date">Tanggal Mulai</label>
                                     <input type="date" id="start_date" name="start_date" class="form-control"
                                         value="{{ $startDate }}">
                                 </div>
                             </div>
                             <div class="col-md-3">
                                 <div class="form-group">
-                                    <label for="end_date">End Date</label>
+                                    <label for="end_date">Tanggal Akhir</label>
                                     <input type="date" id="end_date" name="end_date" class="form-control"
                                         value="{{ $endDate }}">
                                 </div>

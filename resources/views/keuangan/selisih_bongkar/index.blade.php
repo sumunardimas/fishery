@@ -17,17 +17,17 @@
 		<div class="col-md-4 grid-margin stretch-card">
 			<div class="card">
 				<div class="card-body">
-					<h4 class="card-title mb-3">Filter Date Period</h4>
+					<h4 class="card-title mb-3">Filter Tanggal</h4>
 					<p class="card-description">Default 1 bulan terakhir untuk cek selisih bongkaran.</p>
 
 					<form method="GET" action="{{ url('/keuangan/lap-selisih-bongkaran') }}" class="mt-3">
 						<div class="form-group">
-							<label for="start_date">Start Date</label>
+							<label for="start_date">Tanggal Mulai</label>
 							<input type="date" id="start_date" name="start_date" class="form-control"
 								value="{{ $startDate }}">
 						</div>
 						<div class="form-group">
-							<label for="end_date">End Date</label>
+							<label for="end_date">Tanggal Akhir</label>
 							<input type="date" id="end_date" name="end_date" class="form-control"
 								value="{{ $endDate }}">
 						</div>

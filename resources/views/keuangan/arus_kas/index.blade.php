@@ -12,12 +12,12 @@
 
                     <form method="GET" action="{{ url('/keuangan/arus-kas') }}" class="mt-3">
                         <div class="form-group">
-                            <label for="start_date">Start Date</label>
+                            <label for="start_date">Tanggal Mulai</label>
                             <input type="date" id="start_date" name="start_date" class="form-control"
                                 value="{{ $startDate }}">
                         </div>
                         <div class="form-group">
-                            <label for="end_date">End Date</label>
+                            <label for="end_date">Tanggal Akhir</label>
                             <input type="date" id="end_date" name="end_date" class="form-control"
                                 value="{{ $endDate }}">
                         </div>
@@ -42,7 +42,7 @@
         <div class="col-md-8 grid-margin stretch-card">
             <div class="card">
                 <div class="card-body">
-                    <h4 class="card-title mb-3">Current Balance</h4>
+                    <h4 class="card-title mb-3">Saldo Terkini/h4>
                     <p class="card-description mb-4">Saldo total terkini (Kas + Bank) berdasarkan transaksi terakhir per
                         akun.</p>
 
@@ -59,7 +59,7 @@
         <div class="col-md-12 grid-margin stretch-card">
             <div class="card">
                 <div class="card-body">
-                    <h4 class="card-title">Datatable Arus Kas (Debit/Kredit)</h4>
+                    <h4 class="card-title">Arus Kas (Debit/Kredit)</h4>
                     <p class="card-description">Daftar transaksi kas/bank pada periode terpilih. Penjualan kredit hanya
                         mengakui penerimaan kas/bank yang benar-benar diterima.</p>
 

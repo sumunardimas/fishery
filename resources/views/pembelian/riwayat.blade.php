@@ -28,12 +28,12 @@
                     <form method="GET" action="{{ route('pembelian.riwayat') }}" class="mb-0">
                         <div class="form-row align-items-end">
                             <div class="form-group col-md-3">
-                                <label for="start_date">Start Date</label>
+                                <label for="start_date">Tanggal Mulai</label>
                                 <input type="date" id="start_date" name="start_date" class="form-control"
                                     value="{{ $startDate }}">
                             </div>
                             <div class="form-group col-md-3">
-                                <label for="end_date">End Date</label>
+                                <label for="end_date">Tanggal Akhir</label>
                                 <input type="date" id="end_date" name="end_date" class="form-control"
                                     value="{{ $endDate }}">
                             </div>

@@ -12,13 +12,13 @@
 
 					<form method="GET" action="{{ route('keuangan.lap-penjualan.index') }}" class="mt-3">
 						<div class="form-group">
-							<label for="start_date">Start Date</label>
+							<label for="start_date">Tanggal Mulai</label>
 							<input type="date" id="start_date" name="start_date" class="form-control"
 								value="{{ $startDate }}">
 						</div>
 
 						<div class="form-group">
-							<label for="end_date">End Date</label>
+							<label for="end_date">Tanggal Akhir</label>
 							<input type="date" id="end_date" name="end_date" class="form-control"
 								value="{{ $endDate }}">
 						</div>
@@ -42,7 +42,7 @@
 		<div class="col-md-8 grid-margin stretch-card">
 			<div class="card">
 				<div class="card-body">
-					<h4 class="card-title mb-2">Chart Trends</h4>
+					<h4 class="card-title mb-2">Grafik Penjualan</h4>
 					<p class="card-description mb-4">
 						Tren penjualan harian.
 						@if ($chartMeta['custom'])
@@ -64,7 +64,7 @@
 		<div class="col-md-12 grid-margin stretch-card">
 			<div class="card">
 				<div class="card-body">
-					<h4 class="card-title mb-2">Default Sale Summary (Active Date)</h4>
+					<h4 class="card-title mb-2">Ringkasan Penjualan Hari Ini</h4>
 					<p class="card-description mb-4">Ringkasan otomatis untuk tanggal aktif saat ini: {{ $today }}.</p>
 
 					<div class="row">
