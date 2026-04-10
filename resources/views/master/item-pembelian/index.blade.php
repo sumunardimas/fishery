@@ -58,6 +58,7 @@
 									<th>Kategori</th>
 									<th>Satuan</th>
 									<th>Keterangan</th>
+									<th>Stok Aktual</th>
 									<th class="text-right">Aksi</th>
 								</tr>
 							</thead>
@@ -68,11 +69,10 @@
 										<td>{{ $item->nama_item }}</td>
 										<td>{{ $item->kategori }}</td>
 										<td>{{ $item->satuan }}</td>
-										<td>{{ $item->keterangan ?: '-' }}</td>
-										<td class="text-right">
+										<td>{{ $item->keterangan ?: '-' }}</td>											<td>{{ number_format((float) $item->stok_aktual, 2, ',', '.') }}</td>										<td class="text-right">
 											<button type="button" class="btn btn-outline-primary btn-sm" data-toggle="modal"
 												data-target="#editItemPembelian{{ $item->id_item_pembelian }}">Edit</button>
-											<form action="{{ route('master.item-pembelian.destroy', $item) }}" method="POST"
+											<form action="{{ route('master.item-pembelian.destroy', $item->id_item_pembelian) }}" method="POST"
 												class="d-inline"
 												onsubmit="return confirm('Hapus item pembelian {{ addslashes($item->nama_item) }}?')">
 												@csrf
@@ -92,7 +92,7 @@
 														<span aria-hidden="true">&times;</span>
 													</button>
 												</div>
-												<form action="{{ route('master.item-pembelian.update', $item) }}" method="POST">
+												<form action="{{ route('master.item-pembelian.update', $item->id_item_pembelian) }}" method="POST">
 													@csrf
 													@method('PUT')
 													<div class="modal-body">
@@ -128,7 +128,7 @@
 									</div>
 								@empty
 									<tr>
-										<td colspan="6" class="text-center text-muted">Belum ada data item pembelian.</td>
+										<td colspan="7" class="text-center text-muted">Belum ada data item pembelian.</td>
 									</tr>
 								@endforelse
 							</tbody>

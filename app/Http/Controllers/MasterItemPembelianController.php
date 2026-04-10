@@ -13,7 +13,18 @@ class MasterItemPembelianController extends Controller
 {
     public function index(): View
     {
-        $items = MasterItemPembelian::query()->orderByDesc('created_at')->get();
+        $items = DB::table('master_item_pembelian as mip')
+            ->leftJoin('item_pembelian_stock as ips', 'ips.id_item_pembelian', '=', 'mip.id_item_pembelian')
+            ->select(
+                'mip.id_item_pembelian',
+                'mip.nama_item',
+                'mip.kategori',
+                'mip.satuan',
+                'mip.keterangan',
+                DB::raw('COALESCE(ips.stok_aktual, 0) as stok_aktual')
+            )
+            ->orderByDesc('mip.created_at')
+            ->get();
 
         return view('master.item-pembelian.index', compact('items'));
     }
