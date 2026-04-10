@@ -62,6 +62,32 @@
             </div>
         </div>
 
+        <div class="card mb-4">
+            <div class="card-body">
+                <h4 class="card-title mb-1">Kas Bon Pegawai</h4>
+                <p class="card-description mb-3">Filter periode data kas bon pegawai.</p>
+
+                <form method="GET" action="{{ url('/keuangan/kas-bon-pegawai') }}" class="mb-0">
+                    <div class="form-row align-items-end">
+                        <div class="form-group col-md-4">
+                            <label for="start_date">Start Date</label>
+                            <input type="date" id="start_date" name="start_date" class="form-control"
+                                value="{{ $startDate }}">
+                        </div>
+                        <div class="form-group col-md-4">
+                            <label for="end_date">End Date</label>
+                            <input type="date" id="end_date" name="end_date" class="form-control"
+                                value="{{ $endDate }}">
+                        </div>
+                        <div class="form-group col-md-4 d-flex align-items-center">
+                            <button type="submit" class="btn btn-primary mr-2">Terapkan</button>
+                            <a href="{{ url('/keuangan/kas-bon-pegawai') }}" class="btn btn-light">Reset</a>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+
         <div class="row mb-4">
             <div class="col-md-3 grid-margin stretch-card">
                 <div class="card border-left-danger">
@@ -103,28 +129,9 @@
             <div class="col-md-3 grid-margin stretch-card">
                 <div class="card">
                     <div class="card-body">
-                        <h4 class="card-title mb-3">Filter</h4>
-
-                        <form method="GET" action="{{ url('/keuangan/kas-bon-pegawai') }}">
-                            <div class="form-group">
-                                <label for="start_date">Dari Tanggal</label>
-                                <input type="date" id="start_date" name="start_date" class="form-control"
-                                    value="{{ $startDate }}">
-                            </div>
-                            <div class="form-group">
-                                <label for="end_date">Sampai Tanggal</label>
-                                <input type="date" id="end_date" name="end_date" class="form-control"
-                                    value="{{ $endDate }}">
-                            </div>
-                            <div class="d-flex align-items-center">
-                                <button type="submit" class="btn btn-primary mr-2">Terapkan</button>
-                                <a href="{{ url('/keuangan/kas-bon-pegawai') }}" class="btn btn-light">Reset</a>
-                            </div>
-                        </form>
+                        <h4 class="card-title mb-3">Rekap per Pegawai</h4>
 
                         @if ($byPegawai->isNotEmpty())
-                            <hr>
-                            <h6 class="mb-2">Rekap per Pegawai</h6>
                             @foreach ($byPegawai as $pegawai)
                                 <div class="d-flex justify-content-between mb-1">
                                     <span class="text-truncate mr-2" style="max-width:140px;"
@@ -135,6 +142,8 @@
                                     </span>
                                 </div>
                             @endforeach
+                        @else
+                            <p class="text-muted mb-0">Belum ada rekap pegawai pada periode ini.</p>
                         @endif
                     </div>
                 </div>

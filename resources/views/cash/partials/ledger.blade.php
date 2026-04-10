@@ -1,4 +1,32 @@
 <div class="row mb-4">
+    <div class="col-12 grid-margin stretch-card">
+        <div class="card">
+            <div class="card-body">
+                <h4 class="card-title mb-1">Mutasi {{ $title }}</h4>
+                <p class="card-description mb-3">Filter periode mutasi akun {{ strtolower($title) }}.</p>
+
+                <form method="GET" action="{{ url('/keuangan/' . $akun) }}" class="mb-0">
+                    <div class="form-row align-items-end">
+                        <div class="form-group col-md-4">
+                            <label for="start_date">Start Date</label>
+                            <input type="date" id="start_date" name="start_date" class="form-control"
+                                value="{{ $startDate }}">
+                        </div>
+                        <div class="form-group col-md-4">
+                            <label for="end_date">End Date</label>
+                            <input type="date" id="end_date" name="end_date" class="form-control"
+                                value="{{ $endDate }}">
+                        </div>
+                        <div class="form-group col-md-4 d-flex align-items-center">
+                            <button type="submit" class="btn btn-outline-primary mr-2">Terapkan</button>
+                            <a href="{{ url('/keuangan/' . $akun) }}" class="btn btn-light">Reset</a>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
     <div class="col-md-3 grid-margin stretch-card">
         <div class="card">
             <div class="card-body text-center">
@@ -123,24 +151,6 @@
                     <button type="submit" class="btn btn-primary btn-block">Simpan Transaksi</button>
                 </form>
 
-                <hr>
-
-                <form method="GET" action="{{ url('/keuangan/' . $akun) }}">
-                    <div class="form-group">
-                        <label for="start_date">Filter Dari</label>
-                        <input type="date" id="start_date" name="start_date" class="form-control"
-                            value="{{ $startDate }}">
-                    </div>
-                    <div class="form-group">
-                        <label for="end_date">Filter Sampai</label>
-                        <input type="date" id="end_date" name="end_date" class="form-control"
-                            value="{{ $endDate }}">
-                    </div>
-                    <div class="d-flex align-items-center">
-                        <button type="submit" class="btn btn-outline-primary mr-2">Terapkan</button>
-                        <a href="{{ url('/keuangan/' . $akun) }}" class="btn btn-light">Reset</a>
-                    </div>
-                </form>
             </div>
         </div>
     </div>

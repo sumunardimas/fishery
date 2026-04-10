@@ -80,6 +80,43 @@
             </div>
         </div>
 
+        <div class="card mb-4">
+            <div class="card-body">
+                <h4 class="card-title mb-1">Laporan Piutang</h4>
+                <p class="card-description mb-3">Filter periode dan status piutang.</p>
+
+                <form method="GET" action="{{ url('/keuangan/piutang') }}" class="mb-0">
+                    <div class="form-row align-items-end">
+                        <div class="form-group col-md-3">
+                            <label for="start_date">Start Date</label>
+                            <input type="date" id="start_date" name="start_date" class="form-control"
+                                value="{{ $startDate }}">
+                        </div>
+                        <div class="form-group col-md-3">
+                            <label for="end_date">End Date</label>
+                            <input type="date" id="end_date" name="end_date" class="form-control"
+                                value="{{ $endDate }}">
+                        </div>
+                        <div class="form-group col-md-3">
+                            <label for="status">Tampilkan</label>
+                            <select id="status" name="status" class="form-control">
+                                <option value="piutang" {{ $status === 'piutang' ? 'selected' : '' }}>
+                                    Piutang Belum Lunas
+                                </option>
+                                <option value="semua" {{ $status === 'semua' ? 'selected' : '' }}>
+                                    Semua Transaksi
+                                </option>
+                            </select>
+                        </div>
+                        <div class="form-group col-md-3 d-flex align-items-center">
+                            <button type="submit" class="btn btn-primary mr-2">Terapkan</button>
+                            <a href="{{ url('/keuangan/piutang') }}" class="btn btn-light">Reset</a>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+
         {{-- Summary cards --}}
         <div class="row mb-4">
             <div class="col-md-3 grid-margin stretch-card">
@@ -119,43 +156,13 @@
         </div>
 
         <div class="row">
-            {{-- Filter panel --}}
+            {{-- Rekap panel --}}
             <div class="col-md-3 grid-margin stretch-card">
                 <div class="card">
                     <div class="card-body">
-                        <h4 class="card-title mb-3">Filter</h4>
-
-                        <form method="GET" action="{{ url('/keuangan/piutang') }}">
-                            <div class="form-group">
-                                <label for="start_date">Dari Tanggal</label>
-                                <input type="date" id="start_date" name="start_date" class="form-control"
-                                    value="{{ $startDate }}">
-                            </div>
-                            <div class="form-group">
-                                <label for="end_date">Sampai Tanggal</label>
-                                <input type="date" id="end_date" name="end_date" class="form-control"
-                                    value="{{ $endDate }}">
-                            </div>
-                            <div class="form-group">
-                                <label for="status">Tampilkan</label>
-                                <select id="status" name="status" class="form-control">
-                                    <option value="piutang" {{ $status === 'piutang' ? 'selected' : '' }}>
-                                        Piutang Belum Lunas
-                                    </option>
-                                    <option value="semua" {{ $status === 'semua' ? 'selected' : '' }}>
-                                        Semua Transaksi
-                                    </option>
-                                </select>
-                            </div>
-                            <div class="d-flex align-items-center">
-                                <button type="submit" class="btn btn-primary mr-2">Terapkan</button>
-                                <a href="{{ url('/keuangan/piutang') }}" class="btn btn-light">Reset</a>
-                            </div>
-                        </form>
+                        <h4 class="card-title mb-3">Rekap per Customer</h4>
 
                         @if ($byCustomer->isNotEmpty())
-                            <hr>
-                            <h6 class="mb-2">Rekap per Customer</h6>
                             @foreach ($byCustomer as $c)
                                 <div class="d-flex justify-content-between mb-1">
                                     <span class="text-truncate mr-2" style="max-width:140px;"
@@ -166,6 +173,8 @@
                                     </span>
                                 </div>
                             @endforeach
+                        @else
+                            <p class="text-muted mb-0">Belum ada rekap customer pada periode ini.</p>
                         @endif
                     </div>
                 </div>

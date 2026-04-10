@@ -62,6 +62,32 @@
             </div>
         </div>
 
+        <div class="card mb-4">
+            <div class="card-body">
+                <h4 class="card-title mb-1">Hutang Modal</h4>
+                <p class="card-description mb-3">Filter periode data hutang modal.</p>
+
+                <form method="GET" action="{{ url('/keuangan/hutang-modal') }}" class="mb-0">
+                    <div class="form-row align-items-end">
+                        <div class="form-group col-md-4">
+                            <label for="start_date">Start Date</label>
+                            <input type="date" id="start_date" name="start_date" class="form-control"
+                                value="{{ $startDate }}">
+                        </div>
+                        <div class="form-group col-md-4">
+                            <label for="end_date">End Date</label>
+                            <input type="date" id="end_date" name="end_date" class="form-control"
+                                value="{{ $endDate }}">
+                        </div>
+                        <div class="form-group col-md-4 d-flex align-items-center">
+                            <button type="submit" class="btn btn-primary mr-2">Terapkan</button>
+                            <a href="{{ url('/keuangan/hutang-modal') }}" class="btn btn-light">Reset</a>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+
         <div class="row mb-4">
             <div class="col-md-3 grid-margin stretch-card">
                 <div class="card border-left-danger">
@@ -103,26 +129,7 @@
             <div class="col-md-3 grid-margin stretch-card">
                 <div class="card">
                     <div class="card-body">
-                        <h4 class="card-title mb-3">Filter</h4>
-
-                        <form method="GET" action="{{ url('/keuangan/hutang-modal') }}">
-                            <div class="form-group">
-                                <label for="start_date">Dari Tanggal</label>
-                                <input type="date" id="start_date" name="start_date" class="form-control"
-                                    value="{{ $startDate }}">
-                            </div>
-                            <div class="form-group">
-                                <label for="end_date">Sampai Tanggal</label>
-                                <input type="date" id="end_date" name="end_date" class="form-control"
-                                    value="{{ $endDate }}">
-                            </div>
-                            <div class="d-flex align-items-center">
-                                <button type="submit" class="btn btn-primary mr-2">Terapkan</button>
-                                <a href="{{ url('/keuangan/hutang-modal') }}" class="btn btn-light">Reset</a>
-                            </div>
-                        </form>
-
-                        <hr>
+                        <h4 class="card-title mb-3">Informasi</h4>
                         <p class="text-muted small mb-0">
                             Setiap transaksi kategori Pinjam Modal Bu Uum dan Pinjam Modal Jons Group pada Kas atau
                             Bank otomatis muncul di sini.
