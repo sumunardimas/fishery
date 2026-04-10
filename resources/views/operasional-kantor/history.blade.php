@@ -18,7 +18,7 @@
             <div class="card mb-4" id="history-operasional-kantor">
                 <div class="card-body">
                     <h4 class="card-title mb-1">Ringkasan Harian Operasional Kantor</h4>
-                    <p class="card-description mb-4">Filter periode tanggal. Default menampilkan 5 hari terakhir.</p>
+                    <p class="card-description mb-4">Filter periode tanggal. Default menampilkan 30 hari terakhir.</p>
 
                     <form method="GET" action="{{ route('operasional-kantor.history') }}" class="mb-4">
                         <div class="row">

@@ -95,7 +95,7 @@ class OperasionalKantorController extends Controller
 
         $start = ! empty($validated['start_date'])
             ? Carbon::parse($validated['start_date'])
-            : $today->copy()->subDays(4);
+            : $today->copy()->subDays(29);
 
         $end = ! empty($validated['end_date'])
             ? Carbon::parse($validated['end_date'])
