@@ -11,28 +11,20 @@ class AdminSeeder extends Seeder
 {
     public function run(): void
     {
-        // Main admin account
-        $user = User::factory()->create([
+        // Main admin account (idempotent)
+        $user = User::query()->updateOrCreate([
             'username' => 'admin',
+        ], [
             'email' => 'admin',
             'password' => Hash::make('password'),
         ]);
 
         $user->assignRole('admin');
 
-        Admin::factory()->create([
+        Admin::query()->updateOrCreate([
             'user_id' => $user->id,
+        ], [
+            'name' => 'Administrator',
         ]);
-
-        // Additional admin(s)
-        User::factory(1)->create([
-            'password' => Hash::make('password'),
-        ])->each(function ($user) {
-            $user->assignRole('admin');
-
-            Admin::factory()->create([
-                'user_id' => $user->id,
-            ]);
-        });
     }
 }

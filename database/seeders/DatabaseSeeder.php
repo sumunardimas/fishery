@@ -12,18 +12,23 @@ class DatabaseSeeder extends Seeder
     public function run(): void
     {
         $this->call([
+            // Fundamental access setup
             PermissionSeeder::class,
             AdminSeeder::class,
+
+            // Supporting base model
             InstitusiSeeder::class,
-            MasterPerbekalanSeeder::class,
+
+            // Core masters (menu-driven order)
             MasterIkanSeeder::class,
             MasterIkanTangkapanSeeder::class,
             MasterIkanTangkapanRelationSeeder::class,
-            FisherySeeder::class,
-            StokIkanSeeder::class,
-            MasterCustomerSeeder::class,
             MasterItemPembelianSeeder::class,
             MasterOperasionalSeeder::class,
+            MasterPerbekalanSeeder::class,
+
+            // Other master menus
+            MasterCustomerSeeder::class,
             MasterOperasionalKantorSeeder::class,
         ]);
     }
