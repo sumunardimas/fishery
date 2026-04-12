@@ -17,6 +17,7 @@ class PelayaranSisaController extends Controller
     private const TAB_TANGKAPAN_PRIBADI = 'tangkapan-pribadi';
     private const TAB_TANGKAPAN_BERSAMA = 'tangkapan-bersama';
     private const TAB_TANGKAPAN_JARINGAN = 'tangkapan-jaringan';
+    private const TAB_TANGKAPAN_3_TON = 'tangkapan-3-ton';
     private const TAB_OPERASIONAL = 'operasional';
     private const TAB_REKAP = 'rekap';
 
@@ -24,15 +25,19 @@ class PelayaranSisaController extends Controller
         'pancingan_pribadi' => 'Pancingan Pribadi',
         'pancingan_bersama' => 'Pancingan Bersama',
         'jaringan' => 'Jaringan',
+        'tangkapan_3_ton' => 'Tangkapan 3 Ton',
     ];
 
     private const TAB_TO_KATEGORI = [
         self::TAB_TANGKAPAN_PRIBADI => 'pancingan_pribadi',
         self::TAB_TANGKAPAN_BERSAMA => 'pancingan_bersama',
         self::TAB_TANGKAPAN_JARINGAN => 'jaringan',
+        self::TAB_TANGKAPAN_3_TON => 'tangkapan_3_ton',
     ];
 
     private const PAYMENT_METHODS = ['cash', 'transfer', 'both'];
+    private const JARINGAN_CREDIT_FACTOR = 0.5;
+    private const TANGKAPAN_3_TON_MAX_BERAT = 3000;
 
     /**
      * Show active pelayaran and consolidated closing wizard.
@@ -207,6 +212,15 @@ class PelayaranSisaController extends Controller
         $hasilIkan = $hasilIkan->mapWithKeys(function (float $beratHasil, int $idIkanTangkapan) use ($relasiIkanMap) {
             return [(int) $relasiIkanMap[$idIkanTangkapan] => $beratHasil];
         });
+
+        if ($kategoriTangkapan === 'tangkapan_3_ton') {
+            $totalBerat3Ton = (float) $hasilIkan->sum();
+            if ($totalBerat3Ton > self::TANGKAPAN_3_TON_MAX_BERAT) {
+                throw ValidationException::withMessages([
+                    'hasil_ikan' => 'Total berat Tangkapan 3 Ton maksimal ' . self::TANGKAPAN_3_TON_MAX_BERAT . ' kg.',
+                ]);
+            }
+        }
 
         $hargaIkan = $hargaIkan->mapWithKeys(function (float $harga, int $idIkanTangkapan) use ($relasiIkanMap) {
             if (!isset($relasiIkanMap[$idIkanTangkapan])) {
@@ -497,16 +511,18 @@ class PelayaranSisaController extends Controller
 
         foreach (self::KATEGORI_TANGKAPAN as $kategoriKey => $label) {
             $row = $rekapTangkapan->get($kategoriKey);
-            $amount = (float) ($row->total_nilai ?? 0);
+            $amount = $this->calculateCatchCreditAmount($kategoriKey, (float) ($row->total_nilai ?? 0));
 
             if ($amount <= 0) {
                 continue;
             }
 
+            $isJaringan = $kategoriKey === 'jaringan';
+            $factorPercent = (int) round(self::JARINGAN_CREDIT_FACTOR * 100);
             $components->push([
-                'category' => 'Penutupan Trip - '.$label,
+                'category' => 'Penutupan Trip - '.$label.($isJaringan ? ' (Dikreditkan '.$factorPercent.'%)' : ''),
                 'amount' => $amount,
-                'description' => $tripLabel.' | Pembelian hasil '.$label.' total '.number_format((float) ($row->total_berat ?? 0), 2, ',', '.').' kg.',
+                'description' => $tripLabel.' | Pembelian hasil '.$label.' total '.number_format((float) ($row->total_berat ?? 0), 2, ',', '.').' kg.'.($isJaringan ? ' Nominal kredit memakai '.$factorPercent.'% dari nilai Jaringan.' : ''),
             ]);
         }
 
@@ -671,6 +687,7 @@ class PelayaranSisaController extends Controller
             self::TAB_TANGKAPAN_PRIBADI,
             self::TAB_TANGKAPAN_BERSAMA,
             self::TAB_TANGKAPAN_JARINGAN,
+            self::TAB_TANGKAPAN_3_TON,
             self::TAB_OPERASIONAL,
             self::TAB_REKAP,
         ];
@@ -713,9 +730,14 @@ class PelayaranSisaController extends Controller
             'item_perbekalan_terpakai' => 0,
             'total_perbekalan_terpakai' => 0,
             'total_tangkapan' => 0,
+            'total_tangkapan_bruto' => 0,
             'total_operasional' => 0,
             'grand_total_semua_komponen' => 0,
             'estimasi_selisih_bersih' => 0,
+            'total_jaringan_bruto' => 0,
+            'total_jaringan_dikreditkan' => 0,
+            'total_jaringan_bagi_hasil' => 0,
+            'jaringan_credit_factor' => self::JARINGAN_CREDIT_FACTOR,
         ];
 
         if ($selectedPelayaran) {
@@ -830,7 +852,14 @@ class PelayaranSisaController extends Controller
                 'detail' => $rekapDetail,
             ];
 
-            $totalNilaiTangkapan = (float) $rekapTangkapan->sum(fn ($row) => (float) ($row->total_nilai ?? 0));
+            $totalNilaiTangkapanBruto = (float) $rekapTangkapan->sum(fn ($row) => (float) ($row->total_nilai ?? 0));
+            $totalNilaiTangkapan = 0.0;
+            foreach (array_keys(self::KATEGORI_TANGKAPAN) as $kategoriKey) {
+                $row = $rekapTangkapan->get($kategoriKey);
+                $totalNilaiTangkapan += $this->calculateCatchCreditAmount($kategoriKey, (float) ($row->total_nilai ?? 0));
+            }
+            $totalNilaiJaringanBruto = (float) ($rekapTangkapan->get('jaringan')->total_nilai ?? 0);
+            $totalNilaiJaringanDikreditkan = $this->calculateCatchCreditAmount('jaringan', $totalNilaiJaringanBruto);
             $totalPerbekalanTerpakai = (float) $rekapPerbekalan->sum('total_biaya');
             $totalOperasional = (float) $rekapOperasional['total_biaya'];
 
@@ -838,9 +867,14 @@ class PelayaranSisaController extends Controller
                 'item_perbekalan_terpakai' => $rekapPerbekalan->filter(fn ($row) => (float) $row->jumlah_terpakai > 0)->count(),
                 'total_perbekalan_terpakai' => $totalPerbekalanTerpakai,
                 'total_tangkapan' => $totalNilaiTangkapan,
+                'total_tangkapan_bruto' => $totalNilaiTangkapanBruto,
                 'total_operasional' => $totalOperasional,
                 'grand_total_semua_komponen' => $totalPerbekalanTerpakai + $totalNilaiTangkapan + $totalOperasional,
                 'estimasi_selisih_bersih' => $totalNilaiTangkapan - $totalPerbekalanTerpakai - $totalOperasional,
+                'total_jaringan_bruto' => $totalNilaiJaringanBruto,
+                'total_jaringan_dikreditkan' => $totalNilaiJaringanDikreditkan,
+                'total_jaringan_bagi_hasil' => max(0, $totalNilaiJaringanBruto - $totalNilaiJaringanDikreditkan),
+                'jaringan_credit_factor' => self::JARINGAN_CREDIT_FACTOR,
             ];
 
             $plannedCount = $perbekalanRows->count();
@@ -980,6 +1014,23 @@ class PelayaranSisaController extends Controller
             ->filter(function (float $value) use ($allowZero) {
                 return $allowZero ? $value >= 0 : $value > 0;
             });
+    }
+
+    private function calculateCatchCreditAmount(string $kategoriKey, float $rawAmount): float
+    {
+        if ($rawAmount <= 0) {
+            return 0;
+        }
+
+        if ($kategoriKey === 'tangkapan_3_ton') {
+            return 0;
+        }
+
+        if ($kategoriKey === 'jaringan') {
+            return round($rawAmount * self::JARINGAN_CREDIT_FACTOR, 2);
+        }
+
+        return round($rawAmount, 2);
     }
 
     /**

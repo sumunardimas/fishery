@@ -143,6 +143,6 @@ class PelayaranSisaRekapTest extends TestCase
             ->assertSee('900,00')
             ->assertSee('Rp 10.800.000,00')
             ->assertSee('Grand Total Semua Komponen')
-            ->assertSee('Rp 10.865.000,00');
+            ->assertSeeText('10.850.000,00');
     }
 }

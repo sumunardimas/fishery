@@ -84,6 +84,7 @@
         $tabTangkapanPribadi = 'tangkapan-pribadi';
         $tabTangkapanBersama = 'tangkapan-bersama';
         $tabTangkapanJaringan = 'tangkapan-jaringan';
+        $tabTangkapan3Ton = 'tangkapan-3-ton';
         $tabOperasional = 'operasional';
         $tabRekap = 'rekap';
 
@@ -91,6 +92,7 @@
             $tabTangkapanPribadi => ['key' => 'pancingan_pribadi', 'label' => 'Pancingan Pribadi'],
             $tabTangkapanBersama => ['key' => 'pancingan_bersama', 'label' => 'Pancingan Bersama'],
             $tabTangkapanJaringan => ['key' => 'jaringan', 'label' => 'Jaringan'],
+            $tabTangkapan3Ton => ['key' => 'tangkapan_3_ton', 'label' => 'Tangkapan 3 Ton'],
         ];
 
         $isReadOnly = $isReadOnly ?? false;
@@ -239,6 +241,12 @@
                                 </a>
                             </li>
                             <li class="nav-item">
+                                <a class="nav-link js-trip-tab {{ $activeTab === $tabTangkapan3Ton ? 'active' : '' }}"
+                                    href="#" data-tab="{{ $tabTangkapan3Ton }}">
+                                    Tangkapan 3 Ton
+                                </a>
+                            </li>
+                            <li class="nav-item">
                                 <a class="nav-link js-trip-tab {{ $activeTab === $tabOperasional ? 'active' : '' }}"
                                     href="#" data-tab="{{ $tabOperasional }}">
                                     Operasional Trip
@@ -339,6 +347,17 @@
                                 <h5 class="mb-1">Card Hasil Tangkapan Ikan - {{ $meta['label'] }}</h5>
                                 <p class="text-muted mb-3">Isi berat tangkapan (kg) dan harga per kg untuk kategori
                                     {{ $meta['label'] }}. Hanya berat > 0 yang disimpan.</p>
+                                @if ($meta['key'] === 'tangkapan_3_ton')
+                                    <div class="alert alert-warning py-2">
+                                        Total berat maksimal untuk tab ini adalah <strong>3000 kg</strong> (akumulasi semua
+                                        ikan).
+                                        Nilai kategori ini dicatat, tetapi tidak dikreditkan ke Arus Kas saat penutupan.
+                                    </div>
+                                    <div class="alert alert-danger py-2 d-none js-3ton-live-guard-message"
+                                        data-guard-tab="{{ $tabKey }}">
+                                        Total berat melebihi 3000 kg. Kurangi input sebelum menyimpan.
+                                    </div>
+                                @endif
 
                                 <div class="row mb-3 js-kategori-subtotal" data-kategori-tab="{{ $tabKey }}">
                                     <div class="col-md-6">
@@ -530,6 +549,11 @@
 
                 <div class="js-trip-pane {{ $activeTab === $tabRekap ? '' : 'd-none' }}"
                     data-pane="{{ $tabRekap }}">
+                    @php
+                        $jaringanCreditFactor = (float) ($rekapGrandTotals['jaringan_credit_factor'] ?? 0.5);
+                        $jaringanCreditPercent = (int) round($jaringanCreditFactor * 100);
+                        $jaringanProfitSharingPercent = max(0, 100 - $jaringanCreditPercent);
+                    @endphp
                     <div class="card mb-4">
                         <div class="card-body">
                             <h5 class="mb-3">Rekap Trip</h5>
@@ -539,15 +563,42 @@
                                         $rekapRow = $rekapTangkapan[$kategoriKey] ?? null;
                                         $totalBeratKategori = (float) ($rekapRow->total_berat ?? 0);
                                         $totalNilaiKategori = (float) ($rekapRow->total_nilai ?? 0);
+                                        $isJaringanCategory = $kategoriKey === 'jaringan';
+                                        $isTangkapan3TonCategory = $kategoriKey === 'tangkapan_3_ton';
+                                        $totalNilaiKategoriDikreditkan = $isJaringanCategory
+                                            ? $totalNilaiKategori * $jaringanCreditFactor
+                                            : ($isTangkapan3TonCategory
+                                                ? 0
+                                                : $totalNilaiKategori);
                                     @endphp
                                     <div class="col-lg-4 col-md-6 mb-3">
                                         <div class="border rounded p-3 h-100">
-                                            <div class="text-muted mb-1">{{ $kategoriLabel }}</div>
+                                            <div class="text-muted mb-1">
+                                                {{ $kategoriLabel }}
+                                                @if ($isJaringanCategory)
+                                                    (Dikreditkan {{ $jaringanCreditPercent }}%)
+                                                @elseif ($isTangkapan3TonCategory)
+                                                    (Tidak Dikreditkan)
+                                                @endif
+                                            </div>
                                             <div class="small">Total Berat:
                                                 <strong>{{ number_format($totalBeratKategori, 2, ',', '.') }} kg</strong>
                                             </div>
                                             <div class="small">Total Nilai: <strong>Rp
-                                                    {{ number_format($totalNilaiKategori, 2, ',', '.') }}</strong></div>
+                                                    {{ number_format($totalNilaiKategoriDikreditkan, 2, ',', '.') }}</strong>
+                                            </div>
+                                            @if ($isTangkapan3TonCategory)
+                                                <div class="small text-muted mt-1">Nilai Tercatat:
+                                                    Rp {{ number_format($totalNilaiKategori, 2, ',', '.') }}
+                                                </div>
+                                            @endif
+                                            @if ($isJaringanCategory)
+                                                <div class="small text-muted mt-1">Bagi Hasil
+                                                    ({{ $jaringanProfitSharingPercent }}%):
+                                                    Rp
+                                                    {{ number_format((float) ($rekapGrandTotals['total_jaringan_bagi_hasil'] ?? 0), 2, ',', '.') }}
+                                                </div>
+                                            @endif
                                         </div>
                                     </div>
                                 @endforeach
@@ -617,13 +668,43 @@
                                         @foreach ($kategoriTangkapanMap as $kategoriKey => $kategoriLabel)
                                             @php
                                                 $rekapRow = $rekapTangkapan[$kategoriKey] ?? null;
+                                                $nilaiKategori = (float) ($rekapRow->total_nilai ?? 0);
+                                                $isJaringanCategory = $kategoriKey === 'jaringan';
+                                                $isTangkapan3TonCategory = $kategoriKey === 'tangkapan_3_ton';
+                                                $nilaiKategoriDikreditkan = $isJaringanCategory
+                                                    ? $nilaiKategori * $jaringanCreditFactor
+                                                    : ($isTangkapan3TonCategory
+                                                        ? 0
+                                                        : $nilaiKategori);
                                             @endphp
                                             <tr>
-                                                <td>Total Nilai {{ $kategoriLabel }}</td>
+                                                <td>Total Nilai {{ $kategoriLabel }}
+                                                    @if ($isJaringanCategory)
+                                                        (Dikreditkan {{ $jaringanCreditPercent }}%)
+                                                    @elseif ($isTangkapan3TonCategory)
+                                                        (Tidak Dikreditkan)
+                                                    @endif
+                                                </td>
                                                 <td class="text-right">Rp
-                                                    {{ number_format((float) ($rekapRow->total_nilai ?? 0), 2, ',', '.') }}
+                                                    {{ number_format($nilaiKategoriDikreditkan, 2, ',', '.') }}
                                                 </td>
                                             </tr>
+                                            @if ($isTangkapan3TonCategory && $nilaiKategori > 0)
+                                                <tr>
+                                                    <td>Nilai Tercatat {{ $kategoriLabel }}</td>
+                                                    <td class="text-right">Rp
+                                                        {{ number_format($nilaiKategori, 2, ',', '.') }}
+                                                    </td>
+                                                </tr>
+                                            @endif
+                                            @if ($isJaringanCategory && (float) ($rekapGrandTotals['total_jaringan_bagi_hasil'] ?? 0) > 0)
+                                                <tr>
+                                                    <td>Bagi Hasil Jaringan ({{ $jaringanProfitSharingPercent }}%)</td>
+                                                    <td class="text-right">Rp
+                                                        {{ number_format((float) ($rekapGrandTotals['total_jaringan_bagi_hasil'] ?? 0), 2, ',', '.') }}
+                                                    </td>
+                                                </tr>
+                                            @endif
                                         @endforeach
                                         <tr>
                                             <td>Total Biaya Perbekalan Terpakai</td>
@@ -800,13 +881,50 @@
                                                                     @php
                                                                         $modalRekapRow =
                                                                             $rekapTangkapan[$kategoriKey] ?? null;
+                                                                        $modalNilaiKategori =
+                                                                            (float) ($modalRekapRow->total_nilai ?? 0);
+                                                                        $isJaringanCategory =
+                                                                            $kategoriKey === 'jaringan';
+                                                                        $isTangkapan3TonCategory =
+                                                                            $kategoriKey === 'tangkapan_3_ton';
+                                                                        $modalNilaiKategoriDikreditkan = $isJaringanCategory
+                                                                            ? $modalNilaiKategori *
+                                                                                $jaringanCreditFactor
+                                                                            : ($isTangkapan3TonCategory
+                                                                                ? 0
+                                                                                : $modalNilaiKategori);
                                                                     @endphp
                                                                     <tr>
-                                                                        <th>Total {{ $kategoriLabel }}</th>
+                                                                        <th>Total {{ $kategoriLabel }}
+                                                                            @if ($isJaringanCategory)
+                                                                                (Dikreditkan
+                                                                                {{ $jaringanCreditPercent }}%)
+                                                                            @elseif ($isTangkapan3TonCategory)
+                                                                                (Tidak Dikreditkan)
+                                                                            @endif
+                                                                        </th>
                                                                         <td class="text-right">Rp
-                                                                            {{ number_format((float) ($modalRekapRow->total_nilai ?? 0), 2, ',', '.') }}
+                                                                            {{ number_format($modalNilaiKategoriDikreditkan, 2, ',', '.') }}
                                                                         </td>
                                                                     </tr>
+                                                                    @if ($isTangkapan3TonCategory && $modalNilaiKategori > 0)
+                                                                        <tr>
+                                                                            <th>Nilai Tercatat {{ $kategoriLabel }}</th>
+                                                                            <td class="text-right">Rp
+                                                                                {{ number_format($modalNilaiKategori, 2, ',', '.') }}
+                                                                            </td>
+                                                                        </tr>
+                                                                    @endif
+                                                                    @if ($isJaringanCategory && (float) ($rekapGrandTotals['total_jaringan_bagi_hasil'] ?? 0) > 0)
+                                                                        <tr>
+                                                                            <th>Bagi Hasil Jaringan
+                                                                                ({{ $jaringanProfitSharingPercent }}%)
+                                                                            </th>
+                                                                            <td class="text-right">Rp
+                                                                                {{ number_format((float) ($rekapGrandTotals['total_jaringan_bagi_hasil'] ?? 0), 2, ',', '.') }}
+                                                                            </td>
+                                                                        </tr>
+                                                                    @endif
                                                                 @endforeach
                                                                 <tr>
                                                                     <th>Total Operasional Trip</th>
@@ -1014,6 +1132,22 @@
                             minimumFractionDigits: 2,
                             maximumFractionDigits: 2
                         });
+                    }
+
+                    var kategoriTab = container.getAttribute('data-kategori-tab');
+                    if (kategoriTab === 'tangkapan-3-ton') {
+                        var guardMessage = container.querySelector('.js-3ton-live-guard-message');
+                        var submitButton = container.querySelector('button[type="submit"]');
+                        var isExceeded = totalBerat > 3000;
+
+                        if (guardMessage) {
+                            guardMessage.classList.toggle('d-none', !isExceeded);
+                        }
+
+                        if (submitButton) {
+                            submitButton.disabled = isExceeded;
+                            submitButton.title = isExceeded ? 'Total berat maksimal 3000 kg.' : '';
+                        }
                     }
                 };
 
