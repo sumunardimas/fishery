@@ -496,10 +496,10 @@ class KeuanganController extends Controller
         }
 
         if (in_array($validated['kategori'], self::MODAL_BORROW_CATEGORIES, true)) {
-            if ($kredit <= 0 || $debit > 0) {
+            if ($debit <= 0 || $kredit > 0) {
                 return back()
                     ->withInput()
-                    ->withErrors(['kategori' => 'Pinjam Modal Bu Uum dan Pinjam Modal Jons Group harus dicatat sebagai kredit.']);
+                    ->withErrors(['kategori' => 'Pinjam Modal Bu Uum dan Pinjam Modal Jons Group harus diinput sebagai debit pada kas/bank. Kredit hutangnya akan tercatat otomatis di Hutang Modal.']);
             }
         }
 
@@ -533,7 +533,7 @@ class KeuanganController extends Controller
                     tanggal: $validated['tanggal'],
                     akun: $validated['akun'],
                     deskripsi: $validated['deskripsi'] ?? $validated['kategori'],
-                    nominal: $kredit
+                    nominal: $debit
                 );
             }
 
@@ -551,7 +551,7 @@ class KeuanganController extends Controller
         $message = 'Transaksi '.strtoupper($validated['akun']).' berhasil disimpan.';
 
         if (in_array($validated['kategori'], self::MODAL_BORROW_CATEGORIES, true)) {
-            $message .= ' Hutang Modal ikut tercatat.';
+            $message .= ' Debit kas/bank dan kredit Hutang Modal sudah tercatat.';
         }
 
         if ($validated['kategori'] === self::EMPLOYEE_CASH_ADVANCE_CATEGORY) {

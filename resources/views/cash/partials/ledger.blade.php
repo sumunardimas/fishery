@@ -120,7 +120,8 @@
                             @endforeach
                         </select>
                         <small class="form-text text-muted">
-                            Transaksi kategori Pinjam Modal Bu Uum dan Pinjam Modal Jons Group otomatis masuk ke
+                            Transaksi kategori Pinjam Modal Bu Uum dan Pinjam Modal Jons Group otomatis dicatat
+                            sebagai debit pada akun ini, menambah saldo akun, dan membentuk kredit pada
                             <a href="{{ url('/keuangan/hutang-modal') }}">halaman Hutang Modal</a>.
                             Kategori Kas Bon Pegawai otomatis masuk ke
                             <a href="{{ url('/keuangan/kas-bon-pegawai') }}">halaman Kas Bon Pegawai</a>.
@@ -201,9 +202,12 @@
 @push('scripts')
     <script>
         $(document).ready(function() {
-            const forceCreditCategories = [
+            const forceDebitCategories = [
                 'Pinjam Modal Bu Uum',
                 'Pinjam Modal Jons Group',
+            ];
+
+            const forceCreditCategories = [
                 'Kas Bon Pegawai',
             ];
 
@@ -213,16 +217,28 @@
 
             const syncNominalRule = () => {
                 const kategori = $kategori.val();
+                const forceDebit = forceDebitCategories.includes(kategori);
                 const forceCredit = forceCreditCategories.includes(kategori);
 
-                if (forceCredit) {
+                if (forceDebit) {
+                    $kredit.val('');
+                    $kredit.prop('disabled', true);
+                    $kredit.attr('placeholder', 'Tidak digunakan untuk kategori ini');
+                    $debit.prop('disabled', false);
+                    $debit.attr('placeholder', '0');
+                    $debit.focus();
+                } else if (forceCredit) {
                     $debit.val('');
                     $debit.prop('disabled', true);
                     $debit.attr('placeholder', 'Tidak digunakan untuk kategori ini');
+                    $kredit.prop('disabled', false);
+                    $kredit.attr('placeholder', '0');
                     $kredit.focus();
                 } else {
                     $debit.prop('disabled', false);
                     $debit.attr('placeholder', '0');
+                    $kredit.prop('disabled', false);
+                    $kredit.attr('placeholder', '0');
                 }
             };
 

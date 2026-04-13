@@ -132,7 +132,7 @@
                         <h4 class="card-title mb-3">Informasi</h4>
                         <p class="text-muted small mb-0">
                             Setiap transaksi kategori Pinjam Modal Bu Uum dan Pinjam Modal Jons Group pada Kas atau
-                            Bank otomatis muncul di sini.
+                            Bank otomatis menambah saldo akun sebagai debit dan membentuk kredit hutang yang muncul di sini.
                             Pembayaran akan membentuk kredit baru pada akun yang dipilih.
                         </p>
                     </div>
