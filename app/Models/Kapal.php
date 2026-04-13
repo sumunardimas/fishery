@@ -18,11 +18,7 @@ class Kapal extends Model
 
     protected $fillable = [
         'nama_kapal',
-        'tahun_dibangun',
-        'gross_tonnage',
-        'deadweight_tonnage',
-        'panjang_meter',
-        'lebar_meter',
+        'nahkoda',
     ];
 
     protected static function booted(): void

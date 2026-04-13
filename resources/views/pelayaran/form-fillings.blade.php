@@ -16,7 +16,7 @@
         @forelse ($kapals as $kapal)
             <option value="{{ $kapal->id_kapal }}"
                 {{ (string) old('id_kapal', $pelayaran->id_kapal ?? '') === (string) $kapal->id_kapal ? 'selected' : '' }}>
-                {{ $kapal->nama_kapal }} ({{ $kapal->tahun_dibangun }})
+                {{ $kapal->nama_kapal }}{{ $kapal->nahkoda ? ' - Nahkoda: ' . $kapal->nahkoda : '' }}
             </option>
         @empty
             <option value="" disabled>Tidak ada kapal tersedia</option>

@@ -38,25 +38,13 @@
                                         <h5 class="mb-1">{{ $kapal->nama_kapal }}</h5>
                                         <small class="text-muted">ID Kapal: #{{ $kapal->id_kapal }}</small>
                                     </div>
-                                    <span class="badge badge-primary">{{ $kapal->tahun_dibangun }}</span>
+                                    <span class="badge badge-primary">Nahkoda</span>
                                 </div>
 
                                 <div class="mb-3">
-                                    <div class="d-flex justify-content-between py-1 border-bottom">
-                                        <span>Gross Tonnage</span>
-                                        <strong>{{ number_format($kapal->gross_tonnage, 2) }}</strong>
-                                    </div>
-                                    <div class="d-flex justify-content-between py-1 border-bottom">
-                                        <span>Deadweight Tonnage</span>
-                                        <strong>{{ number_format($kapal->deadweight_tonnage, 2) }}</strong>
-                                    </div>
-                                    <div class="d-flex justify-content-between py-1 border-bottom">
-                                        <span>Panjang (m)</span>
-                                        <strong>{{ number_format($kapal->panjang_meter, 2) }}</strong>
-                                    </div>
                                     <div class="d-flex justify-content-between py-1">
-                                        <span>Lebar (m)</span>
-                                        <strong>{{ number_format($kapal->lebar_meter, 2) }}</strong>
+                                        <span>Nahkoda</span>
+                                        <strong>{{ $kapal->nahkoda ?: '-' }}</strong>
                                     </div>
                                 </div>
 

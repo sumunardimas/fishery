@@ -14,11 +14,7 @@ return new class extends Migration
         Schema::create('kapal', function (Blueprint $table) {
             $table->increments('id_kapal');
             $table->string('nama_kapal');
-            $table->integer('tahun_dibangun');
-            $table->decimal('gross_tonnage', 10, 2);
-            $table->decimal('deadweight_tonnage', 10, 2);
-            $table->decimal('panjang_meter', 10, 2);
-            $table->decimal('lebar_meter', 10, 2);
+            $table->string('nahkoda');
             $table->dateTime('created_at');
             $table->dateTime('updated_at');
         });

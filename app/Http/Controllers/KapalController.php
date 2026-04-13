@@ -34,11 +34,7 @@ class KapalController extends Controller
     {
         $data = $request->validate([
             'nama_kapal' => ['required', 'string', 'max:255'],
-            'tahun_dibangun' => ['required', 'integer', 'between:1900,2100'],
-            'gross_tonnage' => ['required', 'numeric', 'min:0'],
-            'deadweight_tonnage' => ['required', 'numeric', 'min:0'],
-            'panjang_meter' => ['required', 'numeric', 'min:0'],
-            'lebar_meter' => ['required', 'numeric', 'min:0'],
+            'nahkoda' => ['required', 'string', 'max:255'],
         ]);
 
         Kapal::create($data);
@@ -61,11 +57,7 @@ class KapalController extends Controller
     {
         $data = $request->validate([
             'nama_kapal' => ['required', 'string', 'max:255'],
-            'tahun_dibangun' => ['required', 'integer', 'between:1900,2100'],
-            'gross_tonnage' => ['required', 'numeric', 'min:0'],
-            'deadweight_tonnage' => ['required', 'numeric', 'min:0'],
-            'panjang_meter' => ['required', 'numeric', 'min:0'],
-            'lebar_meter' => ['required', 'numeric', 'min:0'],
+            'nahkoda' => ['required', 'string', 'max:255'],
         ]);
 
         $kapal->update($data);
