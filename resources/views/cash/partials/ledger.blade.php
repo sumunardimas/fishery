@@ -139,14 +139,14 @@
 
                     <div class="form-group">
                         <label for="debit">Debit (menambah saldo)</label>
-                        <input type="number" id="debit" name="debit" class="form-control" min="0"
-                            step="0.01" value="{{ old('debit') }}" placeholder="0">
+                        <input type="text" id="debit" name="debit" class="form-control" data-rupiah-input
+                            value="{{ old('debit') }}" placeholder="0,00">
                     </div>
 
                     <div class="form-group">
                         <label for="kredit">Kredit (mengurangi saldo)</label>
-                        <input type="number" id="kredit" name="kredit" class="form-control" min="0"
-                            step="0.01" value="{{ old('kredit') }}" placeholder="0">
+                        <input type="text" id="kredit" name="kredit" class="form-control" data-rupiah-input
+                            value="{{ old('kredit') }}" placeholder="0,00">
                     </div>
 
                     <button type="submit" class="btn btn-primary btn-block">Simpan Transaksi</button>

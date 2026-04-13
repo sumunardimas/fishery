@@ -24,13 +24,11 @@
 
                 <div class="form-group">
                     <label>Kas (Tunai)</label>
-                    <input type="number" x-model="bayarKas" class="form-control" min="0" step="1000"
-                        placeholder="0">
+                    <input type="text" x-model="bayarKas" class="form-control" data-rupiah-input placeholder="0,00">
                 </div>
                 <div class="form-group">
                     <label>Transfer</label>
-                    <input type="number" x-model="bayarTransfer" class="form-control" min="0" step="1000"
-                        placeholder="0">
+                    <input type="text" x-model="bayarTransfer" class="form-control" data-rupiah-input placeholder="0,00">
                 </div>
 
                 <div class="border rounded p-3 mb-3">
@@ -327,8 +325,11 @@
                     this.bayarError = '';
                     this.showBayar = true;
                 },
+                parseNominal(value) {
+                    return window.rupiahInput ? (window.rupiahInput.parse(value) || 0) : (parseFloat(value) || 0);
+                },
                 get pembayaran() {
-                    return (parseFloat(this.bayarKas) || 0) + (parseFloat(this.bayarTransfer) || 0);
+                    return this.parseNominal(this.bayarKas) + this.parseNominal(this.bayarTransfer);
                 },
                 get sisaPiutang() {
                     return Math.max(0, (this.bayarTrx.piutang || 0) - this.pembayaran);
@@ -361,8 +362,8 @@
                             },
                             body: JSON.stringify({
                                 id_penjualan: this.bayarTrx.id_penjualan,
-                                bayar_tunai: parseFloat(this.bayarKas) || 0,
-                                bayar_transfer: parseFloat(this.bayarTransfer) || 0,
+                                bayar_tunai: this.parseNominal(this.bayarKas),
+                                bayar_transfer: this.parseNominal(this.bayarTransfer),
                             }),
                         });
                         const json = await res.json();

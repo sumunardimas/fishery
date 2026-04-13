@@ -11,23 +11,30 @@
     <div class="row" x-data="{
         createNewCustomer: false,
         ikanMap: {{ Js::from($ikanStock->keyBy('id_ikan')->map(fn($i) => ['nama_ikan' => $i->nama_ikan, 'stok_tersedia' => $i->stok_tersedia])) }},
-        items: [{ id_ikan: '', berat: 0, harga_per_kg: 0 }],
-        bayarTunai: {{ (float) old('bayar_tunai', 0) }},
-        bayarTransfer: {{ (float) old('bayar_transfer', 0) }},
+        items: [{ id_ikan: '', berat: 0, harga_per_kg: '' }],
+        bayarTunai: '{{ old('bayar_tunai', 0) }}',
+        bayarTransfer: '{{ old('bayar_transfer', 0) }}',
         addItem() {
-            this.items.push({ id_ikan: '', berat: 0, harga_per_kg: 0 });
-            window.requestAnimationFrame(() => window.initFishSearchableSelect && window.initFishSearchableSelect());
+            this.items.push({ id_ikan: '', berat: 0, harga_per_kg: '' });
+            window.requestAnimationFrame(() => {
+                window.initFishSearchableSelect && window.initFishSearchableSelect();
+                window.rupiahInput && window.rupiahInput.init();
+            });
         },
         removeItem(idx) {
             if (this.items.length > 1) this.items.splice(idx, 1);
             window.requestAnimationFrame(() => window.initFishSearchableSelect && window.initFishSearchableSelect());
         },
-        subtotal(item) { return item.berat * item.harga_per_kg; },
+        parseNominal(value) {
+            return window.rupiahInput ? (window.rupiahInput.parse(value) || 0) : (parseFloat(value) || 0);
+        },
+        subtotal(item) { return item.berat * this.parseNominal(item.harga_per_kg); },
         totalHarga() { return this.items.reduce((sum, it) => sum + this.subtotal(it), 0); },
-        piutang() { return Math.max(0, this.totalHarga() - this.bayarTunai - this.bayarTransfer); },
+        piutang() { return Math.max(0, this.totalHarga() - this.parseNominal(this.bayarTunai) - this.parseNominal(this.bayarTransfer)); },
         statusPembayaran() { return this.piutang() <= 0 ? 'Lunas' : 'Piutang'; },
         stokByItem(item) { return !item.id_ikan ? 0 : (this.ikanMap[item.id_ikan]?.stok_tersedia ?? 0); },
-    }" x-init="window.requestAnimationFrame(() => window.initFishSearchableSelect && window.initFishSearchableSelect())">
+    }" x-init="window.requestAnimationFrame(() => { window.initFishSearchableSelect && window.initFishSearchableSelect();
+        window.rupiahInput && window.rupiahInput.init(); })">
         <div class="col-12">
             @if ($errors->has('message'))
                 <x-alert type="danger" :message="$errors->first('message') ?? null" />
@@ -148,9 +155,8 @@
                                     </div>
                                     <div class="col-md-3 form-group mb-2">
                                         <label class="required-asterisk">Harga / kg</label>
-                                        <input type="number" min="1" step="0.01"
-                                            :name="'items[' + index + '][harga_per_kg]'" x-model.number="item.harga_per_kg"
-                                            class="form-control" required>
+                                        <input type="text" data-rupiah-input :name="'items[' + index + '][harga_per_kg]'"
+                                            x-model="item.harga_per_kg" class="form-control" placeholder="0,00" required>
                                     </div>
                                     <div class="col-md-1 d-flex align-items-end form-group mb-2">
                                         <button type="button" class="btn btn-sm btn-outline-danger w-100"
@@ -195,7 +201,7 @@
                         <div class="row">
                             <div class="col-md-6 form-group">
                                 <label for="bayar_tunai">Bayar Tunai (Rp)</label>
-                                <input type="number" min="0" step="0.01" x-model.number="bayarTunai"
+                                <input type="text" data-rupiah-input x-model="bayarTunai"
                                     class="form-control @error('bayar_tunai') is-invalid @enderror" name="bayar_tunai"
                                     id="bayar_tunai" value="{{ old('bayar_tunai', 0) }}">
                                 @error('bayar_tunai')
@@ -204,7 +210,7 @@
                             </div>
                             <div class="col-md-6 form-group">
                                 <label for="bayar_transfer">Bayar Transfer (Rp)</label>
-                                <input type="number" min="0" step="0.01" x-model.number="bayarTransfer"
+                                <input type="text" data-rupiah-input x-model="bayarTransfer"
                                     class="form-control @error('bayar_transfer') is-invalid @enderror"
                                     name="bayar_transfer" id="bayar_transfer" value="{{ old('bayar_transfer', 0) }}">
                                 @error('bayar_transfer')

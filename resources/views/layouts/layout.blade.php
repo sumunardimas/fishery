@@ -52,6 +52,119 @@
             }
         });
 
+        window.rupiahInput = (() => {
+            const formatter = new Intl.NumberFormat('id-ID', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+            });
+
+            const parse = (value) => {
+                if (value === null || value === undefined) {
+                    return null;
+                }
+
+                if (typeof value === 'number') {
+                    return Number.isFinite(value) ? value : null;
+                }
+
+                const text = String(value).trim();
+
+                if (text === '') {
+                    return null;
+                }
+
+                if (/^-?\d+(\.\d+)?$/.test(text)) {
+                    const parsedPlain = Number.parseFloat(text);
+                    return Number.isFinite(parsedPlain) ? parsedPlain : null;
+                }
+
+                const sanitized = text.replace(/[^\d,-]/g, '').replace(/-/g, '');
+                const segments = sanitized.split(',');
+                const integerPart = (segments.shift() || '').replace(/\D/g, '');
+                const fractionPart = segments.join('').replace(/\D/g, '').slice(0, 2);
+
+                if (integerPart === '' && fractionPart === '') {
+                    return null;
+                }
+
+                const normalized = `${integerPart || '0'}${fractionPart !== '' ? `.${fractionPart}` : ''}`;
+                const parsed = Number.parseFloat(normalized);
+
+                return Number.isFinite(parsed) ? parsed : null;
+            };
+
+            const format = (value) => {
+                const parsed = parse(value);
+                return parsed === null ? '' : formatter.format(parsed);
+            };
+
+            const formatTyping = (value) => {
+                const raw = String(value ?? '').replace(/[^\d,]/g, '');
+
+                if (raw === '') {
+                    return '';
+                }
+
+                const hasComma = raw.includes(',');
+                const segments = raw.split(',');
+                const integerDigits = (segments.shift() || '').replace(/\D/g, '');
+                const fractionDigits = segments.join('').replace(/\D/g, '').slice(0, 2);
+                const integerFormatted = integerDigits === '' ?
+                    '0' :
+                    Number.parseInt(integerDigits, 10).toLocaleString('id-ID');
+
+                return hasComma ? `${integerFormatted},${fractionDigits}` : integerFormatted;
+            };
+
+            const normalizeForm = (form) => {
+                form.querySelectorAll('[data-rupiah-input]').forEach((input) => {
+                    const parsed = parse(input.value);
+                    input.value = parsed === null ? '' : parsed.toFixed(2);
+                });
+            };
+
+            const bind = (input) => {
+                if (input.dataset.rupiahBound === '1') {
+                    return;
+                }
+
+                input.dataset.rupiahBound = '1';
+                input.setAttribute('inputmode', 'decimal');
+
+                input.addEventListener('input', () => {
+                    input.value = formatTyping(input.value);
+                });
+
+                input.addEventListener('blur', () => {
+                    input.value = format(input.value);
+                });
+
+                if (input.value.trim() !== '') {
+                    input.value = format(input.value);
+                }
+
+                if (input.form && input.form.dataset.rupiahSubmitBound !== '1') {
+                    input.form.dataset.rupiahSubmitBound = '1';
+                    input.form.addEventListener('submit', () => normalizeForm(input.form));
+                }
+            };
+
+            const init = (root = document) => {
+                root.querySelectorAll('[data-rupiah-input]').forEach(bind);
+            };
+
+            return {
+                parse,
+                format,
+                init,
+                normalizeForm,
+            };
+        })();
+
+        document.addEventListener('DOMContentLoaded', function() {
+            window.rupiahInput.init();
+        });
+
         document.getElementById('logoutButton').addEventListener('click', function(e) {
             document.getElementById('logoutForm').submit();
         });

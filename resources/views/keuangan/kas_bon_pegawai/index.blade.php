@@ -30,8 +30,7 @@
 
                 <div class="form-group">
                     <label>Nominal Pembayaran</label>
-                    <input type="number" x-model="nominalBayar" class="form-control" min="0" step="1000"
-                        placeholder="0">
+                    <input type="text" x-model="nominalBayar" class="form-control" data-rupiah-input placeholder="0,00">
                 </div>
 
                 <div class="border rounded p-3 mb-3">
@@ -243,8 +242,11 @@
                     this.bayarError = '';
                     this.showBayar = true;
                 },
+                parseNominal(value) {
+                    return window.rupiahInput ? (window.rupiahInput.parse(value) || 0) : (parseFloat(value) || 0);
+                },
                 get pembayaran() {
-                    return parseFloat(this.nominalBayar) || 0;
+                    return this.parseNominal(this.nominalBayar);
                 },
                 get sisaPiutang() {
                     return Math.max(0, (this.bayarTrx.sisa_piutang || 0) - this.pembayaran);

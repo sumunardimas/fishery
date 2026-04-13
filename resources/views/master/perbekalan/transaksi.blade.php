@@ -59,8 +59,8 @@
                             </div>
                             <div class="form-group col-md-2">
                                 <label for="harga_satuan">Harga Satuan</label>
-                                <input type="number" step="0.01" min="0" id="harga_satuan" name="harga_satuan"
-                                    class="form-control" value="{{ old('harga_satuan') }}" placeholder="Wajib untuk IN">
+                                <input type="text" id="harga_satuan" name="harga_satuan" class="form-control"
+                                    data-rupiah-input value="{{ old('harga_satuan') }}" placeholder="0,00">
                             </div>
                             <div class="form-group col-md-2">
                                 <label for="akun_pembayaran">Bayar Dari</label>
