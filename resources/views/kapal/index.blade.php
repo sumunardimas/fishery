@@ -21,7 +21,7 @@
                         <input type="text" class="form-control" x-model="search" placeholder="Cari nama kapal...">
                         <a href="{{ route('kapal.create') }}" class="btn btn-success btn-icon-text text-nowrap">
                             <i class="ti-plus btn-icon-prepend"></i>
-                            TambahKapal
+                            Tambah Kapal
                         </a>
                     </div>
                 </div>
@@ -86,7 +86,7 @@
                                 <p class="text-muted mb-3">Silakan tambahkan data kapal pertama Anda.</p>
                                 <a href="{{ route('kapal.create') }}" class="btn btn-success btn-icon-text">
                                     <i class="ti-plus btn-icon-prepend"></i>
-                                    TambahKapal
+                                    Tambah Kapal
                                 </a>
                             </div>
                         </div>
