@@ -28,7 +28,7 @@
                         <input type="text" class="form-control" x-model="search" placeholder="Cari kapal...">
                         <a href="{{ route('pelayaran.create') }}" class="btn btn-success btn-icon-text text-nowrap">
                             <i class="ti-plus btn-icon-prepend"></i>
-                            Add New Pelayaran
+                            TambahPelayaran
                         </a>
                     </div>
                 </div>
@@ -94,7 +94,7 @@
                                 </p>
                                 <a href="{{ route('pelayaran.create') }}" class="btn btn-success btn-icon-text">
                                     <i class="ti-plus btn-icon-prepend"></i>
-                                    Add New Pelayaran
+                                    TambahPelayaran
                                 </a>
                             </div>
                         </div>
