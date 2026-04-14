@@ -23,7 +23,9 @@ class HomeController extends Controller
             return view('home.kasir', compact('user'));
         }
         if ($user->hasRole('staff')) {
-            return view('home.staff', compact('user'));
+            $overview = $this->getStaffOverview();
+
+            return view('home.staff', compact('user', 'overview'));
         }
 
         // Default fallback if no matching role
@@ -95,5 +97,120 @@ class HomeController extends Controller
             'master_data' => $masterData,
             'updated_at' => now()->format('H:i'),
         ];
+    }
+
+    private function getStaffOverview(): array
+    {
+        $menuItems = config('menu.items', []);
+        $sections = [];
+
+        $kasBalance = (float) (DB::table('arus_kas')->where('akun', 'kas')->orderByDesc('id_kas')->value('saldo') ?? 0);
+        $bankBalance = (float) (DB::table('arus_kas')->where('akun', 'bank')->orderByDesc('id_kas')->value('saldo') ?? 0);
+        $piutangOutstanding = (float) (DB::table('penjualan')->where('piutang', '>', 0)->sum('piutang') ?? 0);
+
+        foreach ($menuItems as $item) {
+            if (! $this->staffCanSeeMenuItem($item)) {
+                continue;
+            }
+
+            $children = [];
+            foreach ((array) ($item['children'] ?? []) as $child) {
+                if (! $this->staffCanSeeMenuItem($child)) {
+                    continue;
+                }
+
+                $url = $this->resolveMenuItemUrl($child);
+                if (! $url) {
+                    continue;
+                }
+
+                $children[] = [
+                    'title' => $child['title'] ?? 'Menu',
+                    'icon' => $child['icon'] ?? 'ti-angle-right',
+                    'url' => $url,
+                ];
+            }
+
+            if (count($children) > 0) {
+                $sections[] = [
+                    'title' => $item['title'] ?? 'Menu',
+                    'icon' => $item['icon'] ?? 'ti-layout-grid2',
+                    'links' => $children,
+                ];
+
+                continue;
+            }
+
+            $url = $this->resolveMenuItemUrl($item);
+            if ($url) {
+                $sections[] = [
+                    'title' => $item['title'] ?? 'Menu',
+                    'icon' => $item['icon'] ?? 'ti-layout-grid2',
+                    'links' => [[
+                        'title' => $item['title'] ?? 'Menu',
+                        'icon' => $item['icon'] ?? 'ti-angle-right',
+                        'url' => $url,
+                    ]],
+                ];
+            }
+        }
+
+        return [
+            'sections' => $sections,
+            'total_sections' => count($sections),
+            'total_links' => collect($sections)->sum(fn ($section) => count($section['links'] ?? [])),
+            'summary_cards' => [
+                [
+                    'title' => 'Kas',
+                    'icon' => 'ti-wallet',
+                    'value' => $kasBalance,
+                    'url' => route('keuangan.kas.index'),
+                    'button' => 'Buka Kas',
+                ],
+                [
+                    'title' => 'Bank',
+                    'icon' => 'ti-credit-card',
+                    'value' => $bankBalance,
+                    'url' => route('keuangan.bank.index'),
+                    'button' => 'Buka Bank',
+                ],
+                [
+                    'title' => 'Piutang',
+                    'icon' => 'ti-alert',
+                    'value' => $piutangOutstanding,
+                    'url' => route('keuangan.piutang.index'),
+                    'button' => 'Buka Piutang',
+                ],
+            ],
+            'updated_at' => now()->format('H:i'),
+        ];
+    }
+
+    private function staffCanSeeMenuItem(array $item): bool
+    {
+        $roles = (array) ($item['roles'] ?? []);
+
+        return in_array('staff', $roles, true);
+    }
+
+    private function resolveMenuItemUrl(array $item): ?string
+    {
+        if (! isset($item['route'])) {
+            return null;
+        }
+
+        if (($item['route'] ?? '#') === '#') {
+            return null;
+        }
+
+        if (($item['type'] ?? 'url') === 'route') {
+            try {
+                return route($item['route']);
+            } catch (\Throwable) {
+                return null;
+            }
+        }
+
+        return url($item['route']);
     }
 }

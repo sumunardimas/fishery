@@ -19,6 +19,10 @@ class EnsureStaffMenuAccess
             return $next($request);
         }
 
+        if ($request->path() === '/') {
+            return $next($request);
+        }
+
         $allowedRoutePatterns = [
             'kapal.*',
             'pelayaran.*',
