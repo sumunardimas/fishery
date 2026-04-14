@@ -645,7 +645,7 @@
                                                                 <td>
                                                                     <input type="text" class="form-control js-harga-input"
                                                                         name="harga_ikan[{{ $ikanTangkapan->id_ikan_tangkapan }}]"
-                                                                        inputmode="decimal" placeholder="0,00"
+                                                                        inputmode="numeric" placeholder="0"
                                                                         value="{{ old('harga_ikan.' . $ikanTangkapan->id_ikan_tangkapan, $defaultHarga) }}"
                                                                         data-target="#nilai_{{ $meta['key'] }}_{{ $ikanTangkapan->id_ikan_tangkapan }}"
                                                                         data-role="harga">
@@ -726,9 +726,10 @@
                                                         <td style="min-width: 170px;">
                                                             <input type="text"
                                                                 name="jumlah[{{ $master->id_master_operasional }}]"
-                                                                class="form-control" data-rupiah-input inputmode="decimal"
+                                                                class="form-control js-harga-input"
+                                                                inputmode="numeric"
                                                                 value="{{ old('jumlah.' . $master->id_master_operasional, $existingOperasional[$master->id_master_operasional] ?? null) }}"
-                                                                placeholder="0,00">
+                                                                placeholder="0">
                                                         </td>
                                                         <td style="min-width: 260px;">
                                                             <input type="text"
@@ -1321,16 +1322,14 @@
                         if (initialValue !== '') {
                             var rawNum = parseHargaNumber(initialValue);
                             input.dataset.hargaRawValue = rawNum;
-                            input.value = formatHargaDisplay(rawNum);
+                            input.value = Math.round(rawNum).toLocaleString('id-ID');
                         } else {
                             input.dataset.hargaRawValue = '';
                         }
 
                         var handleInput = function(e) {
-                            // Extract only digits and decimal/comma separators from displayed value
+                            // Extract only digits from displayed value
                             var displayed = input.value;
-                            
-                            // Remove all non-digit separators, keep only digits
                             var digitsOnly = displayed.replace(/[^\d]/g, '');
                             
                             if (digitsOnly === '') {
@@ -1339,17 +1338,14 @@
                                 return;
                             }
                             
-                            // Convert digits string to number (assuming 2 decimal places)
-                            var numValue = parseInt(digitsOnly, 10) / 100;
+                            // Convert digits string to number (no decimal division)
+                            var numValue = parseInt(digitsOnly, 10);
                             
                             // Store raw value
                             input.dataset.hargaRawValue = numValue;
                             
-                            // Format and display
-                            input.value = numValue.toLocaleString('id-ID', {
-                                minimumFractionDigits: 2,
-                                maximumFractionDigits: 2,
-                            });
+                            // Format with thousand separator (no forced decimals)
+                            input.value = numValue.toLocaleString('id-ID');
                             
                             // Move cursor to end
                             setTimeout(function() {
@@ -1850,11 +1846,11 @@
                     window.jQuery('#closePelayaranModal').modal('show');
                 }
 
-                // Normalize harga fields before form submission
+                // Normalize currency fields before form submission
                 document.querySelectorAll('form').forEach(function(form) {
                     form.addEventListener('submit', function() {
-                        // Use stored raw values from data attributes
-                        form.querySelectorAll('input[name*="[harga_"], input[name*="[harga_per_kg"]').forEach(function(input) {
+                        // Use stored raw values from all currency input fields
+                        form.querySelectorAll('input[name*="[harga_"], input[name*="[harga_per_kg"], input[name*="harga_ikan"], input[name*="[jumlah"]').forEach(function(input) {
                             var rawValue = input.dataset.hargaRawValue;
                             
                             if (rawValue === '' || rawValue === undefined) {
@@ -1862,9 +1858,9 @@
                                 return;
                             }
                             
-                            // Send as numeric string with 2 decimals
+                            // Send as rounded integer (no decimals)
                             var numValue = parseFloat(rawValue);
-                            input.value = isNaN(numValue) ? '' : numValue.toFixed(2);
+                            input.value = isNaN(numValue) ? '' : String(Math.round(numValue));
                         });
                     });
                 });
