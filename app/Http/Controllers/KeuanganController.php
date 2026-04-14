@@ -198,9 +198,31 @@ class KeuanganController extends Controller
 
         $today = Carbon::today();
 
+        // Prepare chart data for last 30 voyages with selisih
+        $chartRows = $rows->take(30);
+        $chartLabels = $chartRows->map(function ($row) {
+            return \Carbon\Carbon::parse($row->tanggal_selesai)->format('d M');
+        })->reverse()->values();
+
+        $chartSelisih = $chartRows->map(function ($row) {
+            return (float) $row->selisih;
+        })->reverse()->values();
+
+        $chartBeratTimbangan = $chartRows->map(function ($row) {
+            return (float) $row->berat_timbangan;
+        })->reverse()->values();
+
+        $chartBeratCatatan = $chartRows->map(function ($row) {
+            return (float) $row->berat_catatan;
+        })->reverse()->values();
+
         return view('keuangan.selisih_bongkar.index', compact(
             'rows',
-            'today'
+            'today',
+            'chartLabels',
+            'chartSelisih',
+            'chartBeratTimbangan',
+            'chartBeratCatatan'
         ));
     }
 

@@ -17,6 +17,19 @@
 		<div class="col-md-12 grid-margin stretch-card">
 			<div class="card">
 				<div class="card-body">
+					<h4 class="card-title mb-3">Chart Selisih Timbangan - 30 Pelayaran Terakhir</h4>
+					<div style="height: 400px;">
+						<canvas id="selisihTimbangan-chart"></canvas>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+
+	<div class="row">
+		<div class="col-md-12 grid-margin stretch-card">
+			<div class="card">
+				<div class="card-body">
 					<h4 class="card-title mb-3">Selisih Bongkaran dan TPI</h4>
 					<p class="card-description">Daftar pelayaran yang selesai dengan berat tangkapan dan input berat dari TPI.</p>
 
@@ -133,6 +146,95 @@
 @push('scripts')
 	<script>
 		$(document).ready(function() {
+			// Initialize Chart
+			const labels = @json($chartLabels);
+			const selisihData = @json($chartSelisih);
+			const beratTimbanganData = @json($chartBeratTimbangan);
+			const beratCatatanData = @json($chartBeratCatatan);
+
+			const ctx = document.getElementById('selisihTimbangan-chart');
+			if (ctx) {
+				new Chart(ctx, {
+					type: 'line',
+					data: {
+						labels: labels,
+						datasets: [
+							{
+								label: 'Berat Tangkapan (Kg)',
+								data: beratTimbanganData,
+								borderColor: 'rgba(54, 162, 235, 1)',
+								backgroundColor: 'rgba(54, 162, 235, 0.1)',
+								lineTension: 0.3,
+								fill: true,
+								pointRadius: 4,
+								pointBackgroundColor: 'rgba(54, 162, 235, 1)',
+								yAxisID: 'y-left',
+							},
+							{
+								label: 'Berat TPI (Kg)',
+								data: beratCatatanData,
+								borderColor: 'rgba(75, 192, 75, 1)',
+								backgroundColor: 'rgba(75, 192, 75, 0.1)',
+								lineTension: 0.3,
+								fill: true,
+								pointRadius: 4,
+								pointBackgroundColor: 'rgba(75, 192, 75, 1)',
+								yAxisID: 'y-left',
+							},
+							{
+								label: 'Selisih (Kg)',
+								data: selisihData,
+								borderColor: 'rgba(255, 99, 132, 1)',
+								backgroundColor: 'rgba(255, 99, 132, 0.1)',
+								lineTension: 0.3,
+								fill: true,
+								pointRadius: 4,
+								pointBackgroundColor: 'rgba(255, 99, 132, 1)',
+								yAxisID: 'y-right',
+							}
+						],
+					},
+					options: {
+						responsive: true,
+						maintainAspectRatio: false,
+						tooltips: {
+							mode: 'index',
+							intersect: false,
+						},
+						scales: {
+							yAxes: [
+								{
+									id: 'y-left',
+									type: 'linear',
+									position: 'left',
+									ticks: { beginAtZero: true },
+									scaleLabel: {
+										display: true,
+										labelString: 'Berat (Kg)',
+									},
+								},
+								{
+									id: 'y-right',
+									type: 'linear',
+									position: 'right',
+									ticks: { beginAtZero: true },
+									scaleLabel: {
+										display: true,
+										labelString: 'Selisih (Kg)',
+									},
+									gridLines: { drawOnChartArea: false },
+								}
+							],
+							xAxes: [{ ticks: { autoSkip: true, maxTicksLimit: 15 } }]
+						},
+						legend: {
+							display: true,
+							position: 'top',
+						}
+					}
+				});
+			}
+
 			$('#selisih-bongkar-table').DataTable({
 				...window.dataTableGeneralConfig,
 				processing: false,
