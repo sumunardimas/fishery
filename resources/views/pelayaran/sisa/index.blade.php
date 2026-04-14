@@ -359,20 +359,22 @@
                                     </div>
                                 @endif
 
-                                <div class="row mb-3 js-kategori-subtotal" data-kategori-tab="{{ $tabKey }}">
-                                    <div class="col-md-6">
-                                        <div class="border rounded p-2 h-100">
-                                            <small class="text-muted d-block">Subtotal Berat {{ $meta['label'] }}</small>
-                                            <div class="h6 mb-0 js-subtotal-berat">0,00 kg</div>
+                                @if ($meta['key'] !== 'pancingan_pribadi')
+                                    <div class="row mb-3 js-kategori-subtotal" data-kategori-tab="{{ $tabKey }}">
+                                        <div class="col-md-6">
+                                            <div class="border rounded p-2 h-100">
+                                                <small class="text-muted d-block">Subtotal Berat {{ $meta['label'] }}</small>
+                                                <div class="h6 mb-0 js-subtotal-berat">0,00 kg</div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="border rounded p-2 h-100">
+                                                <small class="text-muted d-block">Subtotal Nilai {{ $meta['label'] }}</small>
+                                                <div class="h6 mb-0 js-subtotal-nilai">Rp 0,00</div>
+                                            </div>
                                         </div>
                                     </div>
-                                    <div class="col-md-6">
-                                        <div class="border rounded p-2 h-100">
-                                            <small class="text-muted d-block">Subtotal Nilai {{ $meta['label'] }}</small>
-                                            <div class="h6 mb-0 js-subtotal-nilai">Rp 0,00</div>
-                                        </div>
-                                    </div>
-                                </div>
+                                @endif
 
                                 <form action="{{ route('pelayaran.sisa.tangkapan.store') }}" method="POST">
                                     @csrf
@@ -383,69 +385,290 @@
                                         value="{{ $activeTab }}">
 
                                     <fieldset {{ $isReadOnly ? 'disabled' : '' }}>
-                                        <div class="table-responsive">
-                                            <table class="table table-bordered trip-table-dynamic">
-                                                <thead>
-                                                    <tr>
-                                                        <th>Nama Ikan Tangkapan</th>
-                                                        <th>Berat Tangkapan (kg)</th>
-                                                        <th>Harga per Kg (Rp)</th>
-                                                        <th>Estimasi Nilai (Rp)</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody>
-                                                    @forelse ($masterIkanTangkapan as $ikanTangkapan)
-                                                        @php
-                                                            $existingByCategory =
-                                                                $existingHasilIkanByKategori[$meta['key']][
-                                                                    $ikanTangkapan->id_ikan_tangkapan
-                                                                ] ?? null;
-                                                            $defaultHasil = $existingByCategory['berat_hasil'] ?? null;
-                                                            $defaultHarga = $existingByCategory['harga_per_kg'] ?? null;
-                                                            $relasiPenjualan = $ikanTangkapan->masterIkan
-                                                                ->pluck('nama_ikan')
-                                                                ->filter()
-                                                                ->values();
-                                                        @endphp
+                                        @if ($meta['key'] === 'pancingan_pribadi')
+                                            @php
+                                                $oldAnglers = old('anglers');
+                                                $initialAnglers = is_array($oldAnglers)
+                                                    ? $oldAnglers
+                                                    : ($existingPersonalAnglers ?? []);
+                                                if (empty($initialAnglers)) {
+                                                    $initialAnglers = [
+                                                        [
+                                                            'name' => '',
+                                                            'items' => [
+                                                                [
+                                                                    'id_ikan_tangkapan' => '',
+                                                                    'berat' => '',
+                                                                    'harga_per_kg' => '',
+                                                                ],
+                                                            ],
+                                                        ],
+                                                    ];
+                                                }
+                                            @endphp
+
+                                            @if ($errors->has('anglers'))
+                                                <div class="alert alert-danger py-2">{{ $errors->first('anglers') }}</div>
+                                            @endif
+
+                                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                                <label class="mb-0 font-weight-bold required-asterisk">Daftar Penangkap</label>
+                                                <button type="button" class="btn btn-sm btn-outline-secondary js-add-angler"
+                                                    data-tab="{{ $tabKey }}">Tambah Nama</button>
+                                            </div>
+
+                                            <div class="js-angler-list" data-tab="{{ $tabKey }}">
+                                                @foreach ($initialAnglers as $anglerIndex => $angler)
+                                                    @php
+                                                        $anglerName = trim((string) ($angler['name'] ?? ''));
+                                                        $anglerItems = is_array($angler['items'] ?? null)
+                                                            ? $angler['items']
+                                                            : [];
+                                                        if (empty($anglerItems)) {
+                                                            $anglerItems = [
+                                                                [
+                                                                    'id_ikan_tangkapan' => '',
+                                                                    'berat' => '',
+                                                                    'harga_per_kg' => '',
+                                                                ],
+                                                            ];
+                                                        }
+                                                    @endphp
+                                                    <div class="border rounded p-3 mb-3 js-angler-card"
+                                                        data-angler-index="{{ $anglerIndex }}">
+                                                        <div class="d-flex justify-content-between align-items-center mb-2">
+                                                            <div class="form-group mb-0 flex-grow-1 mr-2">
+                                                                <label class="required-asterisk mb-1">Nama Penangkap</label>
+                                                                <input type="text" class="form-control js-angler-name"
+                                                                    name="anglers[{{ $anglerIndex }}][name]"
+                                                                    value="{{ $anglerName }}" placeholder="Contoh: Budi"
+                                                                    maxlength="120">
+                                                            </div>
+                                                            <button type="button" class="btn btn-sm btn-outline-danger js-remove-angler"
+                                                                {{ count($initialAnglers) > 1 ? '' : 'style=display:none;' }}>
+                                                                Hapus Nama
+                                                            </button>
+                                                        </div>
+
+                                                        <div class="table-responsive">
+                                                            <table class="table table-bordered table-sm mb-2">
+                                                                <thead>
+                                                                    <tr>
+                                                                        <th class="required-asterisk">Ikan Tangkapan</th>
+                                                                        <th class="required-asterisk">Berat (kg)</th>
+                                                                        <th>Harga per Kg (Rp)</th>
+                                                                        <th>Estimasi Nilai</th>
+                                                                        <th style="width: 56px;">Aksi</th>
+                                                                    </tr>
+                                                                </thead>
+                                                                <tbody class="js-angler-item-list">
+                                                                    @foreach ($anglerItems as $itemIndex => $anglerItem)
+                                                                        @php
+                                                                            $selectedIkanTangkapan = (string) ($anglerItem[
+                                                                                'id_ikan_tangkapan'
+                                                                            ] ?? '');
+                                                                            $beratValue = $anglerItem['berat'] ?? '';
+                                                                            $hargaValue = $anglerItem['harga_per_kg'] ?? '';
+                                                                        @endphp
+                                                                        <tr class="js-angler-item-row"
+                                                                            data-item-index="{{ $itemIndex }}">
+                                                                            <td>
+                                                                                <select class="form-control js-angler-fish-select"
+                                                                                    name="anglers[{{ $anglerIndex }}][items][{{ $itemIndex }}][id_ikan_tangkapan]">
+                                                                                    <option value="">Pilih ikan tangkapan</option>
+                                                                                    @foreach ($masterIkanTangkapan as $ikanTangkapan)
+                                                                                        <option
+                                                                                            value="{{ $ikanTangkapan->id_ikan_tangkapan }}"
+                                                                                            {{ $selectedIkanTangkapan === (string) $ikanTangkapan->id_ikan_tangkapan ? 'selected' : '' }}>
+                                                                                            {{ $ikanTangkapan->nama_ikan_tangkapan }}
+                                                                                        </option>
+                                                                                    @endforeach
+                                                                                </select>
+                                                                            </td>
+                                                                            <td>
+                                                                                <input type="number"
+                                                                                    class="form-control js-berat-input"
+                                                                                    name="anglers[{{ $anglerIndex }}][items][{{ $itemIndex }}][berat]"
+                                                                                    min="0" step="0.01" placeholder="0"
+                                                                                    value="{{ $beratValue }}"
+                                                                                    data-target="#nilai_{{ $tabKey }}_{{ $anglerIndex }}_{{ $itemIndex }}"
+                                                                                    data-role="berat">
+                                                                            </td>
+                                                                            <td>
+                                                                                <input type="text"
+                                                                                    class="form-control js-harga-input"
+                                                                                    name="anglers[{{ $anglerIndex }}][items][{{ $itemIndex }}][harga_per_kg]"
+                                                                                    inputmode="decimal"
+                                                                                    placeholder="0,00"
+                                                                                    value="{{ $hargaValue }}"
+                                                                                    data-target="#nilai_{{ $tabKey }}_{{ $anglerIndex }}_{{ $itemIndex }}"
+                                                                                    data-role="harga">
+                                                                            </td>
+                                                                            <td>
+                                                                                <div
+                                                                                    class="font-weight-bold text-muted js-nilai-output"
+                                                                                    id="nilai_{{ $tabKey }}_{{ $anglerIndex }}_{{ $itemIndex }}">
+                                                                                    Rp 0
+                                                                                </div>
+                                                                            </td>
+                                                                            <td>
+                                                                                <button type="button"
+                                                                                    class="btn btn-sm btn-outline-danger js-remove-angler-item"
+                                                                                    title="Hapus ikan">&times;</button>
+                                                                            </td>
+                                                                        </tr>
+                                                                    @endforeach
+                                                                </tbody>
+                                                            </table>
+                                                        </div>
+
+                                                        <button type="button"
+                                                            class="btn btn-sm btn-outline-primary js-add-angler-item">Tambah
+                                                            Ikan</button>
+                                                    </div>
+                                                @endforeach
+                                            </div>
+
+                                            <template id="js-angler-template-{{ $tabKey }}">
+                                                <div class="border rounded p-3 mb-3 js-angler-card" data-angler-index="__A__">
+                                                    <div class="d-flex justify-content-between align-items-center mb-2">
+                                                        <div class="form-group mb-0 flex-grow-1 mr-2">
+                                                            <label class="required-asterisk mb-1">Nama Penangkap</label>
+                                                            <input type="text" class="form-control js-angler-name"
+                                                                name="anglers[__A__][name]" value=""
+                                                                placeholder="Contoh: Budi" maxlength="120">
+                                                        </div>
+                                                        <button type="button"
+                                                            class="btn btn-sm btn-outline-danger js-remove-angler">Hapus
+                                                            Nama</button>
+                                                    </div>
+
+                                                    <div class="table-responsive">
+                                                        <table class="table table-bordered table-sm mb-2">
+                                                            <thead>
+                                                                <tr>
+                                                                    <th class="required-asterisk">Ikan Tangkapan</th>
+                                                                    <th class="required-asterisk">Berat (kg)</th>
+                                                                    <th>Harga per Kg (Rp)</th>
+                                                                    <th>Estimasi Nilai</th>
+                                                                    <th style="width: 56px;">Aksi</th>
+                                                                </tr>
+                                                            </thead>
+                                                            <tbody class="js-angler-item-list">
+                                                                <tr class="js-angler-item-row" data-item-index="0">
+                                                                    <td>
+                                                                        <select class="form-control js-angler-fish-select"
+                                                                            name="anglers[__A__][items][0][id_ikan_tangkapan]">
+                                                                            <option value="">Pilih ikan tangkapan</option>
+                                                                            @foreach ($masterIkanTangkapan as $ikanTangkapan)
+                                                                                <option
+                                                                                    value="{{ $ikanTangkapan->id_ikan_tangkapan }}">
+                                                                                    {{ $ikanTangkapan->nama_ikan_tangkapan }}
+                                                                                </option>
+                                                                            @endforeach
+                                                                        </select>
+                                                                    </td>
+                                                                    <td>
+                                                                        <input type="number"
+                                                                            class="form-control js-berat-input"
+                                                                            name="anglers[__A__][items][0][berat]"
+                                                                            min="0" step="0.01" placeholder="0"
+                                                                            value=""
+                                                                            data-target="#nilai_{{ $tabKey }}___A___0"
+                                                                            data-role="berat">
+                                                                    </td>
+                                                                    <td>
+                                                                        <input type="text"
+                                                                            class="form-control js-harga-input"
+                                                                            name="anglers[__A__][items][0][harga_per_kg]"
+                                                                            inputmode="decimal"
+                                                                            placeholder="0,00"
+                                                                            value=""
+                                                                            data-target="#nilai_{{ $tabKey }}___A___0"
+                                                                            data-role="harga">
+                                                                    </td>
+                                                                    <td>
+                                                                        <div class="font-weight-bold text-muted js-nilai-output"
+                                                                            id="nilai_{{ $tabKey }}___A___0">Rp 0
+                                                                        </div>
+                                                                    </td>
+                                                                    <td>
+                                                                        <button type="button"
+                                                                            class="btn btn-sm btn-outline-danger js-remove-angler-item"
+                                                                            title="Hapus ikan">&times;</button>
+                                                                    </td>
+                                                                </tr>
+                                                            </tbody>
+                                                        </table>
+                                                    </div>
+
+                                                    <button type="button"
+                                                        class="btn btn-sm btn-outline-primary js-add-angler-item">Tambah
+                                                        Ikan</button>
+                                                </div>
+                                            </template>
+                                        @else
+                                            <div class="table-responsive">
+                                                <table class="table table-bordered trip-table-dynamic">
+                                                    <thead>
                                                         <tr>
-                                                            <td class="trip-table-cell-wrap">
-                                                                <div class="font-weight-bold">
-                                                                    {{ $ikanTangkapan->nama_ikan_tangkapan }}
-                                                                </div>
-                                                            </td>
-                                                            <td>
-                                                                <input type="number" class="form-control js-berat-input"
-                                                                    name="hasil_ikan[{{ $ikanTangkapan->id_ikan_tangkapan }}]"
-                                                                    min="0" step="0.01" placeholder="0"
-                                                                    value="{{ old('hasil_ikan.' . $ikanTangkapan->id_ikan_tangkapan, $defaultHasil) }}"
-                                                                    data-target="#nilai_{{ $meta['key'] }}_{{ $ikanTangkapan->id_ikan_tangkapan }}"
-                                                                    data-role="berat">
-                                                            </td>
-                                                            <td>
-                                                                <input type="number" class="form-control js-harga-input"
-                                                                    name="harga_ikan[{{ $ikanTangkapan->id_ikan_tangkapan }}]"
-                                                                    min="0" step="0.01" placeholder="0"
-                                                                    value="{{ old('harga_ikan.' . $ikanTangkapan->id_ikan_tangkapan, $defaultHarga) }}"
-                                                                    data-target="#nilai_{{ $meta['key'] }}_{{ $ikanTangkapan->id_ikan_tangkapan }}"
-                                                                    data-role="harga">
-                                                            </td>
-                                                            <td>
-                                                                <div class="font-weight-bold text-muted js-nilai-output"
-                                                                    id="nilai_{{ $meta['key'] }}_{{ $ikanTangkapan->id_ikan_tangkapan }}">
-                                                                    Rp 0
-                                                                </div>
-                                                            </td>
+                                                            <th>Nama Ikan Tangkapan</th>
+                                                            <th class="required-asterisk">Berat Tangkapan (kg)</th>
+                                                            <th>Harga per Kg (Rp)</th>
+                                                            <th>Estimasi Nilai (Rp)</th>
                                                         </tr>
-                                                    @empty
-                                                        <tr>
-                                                            <td colspan="4" class="text-center text-muted">Master ikan
-                                                                tangkapan
-                                                                belum tersedia.</td>
-                                                        </tr>
-                                                    @endforelse
-                                                </tbody>
-                                            </table>
-                                        </div>
+                                                    </thead>
+                                                    <tbody>
+                                                        @forelse ($masterIkanTangkapan as $ikanTangkapan)
+                                                            @php
+                                                                $existingByCategory =
+                                                                    $existingHasilIkanByKategori[$meta['key']][
+                                                                        $ikanTangkapan->id_ikan_tangkapan
+                                                                    ] ?? null;
+                                                                $defaultHasil = $existingByCategory['berat_hasil'] ?? null;
+                                                                $defaultHarga = $existingByCategory['harga_per_kg'] ?? null;
+                                                            @endphp
+                                                            <tr>
+                                                                <td class="trip-table-cell-wrap">
+                                                                    <div class="font-weight-bold">
+                                                                        {{ $ikanTangkapan->nama_ikan_tangkapan }}
+                                                                    </div>
+                                                                </td>
+                                                                <td>
+                                                                    <input type="number" class="form-control js-berat-input"
+                                                                        name="hasil_ikan[{{ $ikanTangkapan->id_ikan_tangkapan }}]"
+                                                                        min="0" step="0.01" placeholder="0"
+                                                                        value="{{ old('hasil_ikan.' . $ikanTangkapan->id_ikan_tangkapan, $defaultHasil) }}"
+                                                                        data-target="#nilai_{{ $meta['key'] }}_{{ $ikanTangkapan->id_ikan_tangkapan }}"
+                                                                        data-role="berat">
+                                                                </td>
+                                                                <td>
+                                                                    <input type="text" class="form-control js-harga-input"
+                                                                        name="harga_ikan[{{ $ikanTangkapan->id_ikan_tangkapan }}]"
+                                                                        inputmode="decimal" placeholder="0,00"
+                                                                        value="{{ old('harga_ikan.' . $ikanTangkapan->id_ikan_tangkapan, $defaultHarga) }}"
+                                                                        data-target="#nilai_{{ $meta['key'] }}_{{ $ikanTangkapan->id_ikan_tangkapan }}"
+                                                                        data-role="harga">
+                                                                </td>
+                                                                <td>
+                                                                    <div
+                                                                        class="font-weight-bold text-muted js-nilai-output"
+                                                                        id="nilai_{{ $meta['key'] }}_{{ $ikanTangkapan->id_ikan_tangkapan }}">
+                                                                        Rp 0
+                                                                    </div>
+                                                                </td>
+                                                            </tr>
+                                                        @empty
+                                                            <tr>
+                                                                <td colspan="4" class="text-center text-muted">Master ikan
+                                                                    tangkapan
+                                                                    belum tersedia.</td>
+                                                            </tr>
+                                                        @endforelse
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        @endif
 
                                         <div class="mt-2">
                                             @if (!$isReadOnly)
@@ -485,7 +708,7 @@
                                                     <th>Jenis Operasional</th>
                                                     <th>Deskripsi Master</th>
                                                     <th>Tanggal Biaya</th>
-                                                    <th>Jumlah</th>
+                                                    <th class="required-asterisk">Jumlah</th>
                                                     <th>Catatan</th>
                                                 </tr>
                                             </thead>
@@ -501,11 +724,11 @@
                                                                 value="{{ old('tanggal.' . $master->id_master_operasional, now()->toDateString()) }}">
                                                         </td>
                                                         <td style="min-width: 170px;">
-                                                            <input type="number"
+                                                            <input type="text"
                                                                 name="jumlah[{{ $master->id_master_operasional }}]"
-                                                                class="form-control" step="0.01" min="0"
+                                                                class="form-control" data-rupiah-input inputmode="decimal"
                                                                 value="{{ old('jumlah.' . $master->id_master_operasional, $existingOperasional[$master->id_master_operasional] ?? null) }}"
-                                                                placeholder="Isi jika ada biaya">
+                                                                placeholder="0,00">
                                                         </td>
                                                         <td style="min-width: 260px;">
                                                             <input type="text"
@@ -936,7 +1159,7 @@
                                                     </div>
 
                                                     <div class="form-group">
-                                                        <label class="font-weight-bold d-block mb-2">
+                                                        <label class="font-weight-bold d-block mb-2 required-asterisk">
                                                             Metode Pembayaran Grand Total
                                                         </label>
                                                         <div class="row">
@@ -1062,6 +1285,82 @@
                 var tabContainer = document.querySelector('.js-trip-tabs');
                 var selectedPelayaranId = '{{ $selectedPelayaran->id_pelayaran }}';
 
+                var parseHargaNumber = function(rawValue) {
+                    var numStr = String(rawValue || '').trim();
+                    if (numStr === '') return 0;
+
+                    numStr = numStr.replace(/[^\d,.-]/g, '');
+                    numStr = numStr.replace(/\./g, '').replace(',', '.');
+
+                    var num = parseFloat(numStr);
+                    return isNaN(num) || !isFinite(num) ? 0 : num;
+                };
+
+                var formatHargaDisplay = function(value) {
+                    var numStr = String(value || '').trim();
+                    if (numStr === '') return '';
+
+                    var parsed = parseHargaNumber(numStr);
+                    if (parsed === 0 && numStr !== '0') return '';
+
+                    return parsed.toLocaleString('id-ID', {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                    });
+                };
+
+                var initHargaFormatter = function(container) {
+                    if (!container) container = document;
+
+                    container.querySelectorAll('.js-harga-input').forEach(function(input) {
+                        if (input.dataset.hargaFormatterBound === '1') return;
+                        input.dataset.hargaFormatterBound = '1';
+
+                        // Store raw numeric value in data attribute
+                        var initialValue = input.value.trim();
+                        if (initialValue !== '') {
+                            var rawNum = parseHargaNumber(initialValue);
+                            input.dataset.hargaRawValue = rawNum;
+                            input.value = formatHargaDisplay(rawNum);
+                        } else {
+                            input.dataset.hargaRawValue = '';
+                        }
+
+                        var handleInput = function(e) {
+                            // Extract only digits and decimal/comma separators from displayed value
+                            var displayed = input.value;
+                            
+                            // Remove all non-digit separators, keep only digits
+                            var digitsOnly = displayed.replace(/[^\d]/g, '');
+                            
+                            if (digitsOnly === '') {
+                                input.dataset.hargaRawValue = '';
+                                input.value = '';
+                                return;
+                            }
+                            
+                            // Convert digits string to number (assuming 2 decimal places)
+                            var numValue = parseInt(digitsOnly, 10) / 100;
+                            
+                            // Store raw value
+                            input.dataset.hargaRawValue = numValue;
+                            
+                            // Format and display
+                            input.value = numValue.toLocaleString('id-ID', {
+                                minimumFractionDigits: 2,
+                                maximumFractionDigits: 2,
+                            });
+                            
+                            // Move cursor to end
+                            setTimeout(function() {
+                                input.setSelectionRange(input.value.length, input.value.length);
+                            }, 0);
+                        };
+
+                        input.addEventListener('input', handleInput);
+                    });
+                };
+
                 var updateEstimatedValue = function(targetSelector) {
                     var output = document.querySelector(targetSelector);
                     if (!output) {
@@ -1076,7 +1375,14 @@
                     var beratInput = row.querySelector('[data-role="berat"]');
                     var hargaInput = row.querySelector('[data-role="harga"]');
                     var berat = parseFloat((beratInput && beratInput.value) || '0');
-                    var harga = parseFloat((hargaInput && hargaInput.value) || '0');
+                    
+                    // Use stored raw value from data attribute
+                    var harga = 0;
+                    if (hargaInput) {
+                        var rawValue = hargaInput.dataset.hargaRawValue;
+                        harga = rawValue !== '' && rawValue !== undefined ? parseFloat(rawValue) : 0;
+                    }
+                    
                     var total = (isNaN(berat) ? 0 : berat) * (isNaN(harga) ? 0 : harga);
                     output.textContent = 'Rp ' + total.toLocaleString('id-ID', {
                         minimumFractionDigits: 2,
@@ -1102,7 +1408,11 @@
                         }
 
                         var berat = parseFloat(beratInput.value || '0');
-                        var harga = parseFloat(hargaInput.value || '0');
+                        
+                        // Use stored raw value from data attribute
+                        var rawValue = hargaInput.dataset.hargaRawValue;
+                        var harga = rawValue !== '' && rawValue !== undefined ? parseFloat(rawValue) : 0;
+                        
                         berat = isNaN(berat) ? 0 : berat;
                         harga = isNaN(harga) ? 0 : harga;
 
@@ -1141,6 +1451,129 @@
                             submitButton.disabled = isExceeded;
                             submitButton.title = isExceeded ? 'Total berat maksimal 3000 kg.' : '';
                         }
+                    }
+                };
+
+                var refreshAnglerIndexes = function(listElement) {
+                    if (!listElement) {
+                        return;
+                    }
+
+                    var tabKey = listElement.getAttribute('data-tab') || 'pancingan-pribadi';
+                    var cards = Array.from(listElement.querySelectorAll('.js-angler-card'));
+
+                    cards.forEach(function(card, anglerIndex) {
+                        card.setAttribute('data-angler-index', String(anglerIndex));
+
+                        var nameInput = card.querySelector('.js-angler-name');
+                        if (nameInput) {
+                            nameInput.name = 'anglers[' + anglerIndex + '][name]';
+                        }
+
+                        var rows = Array.from(card.querySelectorAll('.js-angler-item-row'));
+                        rows.forEach(function(row, itemIndex) {
+                            row.setAttribute('data-item-index', String(itemIndex));
+
+                            var selectInput = row.querySelector('.js-angler-fish-select');
+                            var beratInput = row.querySelector('.js-berat-input');
+                            var hargaInput = row.querySelector('.js-harga-input');
+                            var nilaiOutput = row.querySelector('.js-nilai-output');
+                            var outputId = 'nilai_' + tabKey + '_' + anglerIndex + '_' + itemIndex;
+
+                            if (selectInput) {
+                                selectInput.name =
+                                    'anglers[' + anglerIndex + '][items][' + itemIndex + '][id_ikan_tangkapan]';
+                            }
+
+                            if (beratInput) {
+                                beratInput.name = 'anglers[' + anglerIndex + '][items][' + itemIndex + '][berat]';
+                                beratInput.setAttribute('data-target', '#' + outputId);
+                            }
+
+                            if (hargaInput) {
+                                hargaInput.name =
+                                    'anglers[' + anglerIndex + '][items][' + itemIndex + '][harga_per_kg]';
+                                hargaInput.setAttribute('data-target', '#' + outputId);
+                            }
+
+                            if (nilaiOutput) {
+                                nilaiOutput.id = outputId;
+                            }
+                        });
+
+                        var removeAnglerBtn = card.querySelector('.js-remove-angler');
+                        if (removeAnglerBtn) {
+                            removeAnglerBtn.style.display = cards.length > 1 ? '' : 'none';
+                        }
+                    });
+                };
+
+                var addAnglerCard = function(listElement) {
+                    if (!listElement) {
+                        return;
+                    }
+
+                    var tabKey = listElement.getAttribute('data-tab');
+                    var template = document.getElementById('js-angler-template-' + tabKey);
+
+                    if (!template) {
+                        return;
+                    }
+
+                    var nextIndex = listElement.querySelectorAll('.js-angler-card').length;
+                    var html = template.innerHTML.replace(/__A__/g, String(nextIndex));
+                    listElement.insertAdjacentHTML('beforeend', html);
+
+                    if (window.rupiahInput && typeof window.rupiahInput.init === 'function') {
+                        window.rupiahInput.init(listElement);
+                    }
+
+                    refreshAnglerIndexes(listElement);
+                };
+
+                var addAnglerItemRow = function(cardElement) {
+                    if (!cardElement) {
+                        return;
+                    }
+
+                    var tbody = cardElement.querySelector('.js-angler-item-list');
+                    var firstRow = tbody ? tbody.querySelector('.js-angler-item-row') : null;
+
+                    if (!tbody || !firstRow) {
+                        return;
+                    }
+
+                    var rowClone = firstRow.cloneNode(true);
+                    var selectInput = rowClone.querySelector('.js-angler-fish-select');
+                    var beratInput = rowClone.querySelector('.js-berat-input');
+                    var hargaInput = rowClone.querySelector('.js-harga-input');
+                    var nilaiOutput = rowClone.querySelector('.js-nilai-output');
+
+                    if (selectInput) {
+                        selectInput.value = '';
+                    }
+
+                    if (beratInput) {
+                        beratInput.value = '';
+                    }
+
+                    if (hargaInput) {
+                        hargaInput.value = '';
+                    }
+
+                    if (nilaiOutput) {
+                        nilaiOutput.textContent = 'Rp 0';
+                    }
+
+                    tbody.appendChild(rowClone);
+
+                    if (window.rupiahInput && typeof window.rupiahInput.init === 'function') {
+                        window.rupiahInput.init(cardElement);
+                    }
+
+                    var anglerList = cardElement.closest('.js-angler-list');
+                    if (anglerList) {
+                        refreshAnglerIndexes(anglerList);
                     }
                 };
 
@@ -1190,6 +1623,103 @@
                 updateTabCount();
                 window.addEventListener('resize', updateTabCount);
 
+                document.querySelectorAll('.js-angler-list').forEach(function(listElement) {
+                    refreshAnglerIndexes(listElement);
+                });
+
+                initHargaFormatter();
+
+                document.addEventListener('click', function(event) {
+                    var addAnglerBtn = event.target.closest('.js-add-angler');
+                    if (addAnglerBtn) {
+                        event.preventDefault();
+                        var tabKey = addAnglerBtn.getAttribute('data-tab');
+                        var listElement = document.querySelector('.js-angler-list[data-tab="' + tabKey + '"]');
+                        addAnglerCard(listElement);
+
+                        var pane = addAnglerBtn.closest('.js-trip-pane');
+                        if (pane) {
+                            updateCategorySubtotal(pane);
+                        }
+
+                        return;
+                    }
+
+                    var removeAnglerBtn = event.target.closest('.js-remove-angler');
+                    if (removeAnglerBtn) {
+                        event.preventDefault();
+                        var listElement = removeAnglerBtn.closest('.js-angler-list');
+                        var card = removeAnglerBtn.closest('.js-angler-card');
+
+                        if (listElement && card) {
+                            var cards = listElement.querySelectorAll('.js-angler-card');
+                            if (cards.length > 1) {
+                                card.remove();
+                                refreshAnglerIndexes(listElement);
+                            }
+                        }
+
+                        return;
+                    }
+
+                    var addItemBtn = event.target.closest('.js-add-angler-item');
+                    if (addItemBtn) {
+                        event.preventDefault();
+                        var card = addItemBtn.closest('.js-angler-card');
+                        addAnglerItemRow(card);
+
+                        var pane = addItemBtn.closest('.js-trip-pane');
+                        if (pane) {
+                            updateCategorySubtotal(pane);
+                        }
+
+                        return;
+                    }
+
+                    var removeItemBtn = event.target.closest('.js-remove-angler-item');
+                    if (removeItemBtn) {
+                        event.preventDefault();
+                        var card = removeItemBtn.closest('.js-angler-card');
+                        var tbody = card ? card.querySelector('.js-angler-item-list') : null;
+                        var row = removeItemBtn.closest('.js-angler-item-row');
+
+                        if (tbody && row) {
+                            var rows = tbody.querySelectorAll('.js-angler-item-row');
+                            if (rows.length > 1) {
+                                row.remove();
+                            } else {
+                                var selectInput = row.querySelector('.js-angler-fish-select');
+                                var beratInput = row.querySelector('.js-berat-input');
+                                var hargaInput = row.querySelector('.js-harga-input');
+                                var nilaiOutput = row.querySelector('.js-nilai-output');
+
+                                if (selectInput) {
+                                    selectInput.value = '';
+                                }
+                                if (beratInput) {
+                                    beratInput.value = '';
+                                }
+                                if (hargaInput) {
+                                    hargaInput.value = '';
+                                }
+                                if (nilaiOutput) {
+                                    nilaiOutput.textContent = 'Rp 0';
+                                }
+                            }
+
+                            var anglerList = card.closest('.js-angler-list');
+                            if (anglerList) {
+                                refreshAnglerIndexes(anglerList);
+                            }
+                        }
+
+                        var pane = removeItemBtn.closest('.js-trip-pane');
+                        if (pane) {
+                            updateCategorySubtotal(pane);
+                        }
+                    }
+                });
+
                 document.querySelectorAll('.js-berat-input, .js-harga-input').forEach(function(input) {
                     var targetSelector = input.getAttribute('data-target');
                     if (targetSelector) {
@@ -1200,17 +1730,23 @@
                     if (pane) {
                         updateCategorySubtotal(pane);
                     }
+                });
 
-                    input.addEventListener('input', function() {
-                        if (targetSelector) {
-                            updateEstimatedValue(targetSelector);
-                        }
+                document.addEventListener('input', function(event) {
+                    var input = event.target.closest('.js-berat-input, .js-harga-input');
+                    if (!input) {
+                        return;
+                    }
 
-                        var currentPane = input.closest('.js-trip-pane');
-                        if (currentPane) {
-                            updateCategorySubtotal(currentPane);
-                        }
-                    });
+                    var targetSelector = input.getAttribute('data-target');
+                    if (targetSelector) {
+                        updateEstimatedValue(targetSelector);
+                    }
+
+                    var currentPane = input.closest('.js-trip-pane');
+                    if (currentPane) {
+                        updateCategorySubtotal(currentPane);
+                    }
                 });
 
                 document.querySelectorAll('.js-trip-pane').forEach(function(pane) {
@@ -1313,6 +1849,25 @@
                 if (shouldOpenCloseModal && window.jQuery && typeof window.jQuery.fn.modal === 'function') {
                     window.jQuery('#closePelayaranModal').modal('show');
                 }
+
+                // Normalize harga fields before form submission
+                document.querySelectorAll('form').forEach(function(form) {
+                    form.addEventListener('submit', function() {
+                        // Use stored raw values from data attributes
+                        form.querySelectorAll('input[name*="[harga_"], input[name*="[harga_per_kg"]').forEach(function(input) {
+                            var rawValue = input.dataset.hargaRawValue;
+                            
+                            if (rawValue === '' || rawValue === undefined) {
+                                input.value = '';
+                                return;
+                            }
+                            
+                            // Send as numeric string with 2 decimals
+                            var numValue = parseFloat(rawValue);
+                            input.value = isNaN(numValue) ? '' : numValue.toFixed(2);
+                        });
+                    });
+                });
             });
         </script>
     @endif

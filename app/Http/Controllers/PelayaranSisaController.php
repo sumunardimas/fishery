@@ -167,14 +167,21 @@ class PelayaranSisaController extends Controller
             'hasil_ikan.*' => ['nullable', 'numeric', 'min:0'],
             'harga_ikan' => ['nullable', 'array'],
             'harga_ikan.*' => ['nullable', 'numeric', 'min:0'],
+            'anglers' => ['nullable', 'array'],
+            'anglers.*.name' => ['nullable', 'string', 'max:120'],
+            'anglers.*.items' => ['nullable', 'array'],
+            'anglers.*.items.*.id_ikan_tangkapan' => ['nullable', 'integer'],
+            'anglers.*.items.*.berat' => ['nullable', 'numeric', 'min:0'],
+            'anglers.*.items.*.harga_per_kg' => ['nullable', 'numeric', 'min:0'],
         ]);
 
         $idPelayaran = (int) $validated['id_pelayaran'];
         $pelayaran = $this->getActivePelayaranOrFail($idPelayaran);
         $kategoriTangkapan = (string) $validated['kategori_tangkapan'];
 
-        $hasilIkan = $this->extractNumericMap($request->input('hasil_ikan', []), false);
-        $hargaIkan = $this->extractNumericMap($request->input('harga_ikan', []), true);
+        $hasilIkan = collect();
+        $hargaIkan = collect();
+        $insertRows = collect();
 
         $ikanTangkapanCollection = MasterIkanTangkapan::query()
             ->whereHas('masterIkan')
@@ -187,8 +194,13 @@ class PelayaranSisaController extends Controller
             ->map(fn ($id) => (int) $id)
             ->all();
 
-        $hasilIkan = $hasilIkan->only($validIkanTangkapanIds)->filter(fn (float $berat) => $berat > 0);
-        $hargaIkan = $hargaIkan->only($validIkanTangkapanIds);
+        if ($kategoriTangkapan !== 'pancingan_pribadi') {
+            $hasilIkan = $this->extractNumericMap($request->input('hasil_ikan', []), false)
+                ->only($validIkanTangkapanIds)
+                ->filter(fn (float $berat) => $berat > 0);
+            $hargaIkan = $this->extractNumericMap($request->input('harga_ikan', []), true)
+                ->only($validIkanTangkapanIds);
+        }
 
         $relasiIkanMap = $ikanTangkapanCollection->mapWithKeys(function (MasterIkanTangkapan $item) {
             $representativeIkan = $item->masterIkan->sortBy('id_ikan')->first();
@@ -198,39 +210,62 @@ class PelayaranSisaController extends Controller
                 : [];
         })->all();
 
-        $unmappedIds = $hasilIkan->keys()
-            ->filter(fn (int $idIkanTangkapan) => !isset($relasiIkanMap[$idIkanTangkapan]))
-            ->values()
-            ->all();
+        if ($kategoriTangkapan === 'pancingan_pribadi') {
+            $insertRows = $this->extractPersonalCatchRows(
+                anglersInput: $request->input('anglers', []),
+                validIkanTangkapanIds: $validIkanTangkapanIds,
+                relasiIkanMap: $relasiIkanMap
+            );
 
-        if ($unmappedIds !== []) {
-            throw ValidationException::withMessages([
-                'hasil_ikan' => 'Beberapa Master Ikan Tangkapan belum terhubung ke Master Ikan penjualan. Lengkapi relasinya terlebih dahulu.',
-            ]);
-        }
-
-        $hasilIkan = $hasilIkan->mapWithKeys(function (float $beratHasil, int $idIkanTangkapan) use ($relasiIkanMap) {
-            return [(int) $relasiIkanMap[$idIkanTangkapan] => $beratHasil];
-        });
-
-        if ($kategoriTangkapan === 'tangkapan_3_ton') {
-            $totalBerat3Ton = (float) $hasilIkan->sum();
-            if ($totalBerat3Ton > self::TANGKAPAN_3_TON_MAX_BERAT) {
+            if ($insertRows->isEmpty()) {
                 throw ValidationException::withMessages([
-                    'hasil_ikan' => 'Total berat Tangkapan 3 Ton maksimal ' . self::TANGKAPAN_3_TON_MAX_BERAT . ' kg.',
+                    'anglers' => 'Isi minimal satu nama penangkap dengan item ikan (berat > 0).',
                 ]);
             }
-        }
+        } else {
+            $unmappedIds = $hasilIkan->keys()
+                ->filter(fn (int $idIkanTangkapan) => !isset($relasiIkanMap[$idIkanTangkapan]))
+                ->values()
+                ->all();
 
-        $hargaIkan = $hargaIkan->mapWithKeys(function (float $harga, int $idIkanTangkapan) use ($relasiIkanMap) {
-            if (!isset($relasiIkanMap[$idIkanTangkapan])) {
-                return [];
+            if ($unmappedIds !== []) {
+                throw ValidationException::withMessages([
+                    'hasil_ikan' => 'Beberapa Master Ikan Tangkapan belum terhubung ke Master Ikan penjualan. Lengkapi relasinya terlebih dahulu.',
+                ]);
             }
 
-            return [(int) $relasiIkanMap[$idIkanTangkapan] => $harga];
-        });
+            $hasilIkan = $hasilIkan->mapWithKeys(function (float $beratHasil, int $idIkanTangkapan) use ($relasiIkanMap) {
+                return [(int) $relasiIkanMap[$idIkanTangkapan] => $beratHasil];
+            });
 
-        DB::transaction(function () use ($idPelayaran, $kategoriTangkapan, $hasilIkan, $hargaIkan) {
+            if ($kategoriTangkapan === 'tangkapan_3_ton') {
+                $totalBerat3Ton = (float) $hasilIkan->sum();
+                if ($totalBerat3Ton > self::TANGKAPAN_3_TON_MAX_BERAT) {
+                    throw ValidationException::withMessages([
+                        'hasil_ikan' => 'Total berat Tangkapan 3 Ton maksimal ' . self::TANGKAPAN_3_TON_MAX_BERAT . ' kg.',
+                    ]);
+                }
+            }
+
+            $hargaIkan = $hargaIkan->mapWithKeys(function (float $harga, int $idIkanTangkapan) use ($relasiIkanMap) {
+                if (!isset($relasiIkanMap[$idIkanTangkapan])) {
+                    return [];
+                }
+
+                return [(int) $relasiIkanMap[$idIkanTangkapan] => $harga];
+            });
+
+            $insertRows = $hasilIkan->map(function (float $beratHasil, int $idIkan) use ($hargaIkan) {
+                return [
+                    'id_ikan' => $idIkan,
+                    'berat_hasil' => $beratHasil,
+                    'harga_per_kg' => (float) ($hargaIkan[$idIkan] ?? 0),
+                    'nama_penangkap' => '',
+                ];
+            })->values();
+        }
+
+        DB::transaction(function () use ($idPelayaran, $kategoriTangkapan, $insertRows) {
             $existingIkanIds = DB::table('ikan_hasil_pelayaran')
                 ->where('id_pelayaran', $idPelayaran)
                 ->where('kategori_tangkapan', $kategoriTangkapan)
@@ -243,15 +278,16 @@ class PelayaranSisaController extends Controller
                 ->where('kategori_tangkapan', $kategoriTangkapan)
                 ->delete();
 
-            if ($hasilIkan->isNotEmpty()) {
+            if ($insertRows->isNotEmpty()) {
                 $now = now();
-                $hasilRows = $hasilIkan->map(function (float $beratHasil, int $idIkan) use ($idPelayaran, $kategoriTangkapan, $hargaIkan, $now) {
+                $hasilRows = $insertRows->map(function (array $row) use ($idPelayaran, $kategoriTangkapan, $now) {
                     return [
                         'id_pelayaran' => $idPelayaran,
-                        'id_ikan' => $idIkan,
+                        'id_ikan' => (int) $row['id_ikan'],
                         'kategori_tangkapan' => $kategoriTangkapan,
-                        'berat_hasil' => $beratHasil,
-                        'harga_per_kg' => (float) ($hargaIkan[$idIkan] ?? 0),
+                        'berat_hasil' => (float) $row['berat_hasil'],
+                        'harga_per_kg' => (float) ($row['harga_per_kg'] ?? 0),
+                        'nama_penangkap' => (string) ($row['nama_penangkap'] ?? ''),
                         'created_at' => $now,
                         'updated_at' => $now,
                     ];
@@ -262,7 +298,7 @@ class PelayaranSisaController extends Controller
 
             $periode = now()->format('Y-m');
             $affectedIkanIds = collect($existingIkanIds)
-                ->merge($hasilIkan->keys()->map(fn ($id) => (int) $id)->all())
+                ->merge($insertRows->pluck('id_ikan')->map(fn ($id) => (int) $id)->all())
                 ->unique()
                 ->values()
                 ->all();
@@ -710,6 +746,7 @@ class PelayaranSisaController extends Controller
             ->orderBy('nama_ikan_tangkapan')
             ->get();
         $existingHasilIkanByKategori = [];
+        $existingPersonalAnglers = [];
         $masterOperasional = DB::table('master_operasional')
             ->orderBy('nama_operasional')
             ->get();
@@ -818,6 +855,34 @@ class PelayaranSisaController extends Controller
                 })
                 ->toArray();
 
+            $existingPersonalAnglers = DB::table('ikan_hasil_pelayaran as ihp')
+                ->join('master_ikan as mi', 'mi.id_ikan', '=', 'ihp.id_ikan')
+                ->where('ihp.id_pelayaran', $selectedPelayaran->id_pelayaran)
+                ->where('ihp.kategori_tangkapan', 'pancingan_pribadi')
+                ->select('ihp.nama_penangkap', 'mi.id_ikan_tangkapan', 'ihp.berat_hasil', 'ihp.harga_per_kg')
+                ->orderBy('ihp.nama_penangkap')
+                ->orderBy('mi.id_ikan_tangkapan')
+                ->get()
+                ->groupBy(function ($row) {
+                    $nama = trim((string) ($row->nama_penangkap ?? ''));
+
+                    return $nama !== '' ? $nama : 'Tanpa Nama';
+                })
+                ->map(function ($rows, $namaPenangkap) {
+                    return [
+                        'name' => (string) $namaPenangkap,
+                        'items' => $rows->map(function ($row) {
+                            return [
+                                'id_ikan_tangkapan' => (int) $row->id_ikan_tangkapan,
+                                'berat' => (float) $row->berat_hasil,
+                                'harga_per_kg' => (float) ($row->harga_per_kg ?? 0),
+                            ];
+                        })->values()->all(),
+                    ];
+                })
+                ->values()
+                ->all();
+
             $rekapTangkapan = DB::table('ikan_hasil_pelayaran')
                 ->where('id_pelayaran', $selectedPelayaran->id_pelayaran)
                 ->selectRaw('kategori_tangkapan, SUM(berat_hasil) as total_berat, SUM(berat_hasil * harga_per_kg) as total_nilai')
@@ -906,6 +971,7 @@ class PelayaranSisaController extends Controller
             'existingSisa' => $existingSisa,
             'masterIkanTangkapan' => $masterIkanTangkapan,
             'existingHasilIkanByKategori' => $existingHasilIkanByKategori,
+            'existingPersonalAnglers' => $existingPersonalAnglers,
             'masterOperasional' => $masterOperasional,
             'existingOperasional' => $existingOperasional,
             'rekapOperasional' => $rekapOperasional,
@@ -1014,6 +1080,84 @@ class PelayaranSisaController extends Controller
             ->filter(function (float $value) use ($allowZero) {
                 return $allowZero ? $value >= 0 : $value > 0;
             });
+    }
+
+    private function extractPersonalCatchRows(array $anglersInput, array $validIkanTangkapanIds, array $relasiIkanMap): Collection
+    {
+        $validIdSet = array_flip($validIkanTangkapanIds);
+        $rows = collect();
+
+        foreach ($anglersInput as $anglerIndex => $angler) {
+            $nama = trim((string) ($angler['name'] ?? ''));
+            $items = is_array($angler['items'] ?? null) ? $angler['items'] : [];
+
+            foreach ($items as $itemIndex => $item) {
+                $idIkanTangkapan = (int) ($item['id_ikan_tangkapan'] ?? 0);
+                $beratRaw = $item['berat'] ?? null;
+                $hargaRaw = $item['harga_per_kg'] ?? null;
+
+                $berat = ($beratRaw === null || $beratRaw === '') ? 0 : (float) $beratRaw;
+                $harga = ($hargaRaw === null || $hargaRaw === '') ? 0 : (float) $hargaRaw;
+                $hasAnyValue = $idIkanTangkapan > 0 || $berat > 0 || ($hargaRaw !== null && $hargaRaw !== '');
+
+                if (!$hasAnyValue) {
+                    continue;
+                }
+
+                if ($nama === '') {
+                    throw ValidationException::withMessages([
+                        'anglers.' . $anglerIndex . '.name' => 'Nama penangkap wajib diisi jika ada ikan tangkapan.',
+                    ]);
+                }
+
+                if (!isset($validIdSet[$idIkanTangkapan])) {
+                    throw ValidationException::withMessages([
+                        'anglers.' . $anglerIndex . '.items.' . $itemIndex . '.id_ikan_tangkapan' => 'Pilih ikan tangkapan yang valid.',
+                    ]);
+                }
+
+                if ($berat <= 0) {
+                    throw ValidationException::withMessages([
+                        'anglers.' . $anglerIndex . '.items.' . $itemIndex . '.berat' => 'Berat tangkapan harus lebih dari 0.',
+                    ]);
+                }
+
+                if (!isset($relasiIkanMap[$idIkanTangkapan])) {
+                    throw ValidationException::withMessages([
+                        'anglers' => 'Beberapa Master Ikan Tangkapan belum terhubung ke Master Ikan penjualan. Lengkapi relasinya terlebih dahulu.',
+                    ]);
+                }
+
+                $rows->push([
+                    'nama_penangkap' => $nama,
+                    'id_ikan' => (int) $relasiIkanMap[$idIkanTangkapan],
+                    'berat_hasil' => $berat,
+                    'harga_per_kg' => $harga,
+                ]);
+            }
+        }
+
+        if ($rows->isEmpty()) {
+            return collect();
+        }
+
+        return $rows
+            ->groupBy(fn (array $row) => $row['nama_penangkap'] . '|' . $row['id_ikan'])
+            ->map(function (Collection $group) {
+                $first = $group->first();
+                $totalBerat = (float) $group->sum('berat_hasil');
+                $totalNilai = (float) $group->sum(function (array $row) {
+                    return (float) $row['berat_hasil'] * (float) $row['harga_per_kg'];
+                });
+
+                return [
+                    'nama_penangkap' => (string) $first['nama_penangkap'],
+                    'id_ikan' => (int) $first['id_ikan'],
+                    'berat_hasil' => $totalBerat,
+                    'harga_per_kg' => $totalBerat > 0 ? ($totalNilai / $totalBerat) : 0,
+                ];
+            })
+            ->values();
     }
 
     private function calculateCatchCreditAmount(string $kategoriKey, float $rawAmount): float
