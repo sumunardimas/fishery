@@ -14,117 +14,117 @@
 	</div>
 
 	<div class="row">
-		<div class="col-md-4 grid-margin stretch-card">
-			<div class="card">
-				<div class="card-body">
-					<h4 class="card-title mb-3">Filter Tanggal</h4>
-					<p class="card-description">Default 1 bulan terakhir untuk cek selisih bongkaran.</p>
-
-					<form method="GET" action="{{ url('/keuangan/lap-selisih-bongkaran') }}" class="mt-3">
-						<div class="form-group">
-							<label for="start_date">Tanggal Mulai</label>
-							<input type="date" id="start_date" name="start_date" class="form-control"
-								value="{{ $startDate }}">
-						</div>
-						<div class="form-group">
-							<label for="end_date">Tanggal Akhir</label>
-							<input type="date" id="end_date" name="end_date" class="form-control"
-								value="{{ $endDate }}">
-						</div>
-
-						<div class="d-flex align-items-center">
-							<button type="submit" class="btn btn-primary mr-2">Terapkan</button>
-							<a href="{{ url('/keuangan/lap-selisih-bongkaran') }}" class="btn btn-light">Reset</a>
-						</div>
-					</form>
-				</div>
-			</div>
-		</div>
-
-		<div class="col-md-8 grid-margin stretch-card">
-			<div class="card">
-				<div class="card-body">
-					<h4 class="card-title mb-3">Input Berat Lelang Ikan</h4>
-					<p class="card-description">Isi total berat versi pasar lelang ikan per tanggal.</p>
-
-					<form method="POST" action="{{ route('keuangan.lap-selisih-bongkaran.store') }}" class="mt-3">
-						@csrf
-						<input type="hidden" name="start_date" value="{{ $startDate }}">
-						<input type="hidden" name="end_date" value="{{ $endDate }}">
-
-						<div class="form-row">
-							<div class="form-group col-md-4">
-								<label for="tanggal">Tanggal</label>
-								<input type="date" id="tanggal" name="tanggal" class="form-control"
-									value="{{ old('tanggal', $today->toDateString()) }}" required>
-							</div>
-							<div class="form-group col-md-4">
-								<label for="berat_lelang">Berat Lelang (Kg)</label>
-								<input type="number" step="0.01" min="0" id="berat_lelang" name="berat_lelang"
-									class="form-control" value="{{ old('berat_lelang') }}" required>
-							</div>
-							<div class="form-group col-md-4">
-								<label for="keterangan">Keterangan</label>
-								<input type="text" id="keterangan" name="keterangan" class="form-control"
-									value="{{ old('keterangan') }}" placeholder="Opsional">
-							</div>
-						</div>
-
-						<button type="submit" class="btn btn-success">Simpan Berat Lelang</button>
-					</form>
-
-					<hr>
-					<p class="mb-1"><strong>Total Berat Penjualan:</strong> {{ number_format($summary['total_penjualan'], 2, ',', '.') }} kg</p>
-					<p class="mb-1"><strong>Total Berat Lelang:</strong> {{ number_format($summary['total_lelang'], 2, ',', '.') }} kg</p>
-					<p class="mb-0"><strong>Total Selisih:</strong> {{ number_format($summary['total_selisih'], 2, ',', '.') }} kg</p>
-				</div>
-			</div>
-		</div>
-	</div>
-
-	<div class="row">
 		<div class="col-md-12 grid-margin stretch-card">
 			<div class="card">
 				<div class="card-body">
-					<h4 class="card-title mb-3">Chart Berat Penjualan vs Berat Lelang</h4>
-					<div style="height: 340px;">
-						<canvas id="selisihBongkarChart"></canvas>
-					</div>
-				</div>
-			</div>
-		</div>
-	</div>
-
-	<div class="row">
-		<div class="col-md-12 grid-margin stretch-card">
-			<div class="card">
-				<div class="card-body">
-					<h4 class="card-title">Datatable Selisih Bongkaran</h4>
-					<p class="card-description">Per tanggal: berat penjualan vs berat lelang dan selisihnya.</p>
+					<h4 class="card-title mb-3">Selisih Bongkaran dan TPI</h4>
+					<p class="card-description">Daftar pelayaran yang selesai dengan berat tangkapan dan input berat dari TPI.</p>
 
 					<div class="table-responsive">
 						<table id="selisih-bongkar-table" class="display expandable-table" style="width:100%">
 							<thead>
 								<tr>
-									<th>Tanggal</th>
-									<th>Berat Penjualan (Kg)</th>
-									<th>Berat Lelang (Kg)</th>
+									<th>Kapal</th>
+									<th>Tanggal Berangkat</th>
+									<th>Tanggal Selesai</th>
+									<th>Berat Tangkapan (Kg)</th>
+									<th>Berat TPI (Kg)</th>
 									<th>Selisih (Kg)</th>
+									<th>Action</th>
 								</tr>
 							</thead>
 							<tbody>
-								@foreach ($rows as $row)
+								@forelse ($rows as $row)
 									<tr>
-										<td>{{ $row->tanggal }}</td>
-										<td>{{ number_format((float) $row->berat_penjualan, 2, ',', '.') }}</td>
-										<td>{{ number_format((float) $row->berat_lelang, 2, ',', '.') }}</td>
-										<td>{{ number_format((float) $row->selisih, 2, ',', '.') }}</td>
+										<td><strong>{{ $row->nama_kapal }}</strong></td>
+										<td>{{ \Carbon\Carbon::parse($row->tanggal_berangkat)->format('d/m/Y') }}</td>
+										<td>{{ \Carbon\Carbon::parse($row->tanggal_selesai)->format('d/m/Y') }}</td>
+										<td>{{ number_format((float) $row->berat_timbangan, 2, ',', '.') }}</td>
+										<td>
+											@if ($row->berat_catatan > 0)
+												{{ number_format((float) $row->berat_catatan, 2, ',', '.') }}
+											@else
+												<span class="badge badge-warning">Belum diisi</span>
+											@endif
+										</td>
+										<td>
+											@if ($row->berat_catatan > 0)
+												<span class="badge {{ (float)$row->selisih > 0 ? 'badge-danger' : 'badge-success' }}">
+													{{ number_format((float) $row->selisih, 2, ',', '.') }}
+												</span>
+											@else
+												<span class="text-muted">-</span>
+											@endif
+										</td>
+										<td>
+											<button type="button" class="btn btn-sm btn-primary" data-toggle="modal" 
+												data-target="#modal-input-berat" 
+												data-id-pelayaran="{{ $row->id_pelayaran }}"
+												data-nama-kapal="{{ $row->nama_kapal }}"
+												data-berat-timbangan="{{ $row->berat_timbangan }}"
+												data-berat-catatan="{{ $row->berat_catatan }}">
+												✏️ Isi Berat TPI
+											</button>
+										</td>
 									</tr>
-								@endforeach
+								@empty
+									<tr>
+										<td colspan="7" class="text-center text-muted py-4">
+											Tidak ada pelayaran yang selesai
+										</td>
+									</tr>
+								@endforelse
 							</tbody>
 						</table>
 					</div>
 				</div>
+			</div>
+		</div>
+	</div>
+
+	<!-- Modal for Input Berat -->
+	<div class="modal fade" id="modal-input-berat" tabindex="-1" role="dialog" aria-labelledby="modalLabel" aria-hidden="true">
+		<div class="modal-dialog" role="document">
+			<div class="modal-content">
+				<div class="modal-header">
+					<h5 class="modal-title" id="modalLabel">Input Berat dari TPI</h5>
+					<button type="button" class="close" data-dismiss="modal" aria-label="Close">
+						<span aria-hidden="true">&times;</span>
+					</button>
+				</div>
+				<form method="POST" action="{{ route('keuangan.lap-selisih-bongkaran.store') }}">
+					@csrf
+					<div class="modal-body">
+						<div class="form-group">
+							<label for="kapal-display">Kapal</label>
+							<input type="text" class="form-control" id="kapal-display" disabled>
+						</div>
+						
+						<div class="form-group">
+							<label for="berat-timbangan-display">Berat Tangkapan (Kg)</label>
+							<input type="text" class="form-control" id="berat-timbangan-display" disabled>
+						</div>
+
+						<input type="hidden" id="id-pelayaran" name="id_pelayaran">
+
+						<div class="form-group">
+							<label for="berat-catatan">Berat TPI (Kg) <span class="text-danger">*</span></label>
+							<input type="number" step="0.01" min="0" class="form-control" id="berat-catatan" name="berat_catatan" required>
+							<small class="form-text text-muted">Masukkan total berat dari TPI</small>
+						</div>
+
+						<div class="form-group">
+							<label>Selisih akan dihitung otomatis</label>
+							<div class="alert alert-info" id="selisih-display">
+								Selisih: <strong id="selisih-value">0.00</strong> Kg
+							</div>
+						</div>
+					</div>
+					<div class="modal-footer">
+						<button type="button" class="btn btn-secondary" data-dismiss="modal">Batal</button>
+						<button type="submit" class="btn btn-primary">Simpan</button>
+					</div>
+				</form>
 			</div>
 		</div>
 	</div>
@@ -137,54 +137,38 @@
 				...window.dataTableGeneralConfig,
 				processing: false,
 				serverSide: false,
+				pageLength: 30,
 				order: [
-					[0, 'desc']
+					[2, 'desc']  // Order by date selesai descending
 				],
 			});
 
-			const labels = @json($chartLabels);
-			const salesData = @json($chartSales);
-			const auctionData = @json($chartAuction);
+			// Handle modal input
+			$('#modal-input-berat').on('show.bs.modal', function(event) {
+				const button = $(event.relatedTarget);
+				const idPelayaran = button.data('id-pelayaran');
+				const namaKapal = button.data('nama-kapal');
+				const beratTimbangan = parseFloat(button.data('berat-timbangan'));
+				const beratCatatan = parseFloat(button.data('berat-catatan'));
 
-			const ctx = document.getElementById('selisihBongkarChart');
-			if (!ctx) {
-				return;
-			}
-
-			new Chart(ctx, {
-				type: 'line',
-				data: {
-					labels: labels,
-					datasets: [{
-						label: 'Berat Penjualan (Kg)',
-						data: salesData,
-						borderColor: 'rgba(54, 162, 235, 1)',
-						backgroundColor: 'rgba(54, 162, 235, 0.2)',
-						tension: 0.25,
-						fill: false,
-					},
-					{
-						label: 'Berat Lelang (Kg)',
-						data: auctionData,
-						borderColor: 'rgba(255, 159, 64, 1)',
-						backgroundColor: 'rgba(255, 159, 64, 0.2)',
-						tension: 0.25,
-						fill: false,
-					}],
-				},
-				options: {
-					responsive: true,
-					maintainAspectRatio: false,
-					scales: {
-						y: {
-							beginAtZero: true,
-							title: {
-								display: true,
-								text: 'Kg'
-							}
-						}
-					}
+				$('#id-pelayaran').val(idPelayaran);
+				$('#kapal-display').val(namaKapal);
+				$('#berat-timbangan-display').val(beratTimbangan.toFixed(2));
+				$('#berat-catatan').val(beratCatatan > 0 ? beratCatatan.toFixed(2) : '');
+				
+				// Calculate selisih
+				if (beratCatatan > 0) {
+					const selisih = beratTimbangan - beratCatatan;
+					$('#selisih-value').text(selisih.toFixed(2));
 				}
+			});
+
+			// Calculate selisih on input change
+			$('#berat-catatan').on('input', function() {
+				const beratTimbangan = parseFloat($('#berat-timbangan-display').val());
+				const beratCatatan = parseFloat($(this).val()) || 0;
+				const selisih = beratTimbangan - beratCatatan;
+				$('#selisih-value').text(selisih.toFixed(2));
 			});
 		});
 	</script>

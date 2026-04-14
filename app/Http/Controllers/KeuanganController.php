@@ -150,83 +150,56 @@ class KeuanganController extends Controller
 
     public function selisihBongkar(Request $request): View
     {
-        $validated = $request->validate([
-            'start_date' => ['nullable', 'date'],
-            'end_date' => ['nullable', 'date'],
-        ]);
+        // Fetch all completed voyages with their capture data
+        $completedVoyages = DB::table('pelayaran as p')
+            ->join('kapal as k', 'p.id_kapal', '=', 'k.id_kapal')
+            ->leftJoin('laporan_selisih_bongkaran as lsb', 'p.id_pelayaran', '=', 'lsb.id_pelayaran')
+            ->where('p.status_pelayaran', 'selesai')
+            ->select([
+                'p.id_pelayaran',
+                'k.nama_kapal',
+                'p.tanggal_berangkat',
+                'p.tanggal_selesai',
+                'p.tanggal_tiba',
+                'lsb.id_laporan',
+                'lsb.total_berat_timbangan',
+                'lsb.total_berat_catatan',
+                'lsb.tanggal_laporan',
+            ])
+            ->orderByDesc('p.tanggal_selesai')
+            ->get();
+
+        // Calculate total captured weight for each voyage
+        $rows = collect();
+        foreach ($completedVoyages as $voyage) {
+            $idPelayaran = (int) $voyage->id_pelayaran;
+
+            // Get total captured weight from ikan_hasil_pelayaran
+            $capturedWeight = (float) DB::table('ikan_hasil_pelayaran')
+                ->where('id_pelayaran', $idPelayaran)
+                ->selectRaw('SUM(berat_hasil) as total_berat')
+                ->value('total_berat') ?? 0;
+
+            $recordedWeight = (float) ($voyage->total_berat_catatan ?? 0);
+            $difference = $capturedWeight - $recordedWeight;
+
+            $rows->push((object) [
+                'id_pelayaran' => $idPelayaran,
+                'id_laporan' => $voyage->id_laporan,
+                'nama_kapal' => $voyage->nama_kapal,
+                'tanggal_berangkat' => $voyage->tanggal_berangkat,
+                'tanggal_selesai' => $voyage->tanggal_selesai,
+                'tanggal_tiba' => $voyage->tanggal_tiba,
+                'berat_timbangan' => $capturedWeight,
+                'berat_catatan' => $recordedWeight,
+                'selisih' => $difference,
+            ]);
+        }
 
         $today = Carbon::today();
 
-        $start = ! empty($validated['start_date'])
-            ? Carbon::parse($validated['start_date'])
-            : $today->copy()->subDays(29);
-
-        $end = ! empty($validated['end_date'])
-            ? Carbon::parse($validated['end_date'])
-            : $today->copy();
-
-        if ($start->gt($end)) {
-            [$start, $end] = [$end, $start];
-        }
-
-        $startDate = $start->toDateString();
-        $endDate = $end->toDateString();
-
-        $salesByDate = DB::table('penjualan')
-            ->join('penjualan_items', 'penjualan.id_penjualan', '=', 'penjualan_items.id_penjualan')
-            ->whereBetween('penjualan.tanggal_penjualan', [$startDate, $endDate])
-            ->selectRaw('DATE(penjualan.tanggal_penjualan) as tanggal, SUM(penjualan_items.berat) as berat_penjualan')
-            ->groupBy('tanggal')
-            ->orderBy('tanggal')
-            ->get()
-            ->keyBy('tanggal');
-
-        $auctionByDate = DB::table('lelang_ikan_harian')
-            ->whereBetween('tanggal', [$startDate, $endDate])
-            ->selectRaw('DATE(tanggal) as tanggal, SUM(berat_lelang) as berat_lelang')
-            ->groupBy('tanggal')
-            ->orderBy('tanggal')
-            ->get()
-            ->keyBy('tanggal');
-
-        $rows = collect();
-        $chartLabels = [];
-        $chartSales = [];
-        $chartAuction = [];
-
-        foreach (CarbonPeriod::create($startDate, $endDate) as $date) {
-            $key = $date->toDateString();
-
-            $salesWeight = (float) ($salesByDate[$key]->berat_penjualan ?? 0);
-            $auctionWeight = (float) ($auctionByDate[$key]->berat_lelang ?? 0);
-            $selisih = $salesWeight - $auctionWeight;
-
-            $rows->push((object) [
-                'tanggal' => $key,
-                'berat_penjualan' => $salesWeight,
-                'berat_lelang' => $auctionWeight,
-                'selisih' => $selisih,
-            ]);
-
-            $chartLabels[] = $date->format('d M');
-            $chartSales[] = $salesWeight;
-            $chartAuction[] = $auctionWeight;
-        }
-
-        $summary = [
-            'total_penjualan' => (float) $rows->sum('berat_penjualan'),
-            'total_lelang' => (float) $rows->sum('berat_lelang'),
-            'total_selisih' => (float) $rows->sum('selisih'),
-        ];
-
         return view('keuangan.selisih_bongkar.index', compact(
             'rows',
-            'startDate',
-            'endDate',
-            'summary',
-            'chartLabels',
-            'chartSales',
-            'chartAuction',
             'today'
         ));
     }
@@ -234,39 +207,51 @@ class KeuanganController extends Controller
     public function storeBeratLelang(Request $request): RedirectResponse
     {
         $validated = $request->validate([
-            'tanggal' => ['required', 'date'],
-            'berat_lelang' => ['required', 'numeric', 'min:0'],
-            'keterangan' => ['nullable', 'string', 'max:255'],
+            'id_pelayaran' => ['required', 'integer', 'exists:pelayaran,id_pelayaran'],
+            'berat_catatan' => ['required', 'numeric', 'min:0'],
         ]);
 
-        $existing = DB::table('lelang_ikan_harian')
-            ->whereDate('tanggal', $validated['tanggal'])
+        $idPelayaran = (int) $validated['id_pelayaran'];
+        $beratCatatan = (float) $validated['berat_catatan'];
+
+        // Get total captured weight
+        $capturedWeight = (float) DB::table('ikan_hasil_pelayaran')
+            ->where('id_pelayaran', $idPelayaran)
+            ->selectRaw('SUM(berat_hasil) as total_berat')
+            ->value('total_berat') ?? 0;
+
+        $difference = $capturedWeight - $beratCatatan;
+
+        // Insert or update laporan_selisih_bongkaran
+        $existing = DB::table('laporan_selisih_bongkaran')
+            ->where('id_pelayaran', $idPelayaran)
             ->first();
 
         if ($existing) {
-            DB::table('lelang_ikan_harian')
-                ->where('id_lelang_harian', $existing->id_lelang_harian)
+            DB::table('laporan_selisih_bongkaran')
+                ->where('id_laporan', $existing->id_laporan)
                 ->update([
-                    'berat_lelang' => (float) $validated['berat_lelang'],
-                    'keterangan' => $validated['keterangan'] ?? null,
+                    'total_berat_timbangan' => $capturedWeight,
+                    'total_berat_catatan' => $beratCatatan,
+                    'total_selisih' => $difference,
+                    'tanggal_laporan' => now()->toDateString(),
                     'updated_at' => now(),
                 ]);
         } else {
-            DB::table('lelang_ikan_harian')->insert([
-                'tanggal' => $validated['tanggal'],
-                'berat_lelang' => (float) $validated['berat_lelang'],
-                'keterangan' => $validated['keterangan'] ?? null,
+            DB::table('laporan_selisih_bongkaran')->insert([
+                'id_pelayaran' => $idPelayaran,
+                'total_berat_timbangan' => $capturedWeight,
+                'total_berat_catatan' => $beratCatatan,
+                'total_selisih' => $difference,
+                'tanggal_laporan' => now()->toDateString(),
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);
         }
 
         return redirect()
-            ->route('keuangan.lap-selisih-bongkaran.index', [
-                'start_date' => $request->input('start_date'),
-                'end_date' => $request->input('end_date'),
-            ])
-            ->with('success', 'Berat lelang ikan berhasil disimpan.');
+            ->route('keuangan.lap-selisih-bongkaran.index')
+            ->with('success', 'Berat dari kantor pengolahan ikan berhasil disimpan.');
     }
 
     public function bayarPiutang(Request $request): JsonResponse
