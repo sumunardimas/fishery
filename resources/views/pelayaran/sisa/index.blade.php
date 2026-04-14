@@ -410,15 +410,8 @@
                                                         <tr>
                                                             <td class="trip-table-cell-wrap">
                                                                 <div class="font-weight-bold">
-                                                                    {{ $ikanTangkapan->nama_ikan_tangkapan }}</div>
-                                                                @if ($relasiPenjualan->isNotEmpty())
-                                                                    <small class="text-muted d-block mt-1">Grade
-                                                                        penjualan:</small>
-                                                                    @foreach ($relasiPenjualan as $gradePenjualan)
-                                                                        <small class="text-muted d-block">-
-                                                                            {{ $gradePenjualan }}</small>
-                                                                    @endforeach
-                                                                @endif
+                                                                    {{ $ikanTangkapan->nama_ikan_tangkapan }}
+                                                                </div>
                                                             </td>
                                                             <td>
                                                                 <input type="number" class="form-control js-berat-input"
