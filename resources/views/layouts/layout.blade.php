@@ -73,7 +73,7 @@
                     return null;
                 }
 
-                if (/^-?\d+(\.\d+)?$/.test(text)) {
+                if (/^-?\d+(\.\d{1,2})?$/.test(text)) {
                     const parsedPlain = Number.parseFloat(text);
                     return Number.isFinite(parsedPlain) ? parsedPlain : null;
                 }

@@ -1520,9 +1520,7 @@
                     var html = template.innerHTML.replace(/__A__/g, String(nextIndex));
                     listElement.insertAdjacentHTML('beforeend', html);
 
-                    if (window.rupiahInput && typeof window.rupiahInput.init === 'function') {
-                        window.rupiahInput.init(listElement);
-                    }
+                    initHargaFormatter(listElement);
 
                     refreshAnglerIndexes(listElement);
                 };
@@ -1563,9 +1561,7 @@
 
                     tbody.appendChild(rowClone);
 
-                    if (window.rupiahInput && typeof window.rupiahInput.init === 'function') {
-                        window.rupiahInput.init(cardElement);
-                    }
+                    initHargaFormatter(cardElement);
 
                     var anglerList = cardElement.closest('.js-angler-list');
                     if (anglerList) {
@@ -1850,7 +1846,7 @@
                 document.querySelectorAll('form').forEach(function(form) {
                     form.addEventListener('submit', function() {
                         // Use stored raw values from all currency input fields
-                        form.querySelectorAll('input[name*="[harga_"], input[name*="[harga_per_kg"], input[name*="harga_ikan"], input[name*="[jumlah"]').forEach(function(input) {
+                        form.querySelectorAll('input[name*="[harga_"], input[name*="[harga_per_kg"], input[name*="harga_ikan"], input[name*="jumlah["]').forEach(function(input) {
                             var rawValue = input.dataset.hargaRawValue;
                             
                             if (rawValue === '' || rawValue === undefined) {
