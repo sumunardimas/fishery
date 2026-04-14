@@ -98,24 +98,6 @@
                           </template>
                       </div>
 
-                      <div class="form-group">
-                          @php($formName = 'institusi_id')
-                          @php($formLabel = 'Institusi')
-                          <label class="required-asterisk" for="{{$formName}}">{{$formLabel}}</label>
-                          <select type="text" class="form-control" id="{{$formName}}"
-                                  x-model.lazy="{{$formName}}"
-                                  :class="{'is-invalid': validationErrors.{{$formName}}}">
-                              <option value="">Pilih Salah Satu</option>
-                              @foreach($institusis as $institusi)
-                                  <option value="{{$institusi->id}}">{{$institusi->nama}}</option>
-                              @endforeach
-                          </select>
-                          <template x-if="validationErrors.{{$formName}}">
-                              <div class="invalid-feedback" x-text="validationErrors.{{$formName}}"></div>
-                          </template>
-                      </div>
-
-
                     <div class="form-group">
                         @php($formName = 'document')
                         @php($formLabel = 'Unggah Dokumen Pendukung')

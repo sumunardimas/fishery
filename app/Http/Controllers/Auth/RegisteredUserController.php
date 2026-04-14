@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Auth;
 use App\Http\Controllers\Controller;
 use App\Models\Admin;
 // import profile models so PHP resolves them correctly
-use App\Models\Institusi;
 use App\Models\Kasir;
 use App\Models\Staff;
 use App\Models\User;
@@ -22,11 +21,7 @@ class RegisteredUserController extends Controller
      */
     public function create()
     {
-        $institusis = Institusi::all();
-
-        return view('pages.register', compact([
-            'institusis',
-        ]));
+        return view('pages.register');
     }
 
     /**
@@ -44,7 +39,6 @@ class RegisteredUserController extends Controller
             'password' => ['required', Rules\Password::defaults()],
             'gender' => 'required|boolean',
             'role' => 'required|in:admin,kasir,staff',
-            'institusi_id' => 'required|exists:institusis,id',
             'document' => 'nullable|file',
         ]);
 
@@ -72,7 +66,6 @@ class RegisteredUserController extends Controller
             if ($request->role == 'admin') {
                 $profile->committee = $request->committee;
             }
-            $profile->institusi_id = $request->institusi_id;
             $profile->save();
 
             if ($request->hasFile('document')) {

@@ -18,7 +18,7 @@
                                     <h5 class="mb-0 me-2 text-muted">{{ $user->email ?? 'No Email' }}</h5>
                                 </div>
                             </div>
-                            <p class="w-75 mx-auto mb-3">{{ $user->profile->institusi->nama ?? 'No Institution' }}</p>
+                            <p class="w-75 mx-auto mb-3">{{ $user->getRoleNames()->first() ?? '-' }}</p>
                         </div>
                         <div class="py-4">
                             <p class="clearfix">
@@ -34,7 +34,7 @@
                                     WhatsApp
                                 </span>
                                 <span class="float-right text-muted">
-                                    {{ $user->profile->institusi->telepon ?? '-' }}
+                                    {{ $user->profile->whatsapp ?? '-' }}
                                 </span>
                             </p>
                             <p class="clearfix">

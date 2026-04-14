@@ -104,24 +104,6 @@
                         @enderror
                     </div>
 
-                    {{-- RegisterRequest expects "institution" (string). We’ll submit the selected Institusi name. --}}
-                    <div class="form-group">
-                        <label for="institusi_id">Institusi</label>
-                        <select class="form-control @error('institusi_id') is-invalid @enderror" id="institusi_id"
-                            name="institusi_id" required>
-                            <option value="">Pilih Salah Satu</option>
-                            @foreach (\App\Models\Institusi::all() as $item)
-                                <option value="{{ $item->id }}"
-                                    {{ (string) old('institusi_id') === (string) $item->id ? 'selected' : '' }}>
-                                    {{ $item->nama }}
-                                </option>
-                            @endforeach
-                        </select>
-                        @error('institusi_id')
-                            <div class="invalid-feedback">{{ $message }}</div>
-                        @enderror
-                    </div>
-
                     <div class="form-group">
                         <label for="document">Unggah Dokumen Pendukung</label>
                         <input type="file" class="form-control @error('document') is-invalid @enderror" id="document"

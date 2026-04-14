@@ -9,7 +9,6 @@ Alpine.data('form_register', () => ({
   password: '',
   gender: '',
   role: '',
-  institusi_id: '',
   document: null,
   validationErrors: {},
 
@@ -25,7 +24,6 @@ Alpine.data('form_register', () => ({
     formData.append('password', this.password);
     formData.append('gender', this.gender);
     formData.append('role', this.role);
-    formData.append('institusi_id', this.institusi_id);
     if (this.document) {
       formData.append('document', this.document);
     }
@@ -39,7 +37,6 @@ Alpine.data('form_register', () => ({
     this.password = '';
     this.gender = '';
     this.role = '';
-    this.institusi_id = '';
     this.document = null;
     this.validationErrors = {};
   },

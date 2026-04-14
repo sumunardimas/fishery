@@ -9,15 +9,10 @@ class Kasir extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['user_id', 'name', 'whatsapp', 'gender', 'institusi_id', 'document'];
+    protected $fillable = ['user_id', 'name', 'whatsapp', 'gender', 'document'];
 
     public function user()
     {
         return $this->belongsTo(User::class);
-    }
-
-    public function institusi()
-    {
-        return $this->belongsTo(Institusi::class);
     }
 }

@@ -22,21 +22,16 @@ use App\Http\Controllers\UpdateProfileController;
 use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
 
-Route::middleware(['auth'])->group(function () {
+Route::middleware(['auth', 'staff.menu.access'])->group(function () {
     Route::get('/test', function () {
         $user = Auth::user();
         $rolename = $user->rolename;
         $profile = $user->profile;
 
-        $institusi = $user->profile?->institusi;
-        $institusi_id = $institusi?->id;
-
         return compact([
             'user',
             'rolename',
             'profile',
-            'institusi',
-            'institusi_id',
         ]);
     });
 
@@ -204,9 +199,8 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/profile/edit', function () {
         $user = auth()->user();
         $profile = $user->getProfile();
-        $institusis = \App\Models\Institusi::all();
 
-        return view('pages.updateprofile', compact('user', 'profile', 'institusis'));
+        return view('pages.updateprofile', compact('user', 'profile'));
     })->name('profile.edit');
 
     Route::put('/profile', [UpdateProfileController::class, 'update'])->name('profile.update');

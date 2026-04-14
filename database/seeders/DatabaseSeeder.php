@@ -18,6 +18,7 @@ class DatabaseSeeder extends Seeder
 
             // Supporting base model
             InstitusiSeeder::class,
+            StaffSeeder::class,
 
             // Core masters (menu-driven order)
             MasterIkanSeeder::class,

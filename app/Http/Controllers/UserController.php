@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Institusi;
 use App\Models\Kasir;
 use App\Models\Staff;
 use App\Models\User;
@@ -39,7 +38,7 @@ class UserController extends Controller
                 ->addColumn('nama', fn ($user) => $user->display_name)
                 ->addColumn('email', fn ($user) => $user->email)
                 ->addColumn('whatsapp', fn ($user) => $user->profile?->whatsapp)
-                ->addColumn('institusi', fn ($user) => $user->profile?->institusi?->nama)
+                ->addColumn('institusi', fn () => '-')
                 ->addColumn('role', fn ($user) => $user->role_name)
                 ->addColumn('action', function ($user) {
                     return view('components.table-actions', [
@@ -58,10 +57,7 @@ class UserController extends Controller
 
     public function create()
     {
-        // If you want to prefetch institusi in the view instead, you can skip compact
-        $institusi = Institusi::all();
-
-        return view('users.create', compact('institusi'));
+        return view('users.create');
     }
 
     public function store(Request $request)
@@ -74,7 +70,6 @@ class UserController extends Controller
             'gender' => ['required'],
             'role' => ['required'],
             'committee' => ['nullable', 'string', 'max:100'],
-            'institusi_id' => ['required', 'integer', 'exists:institusis,id'],
             'document' => ['nullable', 'file', 'mimes:pdf,doc,docx', 'max:2048'],
         ]);
 
@@ -126,7 +121,6 @@ class UserController extends Controller
                         'name' => $data['nama'],
                         'whatsapp' => $data['whatsapp'],
                         'gender' => $gender,
-                        'institusi_id' => $data['institusi_id'],
                         'document' => $documentPath,
                     ]);
                     break;
@@ -137,7 +131,6 @@ class UserController extends Controller
                         'name' => $data['nama'],
                         'whatsapp' => $data['whatsapp'],
                         'gender' => $gender,
-                        'institusi_id' => $data['institusi_id'],
                         'document' => $documentPath,
                     ]);
                     break;
@@ -148,7 +141,6 @@ class UserController extends Controller
                         'name' => $data['nama'],
                         'whatsapp' => $data['whatsapp'],
                         'gender' => $gender,
-                        'institusi_id' => $data['institusi_id'],
                         'document' => $documentPath,
                     ]);
                     break;

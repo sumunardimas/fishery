@@ -13,15 +13,25 @@
                 return false;
             }
 
+            // Staff users only see menu entries explicitly tagged with the staff role.
+            if ($user->hasRole('staff')) {
+                $roles = (array) ($item['roles'] ?? []);
+                if (!in_array('staff', $roles, true)) {
+                    return false;
+                }
+            }
+
             if (isset($item['permission']) && !$user->can($item['permission'])) {
                 return false;
             }
+
             if (isset($item['roles'])) {
                 $roles = (array) $item['roles'];
                 if (!$user->hasAnyRole($roles)) {
                     return false;
                 }
             }
+
             return true;
         };
 
