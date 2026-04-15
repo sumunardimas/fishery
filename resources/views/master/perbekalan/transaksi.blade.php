@@ -30,12 +30,12 @@
                         @csrf
                         <div class="form-row">
                             <div class="form-group col-md-2">
-                                <label for="tanggal_transaksi">Tanggal</label>
+                                <label class="required-asterisk" for="tanggal_transaksi">Tanggal</label>
                                 <input type="date" id="tanggal_transaksi" name="tanggal_transaksi" class="form-control"
                                     value="{{ old('tanggal_transaksi', now()->toDateString()) }}" required>
                             </div>
                             <div class="form-group col-md-3">
-                                <label for="id_barang">Perbekalan</label>
+                                <label class="required-asterisk" for="id_barang">Perbekalan</label>
                                 <select id="id_barang" name="id_barang" class="form-control" required>
                                     <option value="">Pilih perbekalan</option>
                                     @foreach ($items as $item)
@@ -46,24 +46,24 @@
                                 </select>
                             </div>
                             <div class="form-group col-md-1">
-                                <label for="jenis_transaksi">Jenis</label>
+                                <label class="required-asterisk" for="jenis_transaksi">Jenis</label>
                                 <select id="jenis_transaksi" name="jenis_transaksi" class="form-control" required>
                                     <option value="in" @selected(old('jenis_transaksi', 'in') === 'in')>IN</option>
                                     <option value="out" @selected(old('jenis_transaksi') === 'out')>OUT</option>
                                 </select>
                             </div>
                             <div class="form-group col-md-2">
-                                <label for="jumlah">Jumlah</label>
+                                <label class="required-asterisk" for="jumlah">Jumlah</label>
                                 <input type="number" step="0.01" min="0.01" id="jumlah" name="jumlah"
                                     class="form-control" value="{{ old('jumlah') }}" required>
                             </div>
                             <div class="form-group col-md-2">
-                                <label for="harga_satuan">Harga Satuan</label>
+                                <label class="required-asterisk" for="harga_satuan">Harga Satuan</label>
                                 <input type="text" id="harga_satuan" name="harga_satuan" class="form-control"
                                     data-rupiah-input value="{{ old('harga_satuan') }}" placeholder="0,00">
                             </div>
                             <div class="form-group col-md-2">
-                                <label for="akun_pembayaran">Bayar Dari</label>
+                                <label class="required-asterisk" for="akun_pembayaran">Bayar Dari</label>
                                 <select id="akun_pembayaran" name="akun_pembayaran" class="form-control">
                                     <option value="">-</option>
                                     <option value="kas" @selected(old('akun_pembayaran', 'kas') === 'kas')>Kas</option>

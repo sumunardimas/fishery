@@ -89,13 +89,13 @@
                     <input type="hidden" name="akun" value="{{ $akun }}">
 
                     <div class="form-group">
-                        <label for="tanggal">Tanggal</label>
+                        <label class="required-asterisk" for="tanggal">Tanggal</label>
                         <input type="date" id="tanggal" name="tanggal" class="form-control"
                             value="{{ old('tanggal', now()->toDateString()) }}" required>
                     </div>
 
                     <div class="form-group">
-                        <label for="kategori">Kategori</label>
+                        <label class="required-asterisk" for="kategori">Kategori</label>
                         <select id="kategori" name="kategori" class="form-control" required>
                             @php
                                 $kategoriOptions = [
@@ -129,7 +129,7 @@
                     </div>
 
                     <div class="form-group">
-                        <label for="deskripsi">Deskripsi</label>
+                        <label class="required-asterisk" for="deskripsi">Deskripsi</label>
                         <input type="text" id="deskripsi" name="deskripsi" class="form-control"
                             value="{{ old('deskripsi') }}" maxlength="255" placeholder="Contoh: Setoran modal awal">
                         <small class="form-text text-muted">
@@ -138,13 +138,13 @@
                     </div>
 
                     <div class="form-group">
-                        <label for="debit">Debit (menambah saldo)</label>
+                        <label class="required-asterisk" for="debit">Debit (menambah saldo)</label>
                         <input type="text" id="debit" name="debit" class="form-control" data-rupiah-input
                             value="{{ old('debit') }}" placeholder="0,00">
                     </div>
 
                     <div class="form-group">
-                        <label for="kredit">Kredit (mengurangi saldo)</label>
+                        <label class="required-asterisk" for="kredit">Kredit (mengurangi saldo)</label>
                         <input type="text" id="kredit" name="kredit" class="form-control" data-rupiah-input
                             value="{{ old('kredit') }}" placeholder="0,00">
                     </div>

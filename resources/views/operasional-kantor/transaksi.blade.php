@@ -32,7 +32,7 @@
                                     value="{{ old('tanggal', now()->toDateString()) }}" required>
                             </div>
                             <div class="form-group col-md-4">
-                                <label for="akun_pembayaran">Bayar Dari</label>
+                                <label class="required-asterisk" for="akun_pembayaran">Bayar Dari</label>
                                 <select class="form-control" id="akun_pembayaran" name="akun_pembayaran" required>
                                     <option value="kas" @selected(old('akun_pembayaran', 'kas') === 'kas')>Kas</option>
                                     <option value="bank" @selected(old('akun_pembayaran') === 'bank')>Bank</option>
@@ -59,10 +59,10 @@
                             <table class="table table-bordered" id="operasional-kantor-table">
                                 <thead>
                                     <tr>
-                                        <th style="min-width: 240px;">Item</th>
+                                        <th style="min-width: 240px;" class="required-asterisk">Item</th>
                                         <th style="min-width: 160px;">Kategori</th>
-                                        <th style="min-width: 170px;">Harga Satuan</th>
-                                        <th style="min-width: 120px;">Qty</th>
+                                        <th style="min-width: 170px;" class="required-asterisk">Harga Satuan</th>
+                                        <th style="min-width: 120px;" class="required-asterisk">Qty</th>
                                         <th style="min-width: 170px;">Total</th>
                                         <th style="min-width: 220px;">Keterangan</th>
                                         <th style="width: 90px;">Aksi</th>
