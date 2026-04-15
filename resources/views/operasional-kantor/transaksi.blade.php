@@ -99,9 +99,9 @@
                                                     value="{{ $kategori }}" readonly>
                                             </td>
                                             <td>
-                                                <input type="number" step="0.01" min="0"
+                                                <input type="text" inputmode="decimal"
                                                     name="rows[{{ $index }}][harga_satuan]"
-                                                    class="form-control js-unit-cost"
+                                                    class="form-control js-unit-cost" data-rupiah-input
                                                     value="{{ $row['harga_satuan'] ?? '' }}" required>
                                             </td>
                                             <td>
@@ -177,8 +177,16 @@
                 });
             };
 
+            const parseNumber = (value) => {
+                if (window.rupiahInput) {
+                    return window.rupiahInput.parse(value) || 0;
+                }
+
+                return Number(value || 0);
+            };
+
             const recalculateRow = (row) => {
-                const unitCost = Number(row.querySelector('.js-unit-cost')?.value || 0);
+                const unitCost = parseNumber(row.querySelector('.js-unit-cost')?.value || 0);
                 const qty = Number(row.querySelector('.js-qty')?.value || 0);
                 const total = unitCost * qty;
                 const totalInput = row.querySelector('.js-line-total');
@@ -192,7 +200,7 @@
                 let grandTotal = 0;
 
                 rowsContainer.querySelectorAll('tr').forEach((row) => {
-                    const unitCost = Number(row.querySelector('.js-unit-cost')?.value || 0);
+                    const unitCost = parseNumber(row.querySelector('.js-unit-cost')?.value || 0);
                     const qty = Number(row.querySelector('.js-qty')?.value || 0);
                     grandTotal += unitCost * qty;
                 });
@@ -237,7 +245,7 @@
                         <input type="text" class="form-control js-category" value="" readonly>
                     </td>
                     <td>
-                        <input type="number" step="0.01" min="0" name="rows[${index}][harga_satuan]" class="form-control js-unit-cost" value="" required>
+                        <input type="text" inputmode="decimal" name="rows[${index}][harga_satuan]" class="form-control js-unit-cost" data-rupiah-input value="" required>
                     </td>
                     <td>
                         <input type="number" step="0.01" min="0.01" name="rows[${index}][qty]" class="form-control js-qty" value="" required>
@@ -257,7 +265,11 @@
             };
 
             addRowButton.addEventListener('click', () => {
-                rowsContainer.appendChild(buildRow(rowIndex));
+                const newRow = buildRow(rowIndex);
+                rowsContainer.appendChild(newRow);
+                if (window.rupiahInput) {
+                    window.rupiahInput.init(newRow);
+                }
                 rowIndex += 1;
                 refreshRemoveButtons();
                 recalculateGrandTotal();
