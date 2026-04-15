@@ -17,7 +17,7 @@ class DatabaseSeeder extends Seeder
             AdminSeeder::class,
 
             // Supporting base model
-            InstitusiSeeder::class,
+            // InstitusiSeeder::class,
             StaffSeeder::class,
 
             // Core masters (menu-driven order)
