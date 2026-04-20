@@ -42,7 +42,7 @@
         <div class="col-md-8 grid-margin stretch-card">
             <div class="card">
                 <div class="card-body">
-                    <h4 class="card-title mb-3">Saldo Terkini/h4>
+                    <h4 class="card-title mb-3">Saldo Terkini</h4>
                     <p class="card-description mb-4">Saldo total terkini (Kas + Bank) berdasarkan transaksi terakhir per
                         akun.</p>
 

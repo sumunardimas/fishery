@@ -294,6 +294,11 @@ class PelayaranSisaRekapTest extends TestCase
             ->assertOk()
             ->assertSee('Solar FIFO')
             ->assertSee('3.350,00')
+            ->assertSee('(3.000,00')
+            ->assertSee('liter x Rp')
+            ->assertSee('5.000,00)')
+            ->assertSee('(350,00')
+            ->assertSee('6.000,00)')
             ->assertSee('Rp 17.100.000,00');
     }
 
