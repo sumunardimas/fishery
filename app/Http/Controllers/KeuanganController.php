@@ -6,9 +6,9 @@ use Carbon\CarbonPeriod;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
 class KeuanganController extends Controller
@@ -35,11 +35,11 @@ class KeuanganController extends Controller
 
         $today = Carbon::today();
 
-        $start = !empty($validated['start_date'])
+        $start = ! empty($validated['start_date'])
             ? Carbon::parse($validated['start_date'])
             : $today->copy()->subDays(29);
 
-        $end = !empty($validated['end_date'])
+        $end = ! empty($validated['end_date'])
             ? Carbon::parse($validated['end_date'])
             : $today->copy();
 
@@ -281,15 +281,15 @@ class KeuanganController extends Controller
     public function bayarPiutang(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'id_penjualan'   => ['required', 'integer', 'exists:penjualan,id_penjualan'],
-            'bayar_tunai'    => ['nullable', 'numeric', 'min:0'],
+            'id_penjualan' => ['required', 'integer', 'exists:penjualan,id_penjualan'],
+            'bayar_tunai' => ['nullable', 'numeric', 'min:0'],
             'bayar_transfer' => ['nullable', 'numeric', 'min:0'],
         ]);
 
         $idPenjualan = (int) $validated['id_penjualan'];
-        $newKas      = (float) ($validated['bayar_tunai'] ?? 0);
+        $newKas = (float) ($validated['bayar_tunai'] ?? 0);
         $newTransfer = (float) ($validated['bayar_transfer'] ?? 0);
-        $newPayment  = $newKas + $newTransfer;
+        $newPayment = $newKas + $newTransfer;
 
         if ($newPayment <= 0) {
             return response()->json(['message' => 'Masukkan jumlah pembayaran.'], 422);
@@ -317,28 +317,28 @@ class KeuanganController extends Controller
 
         if ($newPayment > $currentPiutang + 0.01) {
             return response()->json([
-                'message' => 'Pembayaran melebihi sisa piutang (Rp ' . number_format($currentPiutang, 2, ',', '.') . ').',
+                'message' => 'Pembayaran melebihi sisa piutang (Rp '.number_format($currentPiutang, 2, ',', '.').').',
             ], 422);
         }
 
-        $newPiutang       = round(max(0, $currentPiutang - $newPayment), 2);
-        $newBayarTunai    = (float) $penjualan->bayar_tunai + $newKas;
+        $newPiutang = round(max(0, $currentPiutang - $newPayment), 2);
+        $newBayarTunai = (float) $penjualan->bayar_tunai + $newKas;
         $newBayarTransfer = (float) $penjualan->bayar_transfer + $newTransfer;
-        $newDiterima      = $newBayarTunai + $newBayarTransfer;
+        $newDiterima = $newBayarTunai + $newBayarTransfer;
         $statusPembayaran = $newPiutang <= 0 ? 'lunas' : 'piutang';
-        $invNo            = 'INV-' . str_pad($idPenjualan, 5, '0', STR_PAD_LEFT);
+        $invNo = 'INV-'.str_pad($idPenjualan, 5, '0', STR_PAD_LEFT);
 
         DB::transaction(function () use (
             $idPenjualan, $penjualan, $invNo,
-            $newBayarTunai, $newBayarTransfer, $newPayment, $newPiutang, $statusPembayaran,
+            $newBayarTunai, $newBayarTransfer, $newPiutang, $statusPembayaran,
             $newKas, $newTransfer
         ) {
             DB::table('penjualan')->where('id_penjualan', $idPenjualan)->update([
-                'bayar_tunai'       => $newBayarTunai,
-                'bayar_transfer'    => $newBayarTransfer,
-                'piutang'           => $newPiutang,
+                'bayar_tunai' => $newBayarTunai,
+                'bayar_transfer' => $newBayarTransfer,
+                'piutang' => $newPiutang,
                 'status_pembayaran' => $statusPembayaran,
-                'updated_at'        => now(),
+                'updated_at' => now(),
             ]);
 
             if ($newKas > 0) {
@@ -365,10 +365,10 @@ class KeuanganController extends Controller
         });
 
         return response()->json([
-            'status_pembayaran'      => $statusPembayaran,
-            'new_piutang'            => $newPiutang,
-            'new_piutang_formatted'  => number_format($newPiutang, 2, ',', '.'),
-            'new_diterima'           => $newDiterima,
+            'status_pembayaran' => $statusPembayaran,
+            'new_piutang' => $newPiutang,
+            'new_piutang_formatted' => number_format($newPiutang, 2, ',', '.'),
+            'new_diterima' => $newDiterima,
             'new_diterima_formatted' => number_format($newDiterima, 2, ',', '.'),
         ]);
     }
@@ -799,8 +799,8 @@ class KeuanganController extends Controller
     {
         $validated = $request->validate([
             'start_date' => ['nullable', 'date'],
-            'end_date'   => ['nullable', 'date'],
-            'status'     => ['nullable', 'in:semua,piutang'],
+            'end_date' => ['nullable', 'date'],
+            'status' => ['nullable', 'in:semua,piutang'],
         ]);
 
         $today = Carbon::today();
@@ -818,8 +818,8 @@ class KeuanganController extends Controller
         }
 
         $startDate = $start->toDateString();
-        $endDate   = $end->toDateString();
-        $status    = $validated['status'] ?? 'piutang';
+        $endDate = $end->toDateString();
+        $status = $validated['status'] ?? 'piutang';
 
         $query = DB::table('penjualan as p')
             ->leftJoin('master_customer as mc', 'p.id_customer', '=', 'mc.id_customer')
@@ -843,17 +843,17 @@ class KeuanganController extends Controller
         $rows = $query->get();
 
         $summary = [
-            'total_piutang'    => (float) $rows->sum('piutang'),
+            'total_piutang' => (float) $rows->sum('piutang'),
             'jumlah_transaksi' => $rows->count(),
-            'total_tagihan'    => (float) $rows->sum('total_harga'),
-            'total_diterima'   => (float) $rows->sum('total_diterima'),
+            'total_tagihan' => (float) $rows->sum('total_harga'),
+            'total_diterima' => (float) $rows->sum('total_diterima'),
         ];
 
         $byCustomer = $rows
             ->groupBy('nama_customer_display')
             ->map(fn ($items) => (object) [
-                'nama'          => $items->first()->nama_customer_display,
-                'jumlah'        => $items->count(),
+                'nama' => $items->first()->nama_customer_display,
+                'jumlah' => $items->count(),
                 'total_piutang' => (float) $items->sum('piutang'),
             ])
             ->sortByDesc('total_piutang')
@@ -963,6 +963,12 @@ class KeuanganController extends Controller
     {
         $lastSaldo = $this->getLastSaldoByAkun($akun);
         $saldoBaru = $lastSaldo + $debit - $kredit;
+
+        if ($saldoBaru < -0.009) {
+            throw ValidationException::withMessages([
+                'nominal' => 'Saldo '.strtoupper($akun).' tidak mencukupi. Saldo tersedia Rp '.number_format($lastSaldo, 2, ',', '.').', sehingga transaksi ini tidak boleh membuat saldo minus.',
+            ]);
+        }
 
         return (int) DB::table('arus_kas')->insertGetId([
             'akun' => $akun,

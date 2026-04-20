@@ -1303,6 +1303,12 @@ class PelayaranSisaController extends Controller
         $lastSaldo = $this->getLastSaldoByAkun($akun);
         $saldoBaru = $lastSaldo + $debit - $kredit;
 
+        if ($saldoBaru < -0.009) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'nominal' => 'Saldo '.strtoupper($akun).' tidak mencukupi. Saldo tersedia Rp '.number_format($lastSaldo, 2, ',', '.').', sehingga transaksi ini tidak boleh membuat saldo minus.',
+            ]);
+        }
+
         DB::table('arus_kas')->insert([
             'akun' => $akun,
             'tanggal' => $tanggal,
