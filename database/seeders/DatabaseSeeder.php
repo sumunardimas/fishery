@@ -31,6 +31,9 @@ class DatabaseSeeder extends Seeder
             // Other master menus
             MasterCustomerSeeder::class,
             MasterOperasionalKantorSeeder::class,
+
+            // App settings
+            PengaturanSeeder::class,
         ]);
     }
 }
