@@ -21,7 +21,7 @@
                             'email' => old('email', $user->email ?? ''),
                             'whatsapp' => old('whatsapp', $profile->whatsapp ?? ''),
                             'gender' => old('gender', isset($profile->gender) ? (string) $profile->gender : ''),
-                            'document_url' => $user->document_url ?? null,
+                            'document_url' => !empty($profile?->document) ? route('profile.document.show') : null,
                         ]),
                     ) }}"
                     enctype="multipart/form-data">

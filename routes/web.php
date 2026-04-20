@@ -16,6 +16,7 @@ use App\Http\Controllers\PelayaranController;
 use App\Http\Controllers\PelayaranSisaController;
 use App\Http\Controllers\PembelianController;
 use App\Http\Controllers\PenjualanController;
+use App\Http\Controllers\ProfileDocumentController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\StokController;
 use App\Http\Controllers\UpdateProfileController;
@@ -23,18 +24,6 @@ use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware(['auth', 'staff.menu.access'])->group(function () {
-    Route::get('/test', function () {
-        $user = Auth::user();
-        $rolename = $user->rolename;
-        $profile = $user->profile;
-
-        return compact([
-            'user',
-            'rolename',
-            'profile',
-        ]);
-    });
-
     Route::get('/', [HomeController::class, 'index']);
 
     Route::view('/button', 'pages.ui-features.buttons');
@@ -197,6 +186,7 @@ Route::middleware(['auth', 'staff.menu.access'])->group(function () {
     });
 
     Route::get('/profile', [ProfileController::class, 'index'])->name('profile.index');
+    Route::get('/profile/document', [ProfileDocumentController::class, 'show'])->name('profile.document.show');
 
     Route::get('/profile/edit', function () {
         $user = auth()->user();

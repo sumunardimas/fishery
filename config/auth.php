@@ -18,6 +18,8 @@ return [
         'passwords' => env('AUTH_PASSWORD_BROKER', 'users'),
     ],
 
+    'allow_self_registration' => (bool) env('AUTH_ALLOW_SELF_REGISTRATION', false),
+
     /*
     |--------------------------------------------------------------------------
     | Authentication Guards

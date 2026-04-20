@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Kasir;
+use App\Models\Panitia;
 use App\Models\Staff;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -108,7 +109,7 @@ class UserController extends Controller
             ]);
 
             $documentPath = $request->file('document')
-                ? $request->file('document')->store('documents', 'public')
+                ? $request->file('document')->store('documents', 'local')
                 : null;
 
             $gender = $normalizeGender($data['gender']);

@@ -3,9 +3,6 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
-use App\Models\Admin;
-// import profile models so PHP resolves them correctly
-use App\Models\Kasir;
 use App\Models\Staff;
 use App\Models\User;
 use Illuminate\Auth\Events\Registered;
@@ -38,8 +35,7 @@ class RegisteredUserController extends Controller
             'whatsapp' => 'required',
             'password' => ['required', Rules\Password::defaults()],
             'gender' => 'required|boolean',
-            'role' => 'required|in:admin,kasir,staff',
-            'document' => 'nullable|file',
+            'document' => 'nullable|file|mimes:pdf,doc,docx|max:2048',
         ]);
 
         DB::transaction(function () use ($request, &$user) {
@@ -49,31 +45,17 @@ class RegisteredUserController extends Controller
             $user->password = $request->password;
             $user->save();
 
-            $user->assignRole($request->role);
+            $user->assignRole('staff');
 
-            $profile = match ($request->role) {
-                'admin' => Admin::class,
-                'staff' => Staff::class,
-                'kasir' => Kasir::class,
-                default => throw new \Exception('Role tidak ditemukan'),
-            };
-
-            $profile = new $profile;
+            $profile = new Staff;
             $profile->name = $request->nama;
             $profile->whatsapp = $request->whatsapp;
             $profile->gender = $request->gender;
             $profile->user_id = $user->id;
-            if ($request->role == 'admin') {
-                $profile->committee = $request->committee;
-            }
             $profile->save();
 
             if ($request->hasFile('document')) {
-                $request->file('document')->storeAs(
-                    'users/profile/document', $user->id
-                );
-
-                $profile->document = $request->document->getClientOriginalName();
+                $profile->document = $request->file('document')->store('documents', 'local');
                 $profile->save();
             }
         });

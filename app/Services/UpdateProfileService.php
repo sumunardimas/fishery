@@ -18,49 +18,63 @@ class UpdateProfileService
      * @return array{document_url?: string|null}
      */
     public function update(User $user, array $data): array
-{
-    return DB::transaction(function () use ($user, $data) {
-        $profile = $user->getProfile();
+    {
+        return DB::transaction(function () use ($user, $data) {
+            $profile = $user->getProfile();
 
-        // update base user fields
-        $user->email = $data['email'] ?? $user->email;
+            $user->email = $data['email'] ?? $user->email;
 
-        // profile fields
-        if (Schema::hasColumn($profile->getTable(), 'name')) {
-            $profile->name = $data['nama'] ?? $profile->name;
-        }
-        if (Schema::hasColumn($profile->getTable(), 'whatsapp')) {
-            $profile->whatsapp = $data['whatsapp'] ?? $profile->whatsapp;
-        }
-        if (Schema::hasColumn($profile->getTable(), 'gender') && array_key_exists('gender', $data)) {
-            $profile->gender = $data['gender']; // "0"/"1" atau 0/1
-        }
-
-        // password only if provided (validated by FormRequest)
-        if (!empty($data['password'])) {
-            $user->password = Hash::make($data['password']);
-        }
-
-        // optional document upload -> store on profile (ONLY if column exists)
-        $documentUrl = null;
-        if (!empty($data['document']) && Schema::hasColumn($profile->getTable(), 'document')) {
-            $documentFile = $data['document'];
-
-            if (!empty($profile->document) && Storage::disk('public')->exists($profile->document)) {
-                Storage::disk('public')->delete($profile->document);
+            if (Schema::hasColumn($profile->getTable(), 'name')) {
+                $profile->name = $data['nama'] ?? $profile->name;
             }
 
-            $profile->document = $documentFile->store('documents', 'public');
-            $documentUrl = Storage::disk('public')->url($profile->document);
+            if (Schema::hasColumn($profile->getTable(), 'whatsapp')) {
+                $profile->whatsapp = $data['whatsapp'] ?? $profile->whatsapp;
+            }
+
+            if (Schema::hasColumn($profile->getTable(), 'gender') && array_key_exists('gender', $data)) {
+                $profile->gender = $data['gender'];
+            }
+
+            if (! empty($data['password'])) {
+                $user->password = Hash::make($data['password']);
+            }
+
+            $documentUrl = null;
+            if (! empty($data['document']) && Schema::hasColumn($profile->getTable(), 'document')) {
+                $documentFile = $data['document'];
+
+                $this->deleteStoredDocument($profile->document, $user->id);
+
+                $profile->document = $documentFile->store('documents', 'local');
+                $documentUrl = route('profile.document.show');
+            }
+
+            $profile->save();
+            $user->save();
+
+            return [
+                'document_url' => $documentUrl,
+            ];
+        });
+    }
+
+    private function deleteStoredDocument(?string $path, int $userId): void
+    {
+        if (! empty($path)) {
+            foreach (['local', 'public'] as $disk) {
+                if (Storage::disk($disk)->exists($path)) {
+                    Storage::disk($disk)->delete($path);
+
+                    return;
+                }
+            }
         }
 
-        $profile->save();
-        $user->save();
-
-        return [
-            'document_url' => $documentUrl,
-        ];
-    });
-}
+        $legacyPath = 'users/profile/document/'.$userId;
+        if (Storage::disk('local')->exists($legacyPath)) {
+            Storage::disk('local')->delete($legacyPath);
+        }
+    }
 
 }

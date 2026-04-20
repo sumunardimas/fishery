@@ -8,7 +8,6 @@ Alpine.data('form_register', () => ({
   whatsapp: '',
   password: '',
   gender: '',
-  role: '',
   document: null,
   validationErrors: {},
 
@@ -23,7 +22,6 @@ Alpine.data('form_register', () => ({
     formData.append('whatsapp', this.whatsapp);
     formData.append('password', this.password);
     formData.append('gender', this.gender);
-    formData.append('role', this.role);
     if (this.document) {
       formData.append('document', this.document);
     }
@@ -36,7 +34,6 @@ Alpine.data('form_register', () => ({
     this.whatsapp = '';
     this.password = '';
     this.gender = '';
-    this.role = '';
     this.document = null;
     this.validationErrors = {};
   },
