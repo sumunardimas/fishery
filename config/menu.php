@@ -202,6 +202,13 @@ return [
                     'roles' => ['admin', 'staff'],
                 ],
                 [
+                    'title' => 'Setoran Kas Induk',
+                    'icon' => 'ti-export',
+                    'route' => '/keuangan/kas-induk',
+                    'type' => 'url',
+                    'roles' => ['admin', 'staff'],
+                ],
+                [
                     'title' => 'Piutang',
                     'icon' => 'ti-alert',
                     'route' => '/keuangan/piutang',

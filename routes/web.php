@@ -116,7 +116,9 @@ Route::middleware(['auth', 'staff.menu.access'])->group(function () {
         Route::get('/arus-kas', [KeuanganController::class, 'arusKas'])->name('arus-kas.index');
         Route::get('/kas', [KeuanganController::class, 'kas'])->name('kas.index');
         Route::get('/bank', [KeuanganController::class, 'bank'])->name('bank.index');
+        Route::get('/kas-induk', [KeuanganController::class, 'kasInduk'])->name('kas-induk.index');
         Route::post('/cash/transactions', [KeuanganController::class, 'storeCashTransaction'])->name('cash.store');
+        Route::post('/kas-induk', [KeuanganController::class, 'storeKasIndukTransfer'])->name('kas-induk.store');
         Route::get('/kas-bon-pegawai', [KeuanganController::class, 'kasBonPegawai'])->name('kas-bon-pegawai.index');
         Route::post('/kas-bon-pegawai/bayar', [KeuanganController::class, 'bayarKasBonPegawai'])->name('kas-bon-pegawai.bayar');
         Route::get('/hutang-modal', [KeuanganController::class, 'jonsGroupDebt'])->name('hutang-modal.index');

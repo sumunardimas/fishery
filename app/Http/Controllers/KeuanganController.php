@@ -13,6 +13,8 @@ use Illuminate\View\View;
 
 class KeuanganController extends Controller
 {
+    private const TREASURY_TRANSFER_CATEGORY = 'Setoran Kas Induk';
+
     private const MODAL_BORROW_CATEGORIES = [
         'Pinjam Modal Bu Uum',
         'Pinjam Modal Jons Group',
@@ -381,6 +383,51 @@ class KeuanganController extends Controller
         return $this->renderCashLedger($request, 'bank', 'cash.bank', 'Bank');
     }
 
+    public function kasInduk(Request $request): View
+    {
+        $validated = $request->validate([
+            'start_date' => ['nullable', 'date'],
+            'end_date' => ['nullable', 'date'],
+        ]);
+
+        $today = Carbon::today();
+
+        $start = ! empty($validated['start_date'])
+            ? Carbon::parse($validated['start_date'])
+            : $today->copy()->subDays(29);
+
+        $end = ! empty($validated['end_date'])
+            ? Carbon::parse($validated['end_date'])
+            : $today->copy();
+
+        if ($start->gt($end)) {
+            [$start, $end] = [$end, $start];
+        }
+
+        $startDate = $start->toDateString();
+        $endDate = $end->toDateString();
+
+        $rows = DB::table('kas_induk_transfers')
+            ->whereBetween('tanggal_setor', [$startDate, $endDate])
+            ->orderByDesc('tanggal_setor')
+            ->orderByDesc('id_kas_induk_transfer')
+            ->get();
+
+        $summary = [
+            'total_setoran' => (float) $rows->sum('nominal'),
+            'jumlah_transaksi' => $rows->count(),
+            'total_dari_kas' => (float) $rows->where('akun_sumber', 'kas')->sum('nominal'),
+            'total_dari_bank' => (float) $rows->where('akun_sumber', 'bank')->sum('nominal'),
+        ];
+
+        return view('keuangan.kas_induk.index', compact(
+            'rows',
+            'summary',
+            'startDate',
+            'endDate'
+        ));
+    }
+
     public function jonsGroupDebt(Request $request): View
     {
         $validated = $request->validate([
@@ -566,6 +613,54 @@ class KeuanganController extends Controller
         }
 
         return back()->with('success', $message);
+    }
+
+    public function storeKasIndukTransfer(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'akun_sumber' => ['required', 'in:kas,bank'],
+            'tanggal' => ['required', 'date'],
+            'deskripsi' => ['nullable', 'string', 'max:255'],
+            'nominal' => ['required', 'numeric', 'gt:0'],
+        ]);
+
+        $nominal = round((float) $validated['nominal'], 2);
+        $saldoTersedia = $this->getLastSaldoByAkun($validated['akun_sumber']);
+
+        if ($nominal > $saldoTersedia + 0.01) {
+            return back()
+                ->withInput()
+                ->withErrors([
+                    'nominal' => 'Nominal setoran melebihi saldo '.strtoupper($validated['akun_sumber']).' yang tersedia.',
+                ]);
+        }
+
+        DB::transaction(function () use ($validated, $nominal) {
+            $deskripsi = trim((string) ($validated['deskripsi'] ?? ''));
+
+            if ($deskripsi === '') {
+                $deskripsi = 'Setoran dari '.strtoupper($validated['akun_sumber']).' ke kas induk.';
+            }
+
+            $arusKasId = $this->postArusKas(
+                akun: $validated['akun_sumber'],
+                tanggal: $validated['tanggal'],
+                kategori: self::TREASURY_TRANSFER_CATEGORY,
+                deskripsi: $deskripsi,
+                debit: 0,
+                kredit: $nominal
+            );
+
+            $this->recordKasIndukTransfer(
+                arusKasId: $arusKasId,
+                tanggal: $validated['tanggal'],
+                akunSumber: $validated['akun_sumber'],
+                deskripsi: $deskripsi,
+                nominal: $nominal
+            );
+        });
+
+        return back()->with('success', 'Setoran Kas Induk berhasil disimpan dan saldo akun sumber sudah dikurangi.');
     }
 
     public function bayarJonsGroupDebt(Request $request): JsonResponse
@@ -846,6 +941,19 @@ class KeuanganController extends Controller
             'nama_pegawai' => $namaPegawai,
             'nominal_awal' => $nominal,
             'sisa_piutang' => $nominal,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+    }
+
+    private function recordKasIndukTransfer(int $arusKasId, string $tanggal, string $akunSumber, string $deskripsi, float $nominal): void
+    {
+        DB::table('kas_induk_transfers')->insert([
+            'id_kas_sumber' => $arusKasId,
+            'tanggal_setor' => $tanggal,
+            'akun_sumber' => $akunSumber,
+            'deskripsi' => $deskripsi,
+            'nominal' => $nominal,
             'created_at' => now(),
             'updated_at' => now(),
         ]);

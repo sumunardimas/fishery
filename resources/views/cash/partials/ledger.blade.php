@@ -68,6 +68,13 @@
                 <h4 class="card-title">Input Transaksi {{ $title }}</h4>
                 <p class="card-description">Gunakan debit untuk penambahan saldo dan kredit untuk pengurangan saldo.</p>
 
+                <div class="alert alert-info py-2">
+                    Saldo berlebih yang dipindahkan ke luar kantor gunakan halaman
+                    <a href="{{ route('keuangan.kas-induk.index') }}">Setoran Kas Induk</a>
+                    agar saldo {{ strtolower($title) }} berkurang, tetapi dana tersebut tidak dihitung lagi sebagai
+                    saldo kantor aktif.
+                </div>
+
                 @if ($errors->any())
                     <div class="alert alert-danger">
                         <ul class="mb-0 pl-3">
