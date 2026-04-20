@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\MasterIkanTangkapan;
 use App\Models\Pelayaran;
+use App\Services\PerbekalanFifoService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -38,6 +39,10 @@ class PelayaranSisaController extends Controller
     private const PAYMENT_METHODS = ['cash', 'transfer', 'both'];
     private const JARINGAN_CREDIT_FACTOR = 0.5;
     private const TANGKAPAN_3_TON_MAX_BERAT = 3000;
+
+    public function __construct(private readonly PerbekalanFifoService $perbekalanFifoService)
+    {
+    }
 
     /**
      * Show active pelayaran and consolidated closing wizard.
@@ -441,12 +446,26 @@ class PelayaranSisaController extends Controller
         );
 
         DB::transaction(function () use ($pelayaran, $closingCashflow, $paymentAllocation) {
+            $lockedClosingCashflow = $this->buildClosingCashflowSummary($pelayaran);
+
+            if (abs((float) $lockedClosingCashflow['grand_total'] - (float) $closingCashflow['grand_total']) > 0.01) {
+                throw ValidationException::withMessages([
+                    'message' => 'Nilai penutupan trip berubah karena histori stok perbekalan berubah. Muat ulang halaman rekap lalu coba tutup pelayaran lagi.',
+                ]);
+            }
+
+            $this->perbekalanFifoService->recordTripConsumption(
+                pelayaran: $pelayaran,
+                usageSummary: $lockedClosingCashflow['perbekalan_summary'],
+                transactionDate: now()->toDateString()
+            );
+
             $this->storeCatchToKapalStorage($pelayaran);
 
-            if ((float) $closingCashflow['grand_total'] > 0) {
+            if ((float) $lockedClosingCashflow['grand_total'] > 0) {
                 $this->postClosingCashflowEntries(
                     pelayaran: $pelayaran,
-                    components: $closingCashflow['components'],
+                    components: $lockedClosingCashflow['components'],
                     bayarTunai: (float) $paymentAllocation['bayar_tunai'],
                     bayarTransfer: (float) $paymentAllocation['bayar_transfer']
                 );
@@ -479,48 +498,7 @@ class PelayaranSisaController extends Controller
 
         $idPelayaran = (int) $pelayaran->id_pelayaran;
         $tripLabel = 'Trip #'.$idPelayaran.' - '.($pelayaran->kapal->nama_kapal ?? ('Kapal #'.$pelayaran->id_kapal));
-        $cutoffDate = $pelayaran->tanggal_selesai?->toDateString()
-            ?: $pelayaran->tanggal_tiba?->toDateString()
-            ?: now()->toDateString();
-
-        $perbekalanRows = DB::table('perbekalan_pelayaran as pp')
-            ->join('master_perbekalan as mp', 'mp.id_barang', '=', 'pp.id_barang')
-            ->leftJoin('sisa_trip as st', function ($join) use ($idPelayaran) {
-                $join->on('st.id_barang', '=', 'pp.id_barang')
-                    ->where('st.id_pelayaran', '=', $idPelayaran);
-            })
-            ->where('pp.id_pelayaran', $idPelayaran)
-            ->select('pp.id_barang', 'pp.jumlah as jumlah_awal', 'mp.nama_barang', 'mp.satuan', 'st.jumlah_sisa')
-            ->get();
-
-        $hargaPerbekalanMap = $perbekalanRows->isEmpty()
-            ? collect()
-            : DB::table('perbekalan_transaction as pt')
-                ->where('pt.jenis_transaksi', 'in')
-                ->whereIn('pt.id_barang', $perbekalanRows->pluck('id_barang')->all())
-                ->whereNotNull('pt.harga_satuan')
-                ->where('pt.harga_satuan', '>', 0)
-                ->whereDate('pt.tanggal_transaksi', '<=', $cutoffDate)
-                ->orderByDesc('pt.tanggal_transaksi')
-                ->orderByDesc('pt.id_transaction')
-                ->get(['pt.id_barang', 'pt.harga_satuan'])
-                ->groupBy('id_barang')
-                ->map(fn ($rows) => (float) ($rows->first()->harga_satuan ?? 0));
-
-        $rekapPerbekalan = $perbekalanRows->map(function ($row) use ($hargaPerbekalanMap) {
-            $jumlahAwal = (float) ($row->jumlah_awal ?? 0);
-            $jumlahSisa = min((float) ($row->jumlah_sisa ?? 0), $jumlahAwal);
-            $jumlahTerpakai = max(0, $jumlahAwal - $jumlahSisa);
-            $hargaBeli = (float) ($hargaPerbekalanMap[$row->id_barang] ?? 0);
-
-            return (object) [
-                'nama_barang' => $row->nama_barang,
-                'satuan' => $row->satuan,
-                'jumlah_terpakai' => $jumlahTerpakai,
-                'harga_beli' => $hargaBeli,
-                'total_biaya' => $jumlahTerpakai * $hargaBeli,
-            ];
-        });
+        $rekapPerbekalan = $this->perbekalanFifoService->buildTripUsageSummary($pelayaran);
 
         $rekapTangkapan = DB::table('ikan_hasil_pelayaran')
             ->where('id_pelayaran', $idPelayaran)
@@ -574,6 +552,7 @@ class PelayaranSisaController extends Controller
         return [
             'components' => $components->values()->all(),
             'grand_total' => (float) $components->sum('amount'),
+            'perbekalan_summary' => $rekapPerbekalan,
         ];
     }
 
@@ -791,44 +770,7 @@ class PelayaranSisaController extends Controller
                 ->map(fn ($value) => (float) $value)
                 ->toArray();
 
-            $cutoffDate = $selectedPelayaran->tanggal_selesai?->toDateString()
-                ?: $selectedPelayaran->tanggal_tiba?->toDateString()
-                ?: now()->toDateString();
-
-            $hargaPerbekalanMap = $perbekalanRows->isEmpty()
-                ? collect()
-                : DB::table('perbekalan_transaction as pt')
-                    ->where('pt.jenis_transaksi', 'in')
-                    ->whereIn('pt.id_barang', $perbekalanRows->pluck('id_barang')->all())
-                    ->whereNotNull('pt.harga_satuan')
-                    ->where('pt.harga_satuan', '>', 0)
-                    ->whereDate('pt.tanggal_transaksi', '<=', $cutoffDate)
-                    ->orderByDesc('pt.tanggal_transaksi')
-                    ->orderByDesc('pt.id_transaction')
-                    ->get(['pt.id_barang', 'pt.harga_satuan'])
-                    ->groupBy('id_barang')
-                    ->map(fn ($rows) => (float) ($rows->first()->harga_satuan ?? 0));
-
-            $rekapPerbekalan = $perbekalanRows->map(function ($row) use ($existingSisa, $hargaPerbekalanMap) {
-                $idBarang = (int) $row->id_barang;
-                $jumlahAwal = (float) $row->jumlah_awal;
-                $hasSisa = array_key_exists($idBarang, $existingSisa);
-                $jumlahSisa = $hasSisa ? min((float) $existingSisa[$idBarang], $jumlahAwal) : null;
-                $jumlahTerpakai = $hasSisa ? max(0, $jumlahAwal - (float) $jumlahSisa) : 0;
-                $hargaBeli = (float) ($hargaPerbekalanMap[$idBarang] ?? 0);
-
-                return (object) [
-                    'id_barang' => $idBarang,
-                    'nama_barang' => $row->nama_barang,
-                    'satuan' => $row->satuan,
-                    'jumlah_awal' => $jumlahAwal,
-                    'jumlah_sisa' => $jumlahSisa,
-                    'jumlah_terpakai' => $jumlahTerpakai,
-                    'harga_beli' => $hargaBeli,
-                    'total_biaya' => $jumlahTerpakai * $hargaBeli,
-                    'has_sisa' => $hasSisa,
-                ];
-            });
+            $rekapPerbekalan = $this->perbekalanFifoService->buildTripUsageSummary($selectedPelayaran);
 
             $existingHasilIkanByKategori = DB::table('ikan_hasil_pelayaran as ihp')
                 ->leftJoin('master_ikan as mi', 'mi.id_ikan', '=', 'ihp.id_ikan')

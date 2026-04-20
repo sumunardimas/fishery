@@ -218,6 +218,7 @@ class MasterPerbekalanController extends Controller
             PerbekalanTransaction::create([
                 'tanggal_transaksi' => $data['tanggal_transaksi'],
                 'id_barang' => $idBarang,
+                'id_pelayaran' => null,
                 'jenis_transaksi' => $data['jenis_transaksi'],
                 'akun_pembayaran' => $data['akun_pembayaran'] ?? null,
                 'jumlah' => $jumlah,
@@ -250,6 +251,14 @@ class MasterPerbekalanController extends Controller
     public function destroyTransaction(Request $request, PerbekalanTransaction $transaction): RedirectResponse
     {
         $selectedItemId = $request->integer('show_item');
+
+        if ($transaction->jenis_transaksi === 'out' && (int) ($transaction->id_pelayaran ?? 0) > 0) {
+            return redirect()->route('master.perbekalan.history', array_filter([
+                'show_item' => $selectedItemId > 0 ? $selectedItemId : null,
+            ]))->withErrors([
+                'message' => 'Transaksi stok keluar dari penutupan pelayaran tidak dapat dihapus dari menu ini. Buka data pelayaran terkait untuk audit riwayatnya.',
+            ]);
+        }
 
         DB::transaction(function () use ($transaction) {
             $stock = PerbekalanStock::query()

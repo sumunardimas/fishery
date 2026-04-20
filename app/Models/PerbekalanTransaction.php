@@ -17,6 +17,7 @@ class PerbekalanTransaction extends Model
     protected $fillable = [
         'tanggal_transaksi',
         'id_barang',
+        'id_pelayaran',
         'jenis_transaksi',
         'akun_pembayaran',
         'jumlah',
@@ -28,6 +29,7 @@ class PerbekalanTransaction extends Model
 
     protected $casts = [
         'tanggal_transaksi' => 'date',
+        'id_pelayaran' => 'integer',
         'jumlah' => 'decimal:2',
         'harga_satuan' => 'decimal:2',
         'total_harga' => 'decimal:2',
