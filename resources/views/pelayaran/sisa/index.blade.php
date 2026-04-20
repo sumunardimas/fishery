@@ -947,7 +947,7 @@
 
                             <h6 class="mb-2">Rekap Pemakaian Perbekalan</h6>
                             <p class="text-muted mb-3">Biaya dihitung dari jumlah terpakai = jumlah awal - jumlah sisa,
-                                lalu dikalikan harga beli terakhir.</p>
+                                lalu dipecah berdasarkan lapisan pembelian FIFO per barang.</p>
 
                             <div class="table-responsive mb-4">
                                 <table class="table table-bordered table-sm trip-table-dynamic">
@@ -958,7 +958,7 @@
                                             <th>Jumlah Awal</th>
                                             <th>Jumlah Sisa</th>
                                             <th>Jumlah Terpakai</th>
-                                            <th>Harga Beli</th>
+                                            <th>Rincian Harga</th>
                                             <th>Total Biaya</th>
                                         </tr>
                                     </thead>
@@ -976,7 +976,21 @@
                                                     @endif
                                                 </td>
                                                 <td>{{ number_format((float) $row->jumlah_terpakai, 2, ',', '.') }}</td>
-                                                <td>Rp {{ number_format((float) $row->harga_beli, 2, ',', '.') }}</td>
+                                                <td>
+                                                    @if (!empty($row->fifo_layers))
+                                                        @foreach ($row->fifo_layers as $layer)
+                                                            <div>
+                                                                ({{ number_format((float) ($layer['jumlah'] ?? 0), 2, ',', '.') }}
+                                                                {{ $row->satuan }} x Rp
+                                                                {{ number_format((float) ($layer['harga_satuan'] ?? 0), 2, ',', '.') }})
+                                                            </div>
+                                                        @endforeach
+                                                    @elseif ((float) $row->jumlah_terpakai > 0)
+                                                        <span class="text-muted">Lapisan FIFO tidak ditemukan</span>
+                                                    @else
+                                                        <span class="text-muted">-</span>
+                                                    @endif
+                                                </td>
                                                 <td>Rp {{ number_format((float) $row->total_biaya, 2, ',', '.') }}</td>
                                             </tr>
                                         @empty
