@@ -1,0 +1,487 @@
+<!doctype html>
+<html lang="id">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Checklist UAT - Sistem Fishery</title>
+    <style>
+        :root {
+            --border: #1f2937;
+            --text: #111827;
+            --muted: #4b5563;
+            --bg: #ffffff;
+            --head: #f3f4f6;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 24px;
+            font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+            color: var(--text);
+            background: var(--bg);
+            line-height: 1.45;
+            font-size: 14px;
+        }
+
+        h1 {
+            margin: 0 0 8px;
+            font-size: 24px;
+        }
+
+        .meta {
+            margin-bottom: 16px;
+            color: var(--muted);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed;
+        }
+
+        th,
+        td {
+            border: 1px solid var(--border);
+            vertical-align: top;
+            padding: 10px;
+        }
+
+        th {
+            background: var(--head);
+            text-align: left;
+            font-weight: 700;
+        }
+
+        th:nth-child(1),
+        td:nth-child(1) {
+            width: 30%;
+        }
+
+        th:nth-child(2),
+        td:nth-child(2) {
+            width: 48%;
+        }
+
+        th:nth-child(3),
+        td:nth-child(3) {
+            width: 22%;
+        }
+
+        .check-area {
+            min-height: 64px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            gap: 8px;
+        }
+
+        .check-line {
+            border-bottom: 1px dotted #6b7280;
+            height: 18px;
+        }
+
+        .footer {
+            margin-top: 24px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .sign-box {
+            border: 1px solid var(--border);
+            min-height: 90px;
+            padding: 10px;
+        }
+
+        @media print {
+            body {
+                margin: 12mm;
+            }
+
+            h1 {
+                font-size: 20px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Checklist User Acceptance Testing (UAT)</h1>
+    <p class="meta">
+        Sistem: Manajemen Operasional dan Transaksi Perikanan<br>
+        Tanggal Uji: ____________________ | Versi Aplikasi: ____________________
+    </p>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Kriteria</th>
+                <th>Deskripsi Singkat</th>
+                <th>Check (Paraf/Tanda Tangan)</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>Beranda</td>
+                <td>Halaman beranda dapat dibuka dan menampilkan ringkasan informasi utama sesuai peran pengguna.</td>
+                <td>
+                    <div class="check-area">
+                        <div class="check-line"></div>
+                        <div class="check-line"></div>
+                    </div>
+                </td>
+            </tr>
+            <tr>
+                <td>Daftar Kapal</td>
+                <td>Data kapal dapat ditampilkan, ditambah, diubah, dan dihapus sesuai kebutuhan operasional.</td>
+                <td>
+                    <div class="check-area">
+                        <div class="check-line"></div>
+                        <div class="check-line"></div>
+                    </div>
+                </td>
+            </tr>
+            <tr>
+                <td>Pelayaran Mulai</td>
+                <td>Proses pembuatan pelayaran baru berjalan normal dan data pelayaran tersimpan dengan benar.</td>
+                <td>
+                    <div class="check-area">
+                        <div class="check-line"></div>
+                        <div class="check-line"></div>
+                    </div>
+                </td>
+            </tr>
+            <tr>
+                <td>Pelayaran Selesai - Laporkan</td>
+                <td>Input pelaporan sisa pelayaran dapat dilakukan dan tercatat sesuai aturan bisnis.</td>
+                <td>
+                    <div class="check-area">
+                        <div class="check-line"></div>
+                        <div class="check-line"></div>
+                    </div>
+                </td>
+            </tr>
+            <tr>
+                <td>Pelayaran Selesai - Riwayat</td>
+                <td>Riwayat pelayaran selesai dapat ditampilkan kembali untuk keperluan audit dan pengecekan.</td>
+                <td>
+                    <div class="check-area">
+                        <div class="check-line"></div>
+                        <div class="check-line"></div>
+                    </div>
+                </td>
+            </tr>
+            <tr>
+                <td>Penjualan Ikan - Transaksi</td>
+                <td>Transaksi penjualan ikan dapat dibuat dengan perhitungan total dan status pembayaran yang akurat.
+                </td>
+                <td>
+                    <div class="check-area">
+                        <div class="check-line"></div>
+                        <div class="check-line"></div>
+                    </div>
+                </td>
+            </tr>
+            <tr>
+                <td>Penjualan Ikan - Riwayat Transaksi</td>
+                <td>Riwayat transaksi penjualan dapat difilter dan ditinjau ulang sesuai data transaksi aktual.</td>
+                <td>
+                    <div class="check-area">
+                        <div class="check-line"></div>
+                        <div class="check-line"></div>
+                    </div>
+                </td>
+            </tr>
+            <tr>
+                <td>Pembelian Barang - Transaksi</td>
+                <td>Transaksi pembelian barang dapat dicatat dan memengaruhi stok sesuai input pembelian.</td>
+                <td>
+                    <div class="check-area">
+                        <div class="check-line"></div>
+                        <div class="check-line"></div>
+                    </div>
+                </td>
+            </tr>
+            <tr>
+                <td>Pembelian Barang - Riwayat</td>
+                <td>Riwayat pembelian barang dapat ditampilkan untuk kebutuhan kontrol biaya dan pelacakan data.</td>
+                <td>
+                    <div class="check-area">
+                        <div class="check-line"></div>
+                        <div class="check-line"></div>
+                    </div>
+                </td>
+            </tr>
+            <tr>
+                <td>Pembelian Barang - Master</td>
+                <td>Master item pembelian dapat dikelola (tambah, ubah, hapus) dan ditampilkan dengan benar.</td>
+                <td>
+                    <div class="check-area">
+                        <div class="check-line"></div>
+                        <div class="check-line"></div>
+                    </div>
+                </td>
+            </tr>
+            <tr>
+                <td>Perbekalan - Transaksi</td>
+                <td>Transaksi perbekalan masuk/keluar dapat diproses dan berdampak ke saldo stok yang benar.</td>
+                <td>
+                    <div class="check-area">
+                        <div class="check-line"></div>
+                        <div class="check-line"></div>
+                    </div>
+                </td>
+            </tr>
+            <tr>
+                <td>Perbekalan - Riwayat In Out</td>
+                <td>Riwayat mutasi perbekalan dapat ditinjau ulang dengan data tanggal, jenis, dan jumlah yang sesuai.
+                </td>
+                <td>
+                    <div class="check-area">
+                        <div class="check-line"></div>
+                        <div class="check-line"></div>
+                    </div>
+                </td>
+            </tr>
+            <tr>
+                <td>Perbekalan - Master</td>
+                <td>Master perbekalan dapat dikelola dan digunakan pada proses transaksi perbekalan.</td>
+                <td>
+                    <div class="check-area">
+                        <div class="check-line"></div>
+                        <div class="check-line"></div>
+                    </div>
+                </td>
+            </tr>
+            <tr>
+                <td>Operasional Kantor - Transaksi</td>
+                <td>Transaksi operasional kantor dapat dicatat dan tervalidasi sesuai kebutuhan pengeluaran kantor.</td>
+                <td>
+                    <div class="check-area">
+                        <div class="check-line"></div>
+                        <div class="check-line"></div>
+                    </div>
+                </td>
+            </tr>
+            <tr>
+                <td>Operasional Kantor - Riwayat In Out</td>
+                <td>Riwayat transaksi operasional kantor dapat ditampilkan kembali untuk pelacakan pengeluaran.</td>
+                <td>
+                    <div class="check-area">
+                        <div class="check-line"></div>
+                        <div class="check-line"></div>
+                    </div>
+                </td>
+            </tr>
+            <tr>
+                <td>Operasional Kantor - Master</td>
+                <td>Master item operasional kantor dapat dikelola dan dipakai pada transaksi operasional.</td>
+                <td>
+                    <div class="check-area">
+                        <div class="check-line"></div>
+                        <div class="check-line"></div>
+                    </div>
+                </td>
+            </tr>
+            <tr>
+                <td>Stok - Stok Ikan</td>
+                <td>Halaman stok ikan menampilkan kuantitas stok terbaru sesuai transaksi dan pelayaran.</td>
+                <td>
+                    <div class="check-area">
+                        <div class="check-line"></div>
+                        <div class="check-line"></div>
+                    </div>
+                </td>
+            </tr>
+            <tr>
+                <td>Keuangan - Kas</td>
+                <td>Mutasi kas dapat ditampilkan dan transaksi kas dapat dicatat sesuai periode yang dipilih.</td>
+                <td>
+                    <div class="check-area">
+                        <div class="check-line"></div>
+                        <div class="check-line"></div>
+                    </div>
+                </td>
+            </tr>
+            <tr>
+                <td>Keuangan - Bank</td>
+                <td>Mutasi bank dapat ditampilkan dan nilainya konsisten dengan transaksi keuangan sistem.</td>
+                <td>
+                    <div class="check-area">
+                        <div class="check-line"></div>
+                        <div class="check-line"></div>
+                    </div>
+                </td>
+            </tr>
+            <tr>
+                <td>Keuangan - Setoran Kas Induk</td>
+                <td>Setoran kas induk dapat direkam dan memengaruhi saldo kas/bank sesuai mekanisme sistem.</td>
+                <td>
+                    <div class="check-area">
+                        <div class="check-line"></div>
+                        <div class="check-line"></div>
+                    </div>
+                </td>
+            </tr>
+            <tr>
+                <td>Keuangan - Piutang</td>
+                <td>Data piutang dan proses pembayaran piutang dapat diakses serta diperbarui dengan benar.</td>
+                <td>
+                    <div class="check-area">
+                        <div class="check-line"></div>
+                        <div class="check-line"></div>
+                    </div>
+                </td>
+            </tr>
+            <tr>
+                <td>Keuangan - Kas Bon Pegawai</td>
+                <td>Data kas bon pegawai dan pembayaran kas bon dapat diproses sesuai aturan yang berlaku.</td>
+                <td>
+                    <div class="check-area">
+                        <div class="check-line"></div>
+                        <div class="check-line"></div>
+                    </div>
+                </td>
+            </tr>
+            <tr>
+                <td>Keuangan - Hutang Modal</td>
+                <td>Data hutang modal dan proses pembayaran hutang dapat ditampilkan serta dicatat dengan benar.</td>
+                <td>
+                    <div class="check-area">
+                        <div class="check-line"></div>
+                        <div class="check-line"></div>
+                    </div>
+                </td>
+            </tr>
+            <tr>
+                <td>Laporan - Lap Penjualan</td>
+                <td>Laporan penjualan dapat ditampilkan sesuai rentang waktu dan data transaksi yang tersedia.</td>
+                <td>
+                    <div class="check-area">
+                        <div class="check-line"></div>
+                        <div class="check-line"></div>
+                    </div>
+                </td>
+            </tr>
+            <tr>
+                <td>Laporan - Lap Arus Kas</td>
+                <td>Laporan arus kas menampilkan ringkasan pemasukan dan pengeluaran sesuai data keuangan.</td>
+                <td>
+                    <div class="check-area">
+                        <div class="check-line"></div>
+                        <div class="check-line"></div>
+                    </div>
+                </td>
+            </tr>
+            <tr>
+                <td>Laporan - Laba Rugi</td>
+                <td>Laporan laba rugi dapat diakses dan nilai perhitungannya konsisten dengan transaksi sistem.</td>
+                <td>
+                    <div class="check-area">
+                        <div class="check-line"></div>
+                        <div class="check-line"></div>
+                    </div>
+                </td>
+            </tr>
+            <tr>
+                <td>Laporan - Lap Selisih Bongkaran</td>
+                <td>Laporan selisih bongkaran dapat ditampilkan dan input berat lelang dapat diproses dengan benar.</td>
+                <td>
+                    <div class="check-area">
+                        <div class="check-line"></div>
+                        <div class="check-line"></div>
+                    </div>
+                </td>
+            </tr>
+            <tr>
+                <td>Pengaturan - Master Ikan</td>
+                <td>Master ikan dapat dikelola melalui menu pengaturan tanpa kendala validasi dan penyimpanan data.</td>
+                <td>
+                    <div class="check-area">
+                        <div class="check-line"></div>
+                        <div class="check-line"></div>
+                    </div>
+                </td>
+            </tr>
+            <tr>
+                <td>Pengaturan - Master Ikan Tangkapan</td>
+                <td>Master ikan tangkapan dapat ditambah, diubah, dan dihapus sesuai kebutuhan operasional.</td>
+                <td>
+                    <div class="check-area">
+                        <div class="check-line"></div>
+                        <div class="check-line"></div>
+                    </div>
+                </td>
+            </tr>
+            <tr>
+                <td>Pengaturan - Master Customer</td>
+                <td>Master customer dapat dikelola dan datanya tersedia untuk transaksi penjualan.</td>
+                <td>
+                    <div class="check-area">
+                        <div class="check-line"></div>
+                        <div class="check-line"></div>
+                    </div>
+                </td>
+            </tr>
+            <tr>
+                <td>Pengaturan - Master Operasional Trip</td>
+                <td>Master operasional trip dapat dikelola untuk mendukung pencatatan biaya operasional pelayaran.</td>
+                <td>
+                    <div class="check-area">
+                        <div class="check-line"></div>
+                        <div class="check-line"></div>
+                    </div>
+                </td>
+            </tr>
+            <tr>
+                <td>Pengaturan - Pengguna</td>
+                <td>Manajemen pengguna (lihat, tambah, ubah, hapus) berjalan sesuai hak akses yang ditentukan.</td>
+                <td>
+                    <div class="check-area">
+                        <div class="check-line"></div>
+                        <div class="check-line"></div>
+                    </div>
+                </td>
+            </tr>
+            <tr>
+                <td>Pengaturan - Pengaturan</td>
+                <td>Parameter pengaturan sistem dapat diperbarui dan perubahan tersimpan dengan benar.</td>
+                <td>
+                    <div class="check-area">
+                        <div class="check-line"></div>
+                        <div class="check-line"></div>
+                    </div>
+                </td>
+            </tr>
+            <tr>
+                <td>Panduan</td>
+                <td>Halaman panduan dapat diakses dan membantu pengguna memahami alur penggunaan aplikasi.</td>
+                <td>
+                    <div class="check-area">
+                        <div class="check-line"></div>
+                        <div class="check-line"></div>
+                    </div>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+
+    <div class="footer">
+        <div class="sign-box">
+            Disetujui oleh (User/PIC):<br><br><br>
+            Nama: ____________________________<br>
+            Tanda Tangan: ____________________
+        </div>
+        <div class="sign-box">
+            Divalidasi oleh (QA/IT):<br><br><br>
+            Nama: ____________________________<br>
+            Tanda Tangan: ____________________
+        </div>
+    </div>
+</body>
+
+</html>

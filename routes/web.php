@@ -208,5 +208,8 @@ Route::middleware(['auth', 'staff.menu.access'])->group(function () {
 
 Route::view('/resetpassword', 'pages.resetpassword')->name('pages.resetpassword');
 Route::view('/newpassword', 'pages.newpassword')->name('password.reset');
+Route::get('/uat-checklist', function () {
+    return response()->file(base_path('uat-checklist.html'));
+})->name('uat.checklist');
 
 require __DIR__.'/auth.php';
