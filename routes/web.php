@@ -199,6 +199,8 @@ Route::middleware(['auth', 'staff.menu.access'])->group(function () {
 
     Route::get('/homeadmin', [HomeController::class, 'adminHome'])->name('home.admin')->middleware('role:admin');
 
+    Route::view('/panduan', 'panduan.index')->name('panduan.index');
+
     Route::prefix('pengaturan')->name('pengaturan.')->group(function () {
         Route::get('/', [PengaturanController::class, 'index'])->name('index');
         Route::put('/', [PengaturanController::class, 'update'])->name('update');
