@@ -1,103 +1,111 @@
-# 🩺 Skydash (Template)
+# Sistem Manajemen Perikanan
 
-> *A Laravel-powered web application.*
+> Aplikasi manajemen operasional Perusahaan Perikanan berbasis web, dibangun dengan Laravel 12.
 
 ---
 
 ## 📄 Overview
 
-This repository contains a Laravel [9.x/10.x] application with:
-
-- **Backend**: PHP 8+, Laravel framework, Eloquent ORM
-- **Frontend**: Blade templates, Vue/React (via Vite), SCSS
-- **Database**: MySQL/MariaDB (configuration in `.env`)
-- **Testing**: PHPUnit for unit and feature tests
-
-> Use this project as a starting point for building systems.
+- **Backend**: PHP 8.2+, Laravel 12, Eloquent ORM, Spatie Permission
+- **Frontend**: Blade, Livewire Flux, Alpine.js, Tailwind CSS v4, Vite
+- **Database**: MySQL/MariaDB
+- **Testing**: PHPUnit 11
 
 ---
 
 ## 🚀 Quick Start
 
-1. **Clone the repo**
+1. **Clone & install dependencies**
    ```bash
-   git clone https://github.com/your-org/skydash.git
-   cd skydash
-   ```
-
-2. **Install dependencies**
-   ```bash
+   git clone <repo-url>
+   cd fishery
    composer install
    npm install
-   npm run dev        # or npm run build for production
    ```
 
-3. **Environment**
+2. **Environment**
    ```bash
    cp .env.example .env
    php artisan key:generate
-   # set DB_, MAIL_, etc. in .env
+   # Set DB_*, MAIL_*, and other values in .env
    ```
 
-4. **Database setup**
+3. **Database setup**
    ```bash
    php artisan migrate --seed
    ```
 
-5. **Start server**
+4. **Start server**
    ```bash
+   npm run dev
    php artisan serve
    ```
 
-Visit `http://localhost:8000`
+   Visit `http://localhost:8000`
+
+   Or use Docker:
+   ```bash
+   docker-compose up -d
+   ```
 
 ---
 
-## 🔧 Features (module highlights)
+## 🔧 Modul
 
-- Role-based access control (Admin, Kasir, Staff)
-- API endpoints for mobile/third‑party integration
-- Rich reporting dashboard for progress tracking
+| Modul | Deskripsi |
+|---|---|
+| **Kapal** | CRUD data kapal |
+| **Pelayaran** | Catat keberangkatan & pelaporan hasil (perbekalan, tangkapan, operasional) |
+| **Penjualan Ikan** | Transaksi penjualan, riwayat, invoice PDF |
+| **Pembelian Barang** | Transaksi & riwayat pembelian, master item |
+| **Perbekalan** | Transaksi stok perbekalan, riwayat in/out, master |
+| **Operasional Kantor** | Pengeluaran kantor, riwayat, master item |
+| **Stok Ikan** | Monitoring stok ikan di gudang |
+| **Keuangan** | Kas harian, bank, setoran kas induk, piutang, kas bon pegawai, hutang modal |
+| **Laporan** | Laporan penjualan & arus kas |
+| **Master Data** | Pelanggan, ikan, ikan tangkapan, operasional |
+| **Pengguna** | Manajemen user & role (admin, staff, kasir) |
 
 ---
 
 ## 🧑‍💻 Development
 
-- **Code style**: PSR-12, use `phpcs` to lint
-- **Testing**: `php artisan test` or `vendor/bin/phpunit`
-- **Static analysis**: `phpstan analyse` (level 7+ recommended)
-- **Docker**
-  - `docker-compose up -d` available for local environment
-
-Contributions are welcome; see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+```bash
+php artisan test          # jalankan semua test
+vendor/bin/phpunit        # alternatif
+vendor/bin/pint           # code style (Laravel Pint / PSR-12)
+npm run build             # build aset produksi
+```
 
 ---
 
-## 📁 Repository Structure
+## 📁 Struktur Direktori
 
 ```
-app/              # core application code (Models, Services, Helpers)
-bootstrap/
+app/
+  Http/Controllers/       # controller per modul
+  Models/                 # Eloquent models
+  Services/               # business logic
+  Helpers/                # helper functions
 config/
-database/         # migrations, seeders, factories
-public/           # entrypoint and assets
-resources/        # views, frontend assets
-routes/           # api, web, auth definitions
-tests/            # unit & feature tests
+  menu.php                # konfigurasi sidebar menu
+database/
+  migrations/
+  seeders/
+resources/views/          # Blade templates
+routes/
+  web.php                 # semua route web
+  auth.php                # route autentikasi
+tests/
+  Feature/
+  Unit/
 ```
 
 ---
 
 ## 🧾 License
 
-This project is released under the **MIT License**. See [LICENSE](LICENSE) for details.
-
----
-
-## ⚠️ Notes
-
-- This README is a template: adjust sections to match your project's requirements.
-- Replace placeholders such as repository URL, Laravel version, feature list, etc.
+MIT License.
 
 ---
 
