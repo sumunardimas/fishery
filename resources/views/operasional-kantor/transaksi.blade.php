@@ -32,8 +32,16 @@
                                     value="{{ old('tanggal', now()->toDateString()) }}" required>
                             </div>
                             <div class="form-group col-md-4">
+                                <label class="required-asterisk" for="mode_transaksi">Mode</label>
+                                <select class="form-control" id="mode_transaksi" name="mode_transaksi">
+                                    <option value="normal" @selected(old('mode_transaksi', 'normal') === 'normal')>Normal (Potong Kas/Bank)</option>
+                                    <option value="import_awal" @selected(old('mode_transaksi') === 'import_awal')>Import Item Awal (Tanpa Kas)</option>
+                                </select>
+                            </div>
+                            <div class="form-group col-md-4">
                                 <label class="required-asterisk" for="akun_pembayaran">Bayar Dari</label>
                                 <select class="form-control" id="akun_pembayaran" name="akun_pembayaran" required>
+                                    <option value="">Pilih akun</option>
                                     <option value="kas" @selected(old('akun_pembayaran', 'kas') === 'kas')>Kas</option>
                                     <option value="bank" @selected(old('akun_pembayaran') === 'bank')>Bank</option>
                                 </select>
@@ -41,7 +49,8 @@
                         </div>
 
                         <small class="text-muted d-block mb-2">
-                            Setiap transaksi akan mengurangi saldo akun yang dipilih (Kas/Bank) di arus kas.
+                            Mode <strong>Normal</strong> akan mengurangi saldo akun yang dipilih (Kas/Bank) di arus kas.
+                            Mode <strong>Import Item Awal</strong> dipakai untuk input existing item tanpa pengurangan kas.
                         </small>
 
                         @php
@@ -155,8 +164,10 @@
             const rowsContainer = document.getElementById('operasional-kantor-rows');
             const addRowButton = document.getElementById('add-row');
             const grandTotalInput = document.getElementById('grand-total');
+            const modeSelect = document.getElementById('mode_transaksi');
+            const akunSelect = document.getElementById('akun_pembayaran');
 
-            if (!rowsContainer || !addRowButton || !grandTotalInput) {
+            if (!rowsContainer || !addRowButton || !grandTotalInput || !modeSelect || !akunSelect) {
                 return;
             }
 
@@ -229,6 +240,18 @@
                 const categoryInput = row.querySelector('.js-category');
                 if (categoryInput) {
                     categoryInput.value = category;
+                }
+            };
+
+            const syncPaymentMode = () => {
+                const isImportAwal = modeSelect.value === 'import_awal';
+                akunSelect.disabled = isImportAwal;
+                akunSelect.required = !isImportAwal;
+
+                if (isImportAwal) {
+                    akunSelect.value = '';
+                } else if (!akunSelect.value) {
+                    akunSelect.value = 'kas';
                 }
             };
 
@@ -315,6 +338,8 @@
 
             rowsContainer.querySelectorAll('.js-item').forEach((select) => updateCategoryFromSelect(select));
             rowsContainer.querySelectorAll('tr').forEach((row) => recalculateRow(row));
+            modeSelect.addEventListener('change', syncPaymentMode);
+            syncPaymentMode();
             refreshRemoveButtons();
             recalculateGrandTotal();
         })();

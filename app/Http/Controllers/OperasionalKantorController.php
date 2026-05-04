@@ -161,13 +161,23 @@ class OperasionalKantorController extends Controller
     {
         $data = $request->validate([
             'tanggal' => ['required', 'date'],
-            'akun_pembayaran' => ['required', 'in:kas,bank'],
+            'mode_transaksi' => ['nullable', 'in:normal,import_awal'],
+            'akun_pembayaran' => ['nullable', 'in:kas,bank'],
             'rows' => ['required', 'array', 'min:1'],
             'rows.*.id_master_operasional_kantor' => ['required', 'integer', 'exists:master_operasional_kantor,id_master_operasional_kantor'],
             'rows.*.harga_satuan' => ['required', 'numeric', 'min:0'],
             'rows.*.qty' => ['required', 'numeric', 'min:0.01'],
             'rows.*.keterangan' => ['nullable', 'string'],
         ]);
+
+        $isImportAwal = ($data['mode_transaksi'] ?? 'normal') === 'import_awal';
+        $akunPembayaran = $isImportAwal ? null : ($data['akun_pembayaran'] ?? null);
+
+        if (! $isImportAwal && empty($akunPembayaran)) {
+            throw ValidationException::withMessages([
+                'akun_pembayaran' => 'Akun pembayaran wajib dipilih untuk transaksi operasional kantor normal.',
+            ]);
+        }
 
         $masterIds = collect($data['rows'])
             ->pluck('id_master_operasional_kantor')
@@ -205,6 +215,8 @@ class OperasionalKantorController extends Controller
                 ? trim((string) $row['keterangan'])
                 : '-';
 
+            $keterangan = $this->buildOperasionalKeterangan($keterangan, $isImportAwal);
+
             $operasionalRows[] = [
                 'id_master_operasional_kantor' => $masterId,
                 'jenis_biaya' => $master->kategori,
@@ -217,23 +229,25 @@ class OperasionalKantorController extends Controller
                 'total_biaya' => $totalBiaya,
                 'tanggal' => $tanggal,
                 'keterangan' => $keterangan,
-                'akun_pembayaran' => $data['akun_pembayaran'],
+                'akun_pembayaran' => $akunPembayaran,
                 'created_at' => now(),
                 'updated_at' => now(),
             ];
 
-            $arusKasRows[] = [
-                'akun' => $data['akun_pembayaran'],
-                'tanggal' => $tanggal,
-                'jenis_transaksi' => 'Keluar',
-                'kategori' => 'Operasional Kantor - '.$master->kategori,
-                'deskripsi' => $master->item.($keterangan !== '-' ? ' | '.$keterangan : ''),
-                'uang_masuk' => 0,
-                'uang_keluar' => $totalBiaya,
-                'saldo' => 0,
-                'created_at' => now(),
-                'updated_at' => now(),
-            ];
+            if (! $isImportAwal && $akunPembayaran !== null) {
+                $arusKasRows[] = [
+                    'akun' => $akunPembayaran,
+                    'tanggal' => $tanggal,
+                    'jenis_transaksi' => 'Keluar',
+                    'kategori' => 'Operasional Kantor - '.$master->kategori,
+                    'deskripsi' => $master->item.($keterangan !== '-' ? ' | '.$keterangan : ''),
+                    'uang_masuk' => 0,
+                    'uang_keluar' => $totalBiaya,
+                    'saldo' => 0,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ];
+            }
 
             $grandTotal += $totalBiaya;
         }
@@ -244,10 +258,14 @@ class OperasionalKantorController extends Controller
             ]);
         }
 
-        DB::transaction(function () use ($operasionalRows, $arusKasRows, $data) {
+        DB::transaction(function () use ($operasionalRows, $arusKasRows, $akunPembayaran) {
             OperasionalKantor::query()->insert($operasionalRows);
 
-            $lastSaldoKas = (float) (DB::table('arus_kas')->where('akun', $data['akun_pembayaran'])->orderByDesc('id_kas')->value('saldo') ?? 0);
+            if ($arusKasRows === [] || $akunPembayaran === null) {
+                return;
+            }
+
+            $lastSaldoKas = (float) (DB::table('arus_kas')->where('akun', $akunPembayaran)->orderByDesc('id_kas')->value('saldo') ?? 0);
 
             foreach ($arusKasRows as $row) {
                 $lastSaldoKas -= (float) $row['uang_keluar'];
@@ -256,7 +274,7 @@ class OperasionalKantorController extends Controller
             }
         });
 
-        return redirect()->route('operasional-kantor.transaksi')->with('success', 'Biaya operasional kantor berhasil disimpan. Grand total: Rp '.number_format($grandTotal, 2, ',', '.'));
+        return redirect()->route('operasional-kantor.transaksi')->with('success', 'Biaya operasional kantor berhasil disimpan. Grand total: Rp '.number_format($grandTotal, 2, ',', '.').($isImportAwal ? ' (mode import awal tanpa potong kas).' : '.'));
     }
 
     public function destroyTransaction(Request $request, OperasionalKantor $transaction): RedirectResponse
@@ -270,11 +288,11 @@ class OperasionalKantorController extends Controller
         DB::transaction(function () use ($transaction) {
             $akun = in_array((string) $transaction->akun_pembayaran, ['kas', 'bank'], true)
                 ? (string) $transaction->akun_pembayaran
-                : 'kas';
+                : null;
 
             $totalBiaya = (float) ($transaction->total_biaya ?? $transaction->jumlah ?? 0);
 
-            if ($totalBiaya > 0) {
+            if ($totalBiaya > 0 && $akun !== null) {
                 $this->postArusKas(
                     akun: $akun,
                     tanggal: now()->toDateString(),
@@ -330,5 +348,24 @@ class OperasionalKantorController extends Controller
             'created_at' => now(),
             'updated_at' => now(),
         ]);
+    }
+
+    private function buildOperasionalKeterangan(string $keterangan, bool $isImportAwal): string
+    {
+        if (! $isImportAwal) {
+            return $keterangan;
+        }
+
+        $tag = '[IMPORT ITEM AWAL TANPA KAS]';
+
+        if ($keterangan === '-') {
+            return $tag;
+        }
+
+        if (str_starts_with($keterangan, $tag)) {
+            return $keterangan;
+        }
+
+        return $tag.' '.$keterangan;
     }
 }
