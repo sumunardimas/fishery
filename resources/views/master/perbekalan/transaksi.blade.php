@@ -63,6 +63,13 @@
                                     data-rupiah-input value="{{ old('harga_satuan') }}" placeholder="0,00">
                             </div>
                             <div class="form-group col-md-2">
+                                <label class="required-asterisk" for="mode_transaksi">Mode IN</label>
+                                <select id="mode_transaksi" name="mode_transaksi" class="form-control">
+                                    <option value="normal" @selected(old('mode_transaksi', 'normal') === 'normal')>Pembelian</option>
+                                    <option value="import_awal" @selected(old('mode_transaksi') === 'import_awal')>Import Stok Awal</option>
+                                </select>
+                            </div>
+                            <div class="form-group col-md-2">
                                 <label class="required-asterisk" for="akun_pembayaran">Bayar Dari</label>
                                 <select id="akun_pembayaran" name="akun_pembayaran" class="form-control">
                                     <option value="">-</option>
@@ -89,8 +96,9 @@
                         </div>
 
                         <small class="text-muted d-block mt-2">
-                            Untuk transaksi <strong>IN</strong>, pembelian perbekalan akan memotong saldo akun yang dipilih
-                            (Kas/Bank). Untuk <strong>OUT</strong>, akun pembayaran diabaikan.
+                            Untuk transaksi <strong>IN</strong> mode <strong>Pembelian</strong>, saldo akun yang dipilih
+                            (Kas/Bank) akan terpotong. Pilih mode <strong>Import Stok Awal</strong> untuk input stok
+                            existing tanpa potong kas. Untuk <strong>OUT</strong>, akun pembayaran diabaikan.
                         </small>
                     </form>
                 </div>
@@ -104,13 +112,23 @@
         (function() {
             const jenis = document.getElementById('jenis_transaksi');
             const akun = document.getElementById('akun_pembayaran');
+            const mode = document.getElementById('mode_transaksi');
 
-            if (!jenis || !akun) return;
+            if (!jenis || !akun || !mode) return;
 
             const syncAkunState = () => {
                 const isIn = jenis.value === 'in';
-                akun.disabled = !isIn;
+                const isImportAwal = mode.value === 'import_awal';
+
+                mode.disabled = !isIn;
                 if (!isIn) {
+                    mode.value = 'normal';
+                }
+
+                akun.disabled = !isIn || isImportAwal;
+                if (!isIn) {
+                    akun.value = '';
+                } else if (isImportAwal) {
                     akun.value = '';
                 } else if (!akun.value) {
                     akun.value = 'kas';
@@ -118,6 +136,7 @@
             };
 
             jenis.addEventListener('change', syncAkunState);
+            mode.addEventListener('change', syncAkunState);
             syncAkunState();
         })();
     </script>
