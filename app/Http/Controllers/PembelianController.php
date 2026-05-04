@@ -152,21 +152,36 @@ class PembelianController extends Controller
             'tanggal_transaksi' => ['required', 'date'],
             'id_item_pembelian' => ['required', 'integer', 'exists:master_item_pembelian,id_item_pembelian'],
             'jenis_transaksi' => ['required', 'in:in,out'],
-            'akun_pembayaran' => ['nullable', 'in:kas,bank', 'required_if:jenis_transaksi,in'],
+            'mode_transaksi' => ['nullable', 'in:normal,import_awal'],
+            'akun_pembayaran' => ['nullable', 'in:kas,bank'],
             'jumlah' => ['required', 'numeric', 'gt:0'],
             'harga_satuan' => ['nullable', 'numeric', 'min:0'],
             'sumber_tujuan' => ['nullable', 'string', 'max:255'],
             'keterangan' => ['nullable', 'string'],
         ]);
 
-        if (($data['jenis_transaksi'] ?? null) === 'in' && (float) ($data['harga_satuan'] ?? 0) <= 0) {
+        $isIn = ($data['jenis_transaksi'] ?? null) === 'in';
+        $isImportAwal = ($data['mode_transaksi'] ?? 'normal') === 'import_awal';
+
+        if ($isIn && ! $isImportAwal && empty($data['akun_pembayaran'])) {
+            throw ValidationException::withMessages([
+                'akun_pembayaran' => 'Akun pembayaran wajib dipilih untuk transaksi IN pembelian.',
+            ]);
+        }
+
+        if ($isIn && ! $isImportAwal && (float) ($data['harga_satuan'] ?? 0) <= 0) {
             throw ValidationException::withMessages([
                 'harga_satuan' => 'Harga satuan wajib diisi dan harus lebih dari 0 untuk transaksi IN.',
             ]);
         }
 
+        if (! $isIn) {
+            $data['mode_transaksi'] = 'normal';
+        }
+
         DB::transaction(function () use ($data) {
             $jumlah = (float) $data['jumlah'];
+            $isImportAwal = ($data['mode_transaksi'] ?? 'normal') === 'import_awal';
 
             $stock = ItemPembelianStock::query()
                 ->where('id_item_pembelian', (int) $data['id_item_pembelian'])
@@ -193,28 +208,36 @@ class PembelianController extends Controller
             $stock->save();
 
             $hargaSatuan = $data['harga_satuan'] ?? null;
+            if ($isImportAwal && (float) ($hargaSatuan ?? 0) <= 0) {
+                $hargaSatuan = null;
+            }
+
             $totalHarga = $hargaSatuan !== null ? $jumlah * (float) $hargaSatuan : 0;
+            $akunPembayaran = $isImportAwal ? null : ($data['akun_pembayaran'] ?? null);
 
             PembelianTransaction::create([
                 'tanggal_transaksi' => $data['tanggal_transaksi'],
                 'id_item_pembelian' => (int) $data['id_item_pembelian'],
                 'jenis_transaksi' => $data['jenis_transaksi'],
-                'akun_pembayaran' => $data['akun_pembayaran'] ?? null,
+                'akun_pembayaran' => $akunPembayaran,
                 'jumlah' => $jumlah,
                 'harga_satuan' => $hargaSatuan,
                 'total_harga' => $totalHarga,
                 'sumber_tujuan' => $data['sumber_tujuan'] ?? null,
-                'keterangan' => $data['keterangan'] ?? null,
+                'keterangan' => $this->buildPembelianKeterangan(
+                    $data['keterangan'] ?? null,
+                    $isImportAwal
+                ),
             ]);
 
             // Purchase IN with price will reduce selected account balance.
-            if ($data['jenis_transaksi'] === 'in' && $totalHarga > 0 && !empty($data['akun_pembayaran'])) {
+            if ($data['jenis_transaksi'] === 'in' && ! $isImportAwal && $totalHarga > 0 && ! empty($akunPembayaran)) {
                 $itemName = (string) DB::table('master_item_pembelian')
                     ->where('id_item_pembelian', (int) $data['id_item_pembelian'])
                     ->value('nama_item');
 
                 $this->postArusKas(
-                    akun: $data['akun_pembayaran'],
+                    akun: $akunPembayaran,
                     tanggal: $data['tanggal_transaksi'],
                     kategori: 'Pembelian Barang',
                     deskripsi: 'Pembelian '.$itemName.' ('.number_format($jumlah, 2, ',', '.').' '.$this->getItemUnit((int) $data['id_item_pembelian']).')'.($data['sumber_tujuan'] ? ' dari '.$data['sumber_tujuan'] : ''),
@@ -335,5 +358,26 @@ class PembelianController extends Controller
             'created_at' => now(),
             'updated_at' => now(),
         ]);
+    }
+
+    private function buildPembelianKeterangan(?string $keterangan, bool $isImportAwal): ?string
+    {
+        $keterangan = trim((string) ($keterangan ?? ''));
+
+        if (! $isImportAwal) {
+            return $keterangan !== '' ? $keterangan : null;
+        }
+
+        $tag = '[IMPORT STOK AWAL TANPA KAS]';
+
+        if ($keterangan === '') {
+            return $tag;
+        }
+
+        if (str_starts_with($keterangan, $tag)) {
+            return $keterangan;
+        }
+
+        return $tag.' '.$keterangan;
     }
 }
