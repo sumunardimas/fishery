@@ -85,7 +85,8 @@
                     @forelse ($masterPerbekalan as $barang)
                         @php
                             $existingQty = $selectedPerbekalan[$barang->id_barang] ?? null;
-                            $value = old('perbekalan_qty.' . $barang->id_barang, $existingQty);
+                            $defaultQty = isset($pelayaran) ? null : (float) ($barang->default_qty ?? 0);
+                            $value = old('perbekalan_qty.' . $barang->id_barang, $existingQty ?? $defaultQty);
                         @endphp
                         <tr>
                             <td>{{ $barang->nama_barang }}</td>

@@ -265,6 +265,7 @@ class PelayaranController extends Controller
                 'mp.id_barang',
                 'mp.nama_barang',
                 'mp.satuan',
+                DB::raw('COALESCE(mp.`default`, 0) as default_qty'),
                 DB::raw('COALESCE(ps.stok_aktual, 0) as stok_aktual')
             )
             ->orderBy('mp.nama_barang')
