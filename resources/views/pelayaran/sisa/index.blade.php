@@ -873,11 +873,49 @@
                                 </div>
                             </div>
 
+                            <div class="table-responsive mb-3">
+                                <table class="table table-bordered table-sm trip-table-dynamic">
+                                    <thead>
+                                        <tr>
+                                            <th>Komponen Bagi Hasil</th>
+                                            <th class="text-right">Nominal</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @php
+                                            $nilaiTercatatTangkapan3Ton = (float) ((($rekapTangkapan['tangkapan_3_ton'] ?? null)->total_nilai ?? 0));
+                                            $totalBagiHasilJaringan = (float) ($rekapGrandTotals['total_jaringan_bagi_hasil'] ?? 0);
+                                        @endphp
+                                        @if ($totalBagiHasilJaringan > 0)
+                                            <tr>
+                                                <td>Bagi Hasil Jaringan ({{ $jaringanProfitSharingPercent }}%)</td>
+                                                <td class="text-right">Rp
+                                                    {{ number_format($totalBagiHasilJaringan, 2, ',', '.') }}
+                                                </td>
+                                            </tr>
+                                        @endif
+                                        @if ($nilaiTercatatTangkapan3Ton > 0)
+                                            <tr>
+                                                <td>Nilai Tercatat Tangkapan 3 Ton</td>
+                                                <td class="text-right">Rp
+                                                    {{ number_format($nilaiTercatatTangkapan3Ton, 2, ',', '.') }}
+                                                </td>
+                                            </tr>
+                                        @endif
+                                        @if ($totalBagiHasilJaringan <= 0 && $nilaiTercatatTangkapan3Ton <= 0)
+                                            <tr>
+                                                <td colspan="2" class="text-center text-muted">Tidak ada komponen informasi tambahan.</td>
+                                            </tr>
+                                        @endif
+                                    </tbody>
+                                </table>
+                            </div>
+
                             <div class="table-responsive mb-4">
                                 <table class="table table-bordered table-sm trip-table-dynamic">
                                     <thead>
                                         <tr>
-                                            <th>Komponen Rekap</th>
+                                            <th>Komponen Trip</th>
                                             <th class="text-right">Nominal</th>
                                         </tr>
                                     </thead>
@@ -906,22 +944,6 @@
                                                     {{ number_format($nilaiKategoriDikreditkan, 2, ',', '.') }}
                                                 </td>
                                             </tr>
-                                            @if ($isTangkapan3TonCategory && $nilaiKategori > 0)
-                                                <tr>
-                                                    <td>Nilai Tercatat {{ $kategoriLabel }}</td>
-                                                    <td class="text-right">Rp
-                                                        {{ number_format($nilaiKategori, 2, ',', '.') }}
-                                                    </td>
-                                                </tr>
-                                            @endif
-                                            @if ($isJaringanCategory && (float) ($rekapGrandTotals['total_jaringan_bagi_hasil'] ?? 0) > 0)
-                                                <tr>
-                                                    <td>Bagi Hasil Jaringan ({{ $jaringanProfitSharingPercent }}%)</td>
-                                                    <td class="text-right">Rp
-                                                        {{ number_format((float) ($rekapGrandTotals['total_jaringan_bagi_hasil'] ?? 0), 2, ',', '.') }}
-                                                    </td>
-                                                </tr>
-                                            @endif
                                         @endforeach
                                         <tr>
                                             <td>Total Biaya Perbekalan Terpakai</td>
