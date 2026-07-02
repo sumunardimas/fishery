@@ -721,7 +721,7 @@
                                                             <input type="date"
                                                                 name="tanggal[{{ $master->id_master_operasional }}]"
                                                                 class="form-control"
-                                                                value="{{ old('tanggal.' . $master->id_master_operasional, now()->toDateString()) }}">
+                                                                value="{{ old('tanggal.' . $master->id_master_operasional, $existingOperasionalTanggal[$master->id_master_operasional] ?? now()->toDateString()) }}">
                                                         </td>
                                                         <td style="min-width: 170px;">
                                                             <input type="text"

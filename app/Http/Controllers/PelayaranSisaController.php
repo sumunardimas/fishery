@@ -730,6 +730,7 @@ class PelayaranSisaController extends Controller
             ->orderBy('nama_operasional')
             ->get();
         $existingOperasional = [];
+        $existingOperasionalTanggal = [];
         $rekapOperasional = [
             'total_item_biaya' => 0,
             'total_biaya' => 0,
@@ -838,6 +839,11 @@ class PelayaranSisaController extends Controller
                 ->map(fn ($value) => (float) $value)
                 ->toArray();
 
+            $existingOperasionalTanggal = DB::table('operasional')
+                ->where('id_pelayaran', $selectedPelayaran->id_pelayaran)
+                ->pluck('tanggal', 'id_master_operasional')
+                ->toArray();
+
             $rekapDetail = DB::table('operasional as o')
                 ->leftJoin('master_operasional as mo', 'mo.id_master_operasional', '=', 'o.id_master_operasional')
                 ->where('o.id_pelayaran', $selectedPelayaran->id_pelayaran)
@@ -916,6 +922,7 @@ class PelayaranSisaController extends Controller
             'existingPersonalAnglers' => $existingPersonalAnglers,
             'masterOperasional' => $masterOperasional,
             'existingOperasional' => $existingOperasional,
+            'existingOperasionalTanggal' => $existingOperasionalTanggal,
             'rekapOperasional' => $rekapOperasional,
             'rekapTangkapan' => $rekapTangkapan,
             'rekapPerbekalan' => $rekapPerbekalan,
