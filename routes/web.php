@@ -14,6 +14,7 @@ use App\Http\Controllers\OperasionalController;
 use App\Http\Controllers\OperasionalKantorController;
 use App\Http\Controllers\PelayaranController;
 use App\Http\Controllers\PelayaranSisaController;
+use App\Http\Controllers\PelayaranSisa2Controller;
 use App\Http\Controllers\PembelianController;
 use App\Http\Controllers\PenjualanController;
 use App\Http\Controllers\ProfileDocumentController;
@@ -58,6 +59,8 @@ Route::middleware(['auth', 'staff.menu.access'])->group(function () {
         Route::get('/', [PelayaranController::class, 'index'])->name('index');
         Route::get('/create', [PelayaranController::class, 'create'])->name('create');
         Route::post('/', [PelayaranController::class, 'store'])->name('store');
+        Route::get('/sisa2', [PelayaranSisa2Controller::class, 'index'])->name('sisa2.index');
+        Route::post('/sisa2/tangkapan-pribadi', [PelayaranSisa2Controller::class, 'storePersonalTangkapan'])->name('sisa2.tangkapan-pribadi.store');
         Route::get('/sisa', [PelayaranSisaController::class, 'index'])->name('sisa.index');
         Route::get('/sisa/history', [PelayaranSisaController::class, 'history'])->name('sisa.history');
         Route::get('/sisa/history/{pelayaran}', [PelayaranSisaController::class, 'showHistoryDetail'])->name('sisa.history.show');
