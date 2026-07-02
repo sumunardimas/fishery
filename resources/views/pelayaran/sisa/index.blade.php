@@ -1567,6 +1567,8 @@
 
                     if (hargaInput) {
                         hargaInput.value = '';
+                        hargaInput.dataset.hargaRawValue = '';
+                        delete hargaInput.dataset.hargaFormatterBound;
                     }
 
                     if (nilaiOutput) {
@@ -1707,6 +1709,7 @@
                                 }
                                 if (hargaInput) {
                                     hargaInput.value = '';
+                                    hargaInput.dataset.hargaRawValue = '';
                                 }
                                 if (nilaiOutput) {
                                     nilaiOutput.textContent = 'Rp 0';
