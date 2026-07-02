@@ -57,6 +57,33 @@
             line-height: 1.4;
         }
 
+        .js-personal-matrix-table th.js-sticky-first-col,
+        .js-personal-matrix-table td.js-sticky-first-col {
+            position: sticky;
+            left: 0;
+            z-index: 2;
+            background: #fff;
+            min-width: 220px;
+            box-shadow: 1px 0 0 rgba(222, 226, 230, 0.85), 6px 0 10px -8px rgba(0, 0, 0, 0.25);
+        }
+
+        .js-personal-matrix-table th.js-sticky-first-col::after,
+        .js-personal-matrix-table td.js-sticky-first-col::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            right: -10px;
+            width: 10px;
+            height: 100%;
+            pointer-events: none;
+            background: linear-gradient(to right, rgba(0, 0, 0, 0.06), rgba(0, 0, 0, 0));
+        }
+
+        .js-personal-matrix-table thead th.js-sticky-first-col {
+            z-index: 3;
+            background: #f8f9fa;
+        }
+
         .trip-close-modal .modal-dialog {
             display: flex;
             align-items: center;
@@ -404,6 +431,12 @@
                                                     ? $defaultPersonalPrices
                                                     : [];
 
+                                                $hasAnyPricedFish = collect($masterIkanTangkapan)->contains(function ($ikanTangkapan) use ($defaultPersonalPrices) {
+                                                    $price = $defaultPersonalPrices[$ikanTangkapan->id_ikan_tangkapan] ?? null;
+
+                                                    return $price !== null && $price !== '' && (float) $price > 0;
+                                                });
+
                                                 $defaultPersonalWeights = old('personal_weights', $existingPersonalWeights ?? []);
                                                 $defaultPersonalWeights = is_array($defaultPersonalWeights)
                                                     ? $defaultPersonalWeights
@@ -436,6 +469,7 @@
                                                                                 class="form-control js-harga-input"
                                                                                 inputmode="numeric"
                                                                                 name="personal_prices[{{ $ikanTangkapan->id_ikan_tangkapan }}]"
+                                                                                data-ikan-id="{{ $ikanTangkapan->id_ikan_tangkapan }}"
                                                                                 value="{{ old('personal_prices.' . $ikanTangkapan->id_ikan_tangkapan, $defaultPersonalPrices[$ikanTangkapan->id_ikan_tangkapan] ?? '') }}"
                                                                                 placeholder="0">
                                                                         </td>
@@ -474,7 +508,8 @@
                                                             class="table table-bordered table-sm trip-table-dynamic js-personal-matrix-table">
                                                             <thead>
                                                                 <tr>
-                                                                    <th style="min-width: 220px;"></th>
+                                                                    <th class="js-sticky-first-col"
+                                                                        style="min-width: 220px;">Jenis Ikan</th>
                                                                     @foreach ($defaultFishermen as $fisherIndex => $fisherName)
                                                                         <th class="js-fisherman-header"
                                                                             data-fisher-index="{{ $fisherIndex }}"
@@ -490,9 +525,22 @@
                                                             </thead>
                                                             <tbody>
                                                                 @forelse ($masterIkanTangkapan as $ikanTangkapan)
+                                                                    @php
+                                                                        $matrixPrice =
+                                                                            $defaultPersonalPrices[
+                                                                                $ikanTangkapan->id_ikan_tangkapan
+                                                                            ] ?? null;
+                                                                        $showMatrixRow =
+                                                                            $matrixPrice !== null &&
+                                                                            $matrixPrice !== '' &&
+                                                                            (float) $matrixPrice > 0;
+                                                                    @endphp
                                                                     <tr
-                                                                        data-ikan-id="{{ $ikanTangkapan->id_ikan_tangkapan }}">
-                                                                        <td>{{ $ikanTangkapan->nama_ikan_tangkapan }}</td>
+                                                                        data-ikan-id="{{ $ikanTangkapan->id_ikan_tangkapan }}"
+                                                                        class="js-personal-fish-row {{ $showMatrixRow ? '' : 'd-none' }}">
+                                                                        <td class="js-sticky-first-col">
+                                                                            {{ $ikanTangkapan->nama_ikan_tangkapan }}
+                                                                        </td>
                                                                         @foreach ($defaultFishermen as $fisherIndex => $fisherName)
                                                                             <td class="js-fisherman-cell"
                                                                                 data-fisher-index="{{ $fisherIndex }}">
@@ -505,10 +553,21 @@
                                                                             </td>
                                                                         @endforeach
                                                                     </tr>
+
+                                                                    @if ($loop->last)
+                                                                        <tr
+                                                                            class="js-no-priced-fish-row {{ $hasAnyPricedFish ? 'd-none' : '' }}">
+                                                                            <td colspan="{{ count($defaultFishermen) + 1 }}"
+                                                                                class="text-center text-muted js-sticky-first-col">
+                                                                                Belum ada ikan dengan harga terdefinisi.
+                                                                                Isi harga terlebih dahulu.
+                                                                            </td>
+                                                                        </tr>
+                                                                    @endif
                                                                 @empty
                                                                     <tr>
                                                                         <td colspan="{{ count($defaultFishermen) + 1 }}"
-                                                                            class="text-center text-muted">
+                                                                            class="text-center text-muted js-sticky-first-col">
                                                                             Master ikan tangkapan belum tersedia.
                                                                         </td>
                                                                     </tr>
@@ -1310,6 +1369,52 @@
                     });
                 };
 
+                var syncPersonalRowsByPrice = function(scope) {
+                    var container = scope || document;
+                    var matrices = container.querySelectorAll('.js-personal-matrix-table');
+
+                    matrices.forEach(function(table) {
+                        var form = table.closest('form');
+                        if (!form) {
+                            return;
+                        }
+
+                        var visibleCount = 0;
+                        var priceMap = {};
+
+                        form.querySelectorAll('input[name^="personal_prices["]').forEach(function(priceInput) {
+                            var ikanId = priceInput.getAttribute('data-ikan-id');
+                            if (!ikanId) {
+                                return;
+                            }
+
+                            var rawValue = priceInput.dataset.hargaRawValue;
+                            var priceValue = rawValue !== undefined && rawValue !== '' ? parseFloat(rawValue) :
+                                parseHargaNumber(priceInput.value || '0');
+                            priceMap[ikanId] = !isNaN(priceValue) && isFinite(priceValue) ? priceValue : 0;
+                        });
+
+                        table.querySelectorAll('.js-personal-fish-row').forEach(function(row) {
+                            var ikanId = row.getAttribute('data-ikan-id');
+                            var shouldShow = !!(ikanId && (priceMap[ikanId] || 0) > 0);
+
+                            row.classList.toggle('d-none', !shouldShow);
+                            row.querySelectorAll('input').forEach(function(input) {
+                                input.disabled = !shouldShow;
+                            });
+
+                            if (shouldShow) {
+                                visibleCount += 1;
+                            }
+                        });
+
+                        var emptyRow = table.querySelector('.js-no-priced-fish-row');
+                        if (emptyRow) {
+                            emptyRow.classList.toggle('d-none', visibleCount > 0);
+                        }
+                    });
+                };
+
                 var addPersonalFishermanColumn = function(table) {
                     if (!table) {
                         return;
@@ -1632,6 +1737,7 @@
                 });
 
                 initHargaFormatter();
+                syncPersonalRowsByPrice();
 
                 document.addEventListener('click', function(event) {
                     var addFishermanColumnBtn = event.target.closest('.js-add-fisherman-column');
@@ -1759,6 +1865,10 @@
                     var input = event.target.closest('.js-berat-input, .js-harga-input');
                     if (!input) {
                         return;
+                    }
+
+                    if (input.matches('input[name^="personal_prices["]')) {
+                        syncPersonalRowsByPrice(input.closest('form') || document);
                     }
 
                     var targetSelector = input.getAttribute('data-target');
