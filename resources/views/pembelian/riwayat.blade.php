@@ -22,7 +22,8 @@
                             <h4 class="card-title mb-1">Riwayat IN/OUT Pembelian</h4>
                             <p class="card-description mb-0">Lihat histori transaksi masuk dan keluar per item pembelian.</p>
                         </div>
-                        <a href="{{ route('master.item-pembelian.index') }}" class="btn btn-outline-primary">Kembali ke Master</a>
+                        <a href="{{ route('master.item-pembelian.index') }}" class="btn btn-outline-primary">Kembali ke
+                            Master</a>
                     </div>
 
                     <form method="GET" action="{{ route('pembelian.riwayat') }}" class="mb-0">
@@ -67,7 +68,9 @@
                         @else
                             Semua Item Pembelian
                         @endif
-                        <small class="text-muted font-weight-normal">({{ \Carbon\Carbon::parse($startDate)->format('d-m-Y') }} &ndash; {{ \Carbon\Carbon::parse($endDate)->format('d-m-Y') }})</small>
+                        <small
+                            class="text-muted font-weight-normal">({{ \Carbon\Carbon::parse($startDate)->format('d-m-Y') }}
+                            &ndash; {{ \Carbon\Carbon::parse($endDate)->format('d-m-Y') }})</small>
                     </h5>
 
                     <div class="table-responsive">
@@ -78,6 +81,7 @@
                                     <th>Item</th>
                                     <th>Jenis</th>
                                     <th>Akun Bayar</th>
+                                    <th>Sisa Hutang</th>
                                     <th>Jumlah</th>
                                     <th>Harga Satuan</th>
                                     <th>Total</th>
@@ -89,16 +93,37 @@
                             <tbody>
                                 @forelse ($transactions as $trx)
                                     <tr>
+                                        @php
+                                            $totalHutang = (float) ($trx->total_harga ?? 0);
+                                            $terbayarHutang = (float) ($trx->nominal_terbayar_hutang ?? 0);
+                                            $sisaHutang = max(0, $totalHutang - $terbayarHutang);
+                                            $isHutang =
+                                                $trx->jenis_transaksi === 'in' &&
+                                                $trx->akun_pembayaran === 'hutang' &&
+                                                $totalHutang > 0;
+                                        @endphp
                                         <td>{{ \Carbon\Carbon::parse($trx->tanggal_transaksi)->format('d-m-Y') }}</td>
-                                        <td>{{ $trx->nama_item }} <small class="text-muted">({{ $trx->satuan }})</small></td>
+                                        <td>{{ $trx->nama_item }} <small class="text-muted">({{ $trx->satuan }})</small>
+                                        </td>
                                         <td>
-                                            <span class="badge {{ $trx->jenis_transaksi === 'in' ? 'badge-success' : 'badge-danger' }}">
+                                            <span
+                                                class="badge {{ $trx->jenis_transaksi === 'in' ? 'badge-success' : 'badge-danger' }}">
                                                 {{ strtoupper($trx->jenis_transaksi) }}
                                             </span>
                                         </td>
                                         <td>
                                             @if ($trx->akun_pembayaran)
-                                                <span class="badge badge-info">{{ strtoupper($trx->akun_pembayaran) }}</span>
+                                                <span
+                                                    class="badge badge-info">{{ strtoupper($trx->akun_pembayaran) }}</span>
+                                            @else
+                                                <span class="text-muted">-</span>
+                                            @endif
+                                        </td>
+                                        <td>
+                                            @if ($isHutang)
+                                                <strong class="{{ $sisaHutang > 0 ? 'text-danger' : 'text-success' }}">
+                                                    Rp {{ number_format($sisaHutang, 2, ',', '.') }}
+                                                </strong>
                                             @else
                                                 <span class="text-muted">-</span>
                                             @endif
@@ -115,7 +140,34 @@
                                         <td>{{ $trx->sumber_tujuan ?: '-' }}</td>
                                         <td>{{ $trx->keterangan ?: '-' }}</td>
                                         <td class="text-right">
-                                            <form action="{{ route('pembelian.transactions.destroy', $trx->id_transaction) }}"
+                                            @if ($isHutang && $sisaHutang > 0)
+                                                <form
+                                                    action="{{ route('pembelian.transactions.pay-debt', $trx->id_transaction) }}"
+                                                    method="POST"
+                                                    class="d-flex align-items-center justify-content-end mb-2"
+                                                    onsubmit="return confirm('Simpan pembayaran hutang transaksi ini?')">
+                                                    @csrf
+                                                    @if ($selectedItemId)
+                                                        <input type="hidden" name="show_item"
+                                                            value="{{ $selectedItemId }}">
+                                                    @endif
+                                                    <input type="hidden" name="start_date" value="{{ $startDate }}">
+                                                    <input type="hidden" name="end_date" value="{{ $endDate }}">
+                                                    <select name="akun_pembayaran" class="form-control form-control-sm mr-1"
+                                                        style="max-width: 95px;" required>
+                                                        <option value="kas">Kas</option>
+                                                        <option value="bank">Bank</option>
+                                                    </select>
+                                                    <input type="number" step="0.01" min="0.01"
+                                                        max="{{ number_format($sisaHutang, 2, '.', '') }}" name="nominal"
+                                                        class="form-control form-control-sm mr-1" style="max-width: 130px;"
+                                                        placeholder="Nominal" required>
+                                                    <button type="submit"
+                                                        class="btn btn-outline-success btn-sm">Bayar</button>
+                                                </form>
+                                            @endif
+                                            <form
+                                                action="{{ route('pembelian.transactions.destroy', $trx->id_transaction) }}"
                                                 method="POST"
                                                 onsubmit="return confirm('Hapus transaksi ini? Stok akan disesuaikan otomatis.')">
                                                 @csrf
@@ -131,7 +183,7 @@
                                     </tr>
                                 @empty
                                     <tr>
-                                        <td colspan="10" class="text-center text-muted">
+                                        <td colspan="11" class="text-center text-muted">
                                             @if ($selectedItem)
                                                 Belum ada transaksi untuk item ini pada periode yang dipilih.
                                             @else

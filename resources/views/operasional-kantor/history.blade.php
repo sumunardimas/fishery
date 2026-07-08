@@ -100,6 +100,7 @@
                                         <th>Kategori</th>
                                         <th>Item</th>
                                         <th>Akun Bayar</th>
+                                        <th>Sisa Hutang</th>
                                         <th>Harga Satuan</th>
                                         <th>Qty</th>
                                         <th>Total</th>
@@ -109,6 +110,13 @@
                                 </thead>
                                 <tbody>
                                     @forelse ($detailRows as $detail)
+                                        @php
+                                            $totalHutang = (float) ($detail->total_biaya ?? ($detail->jumlah ?? 0));
+                                            $terbayarHutang = (float) ($detail->nominal_terbayar_hutang ?? 0);
+                                            $sisaHutang = max(0, $totalHutang - $terbayarHutang);
+                                            $isHutang =
+                                                ($detail->akun_pembayaran ?? null) === 'hutang' && $totalHutang > 0;
+                                        @endphp
                                         <tr>
                                             <td>{{ $detail->kategori ?: $detail->jenis_biaya }}</td>
                                             <td>{{ $detail->item ?: $detail->deskripsi }}</td>
@@ -116,6 +124,15 @@
                                                 @if (!empty($detail->akun_pembayaran))
                                                     <span
                                                         class="badge badge-info">{{ strtoupper($detail->akun_pembayaran) }}</span>
+                                                @else
+                                                    <span class="text-muted">-</span>
+                                                @endif
+                                            </td>
+                                            <td>
+                                                @if ($isHutang)
+                                                    <strong class="{{ $sisaHutang > 0 ? 'text-danger' : 'text-success' }}">
+                                                        Rp {{ number_format($sisaHutang, 2, ',', '.') }}
+                                                    </strong>
                                                 @else
                                                     <span class="text-muted">-</span>
                                                 @endif
@@ -128,6 +145,32 @@
                                             </td>
                                             <td>{{ $detail->keterangan ?: '-' }}</td>
                                             <td class="text-right">
+                                                @if ($isHutang && $sisaHutang > 0)
+                                                    <form
+                                                        action="{{ route('operasional-kantor.transactions.pay-debt', $detail->id_operasional_kantor) }}"
+                                                        method="POST"
+                                                        class="d-flex align-items-center justify-content-end mb-2"
+                                                        onsubmit="return confirm('Simpan pembayaran hutang transaksi ini?')">
+                                                        @csrf
+                                                        <input type="hidden" name="start_date"
+                                                            value="{{ $startDate }}">
+                                                        <input type="hidden" name="end_date" value="{{ $endDate }}">
+                                                        <input type="hidden" name="detail_date"
+                                                            value="{{ $detailDate }}">
+                                                        <select name="akun_pembayaran"
+                                                            class="form-control form-control-sm mr-1"
+                                                            style="max-width: 95px;" required>
+                                                            <option value="kas">Kas</option>
+                                                            <option value="bank">Bank</option>
+                                                        </select>
+                                                        <input type="number" step="0.01" min="0.01"
+                                                            max="{{ number_format($sisaHutang, 2, '.', '') }}"
+                                                            name="nominal" class="form-control form-control-sm mr-1"
+                                                            style="max-width: 130px;" placeholder="Nominal" required>
+                                                        <button type="submit"
+                                                            class="btn btn-outline-success btn-sm">Bayar</button>
+                                                    </form>
+                                                @endif
                                                 <form
                                                     action="{{ route('operasional-kantor.transactions.destroy', $detail->id_operasional_kantor) }}"
                                                     method="POST"
@@ -144,7 +187,7 @@
                                         </tr>
                                     @empty
                                         <tr>
-                                            <td colspan="8" class="text-center text-muted">Tidak ada detail pada
+                                            <td colspan="9" class="text-center text-muted">Tidak ada detail pada
                                                 tanggal ini.</td>
                                         </tr>
                                     @endforelse

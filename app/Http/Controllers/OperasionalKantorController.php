@@ -162,7 +162,7 @@ class OperasionalKantorController extends Controller
         $data = $request->validate([
             'tanggal' => ['required', 'date'],
             'mode_transaksi' => ['nullable', 'in:normal,import_awal'],
-            'akun_pembayaran' => ['nullable', 'in:kas,bank'],
+            'akun_pembayaran' => ['nullable', 'in:kas,bank,hutang'],
             'rows' => ['required', 'array', 'min:1'],
             'rows.*.id_master_operasional_kantor' => ['required', 'integer', 'exists:master_operasional_kantor,id_master_operasional_kantor'],
             'rows.*.harga_satuan' => ['required', 'numeric', 'min:0'],
@@ -230,23 +230,39 @@ class OperasionalKantorController extends Controller
                 'tanggal' => $tanggal,
                 'keterangan' => $keterangan,
                 'akun_pembayaran' => $akunPembayaran,
+                'nominal_terbayar_hutang' => 0,
                 'created_at' => now(),
                 'updated_at' => now(),
             ];
 
             if (! $isImportAwal && $akunPembayaran !== null) {
-                $arusKasRows[] = [
-                    'akun' => $akunPembayaran,
-                    'tanggal' => $tanggal,
-                    'jenis_transaksi' => 'Keluar',
-                    'kategori' => 'Operasional Kantor - '.$master->kategori,
-                    'deskripsi' => $master->item.($keterangan !== '-' ? ' | '.$keterangan : ''),
-                    'uang_masuk' => 0,
-                    'uang_keluar' => $totalBiaya,
-                    'saldo' => 0,
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ];
+                if ($akunPembayaran === 'hutang') {
+                    $arusKasRows[] = [
+                        'akun' => 'hutang',
+                        'tanggal' => $tanggal,
+                        'jenis_transaksi' => 'Masuk',
+                        'kategori' => 'Hutang Operasional Kantor - '.$master->kategori,
+                        'deskripsi' => $master->item.($keterangan !== '-' ? ' | '.$keterangan : ''),
+                        'uang_masuk' => $totalBiaya,
+                        'uang_keluar' => 0,
+                        'saldo' => 0,
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ];
+                } else {
+                    $arusKasRows[] = [
+                        'akun' => $akunPembayaran,
+                        'tanggal' => $tanggal,
+                        'jenis_transaksi' => 'Keluar',
+                        'kategori' => 'Operasional Kantor - '.$master->kategori,
+                        'deskripsi' => $master->item.($keterangan !== '-' ? ' | '.$keterangan : ''),
+                        'uang_masuk' => 0,
+                        'uang_keluar' => $totalBiaya,
+                        'saldo' => 0,
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ];
+                }
             }
 
             $grandTotal += $totalBiaya;
@@ -265,11 +281,13 @@ class OperasionalKantorController extends Controller
                 return;
             }
 
-            $lastSaldoKas = (float) (DB::table('arus_kas')->where('akun', $akunPembayaran)->orderByDesc('id_kas')->value('saldo') ?? 0);
-
             foreach ($arusKasRows as $row) {
-                $lastSaldoKas -= (float) $row['uang_keluar'];
-                $row['saldo'] = $lastSaldoKas;
+                $lastSaldoKas = (float) (DB::table('arus_kas')
+                    ->where('akun', $row['akun'])
+                    ->orderByDesc('id_kas')
+                    ->value('saldo') ?? 0);
+
+                $row['saldo'] = $lastSaldoKas + (float) $row['uang_masuk'] - (float) $row['uang_keluar'];
                 DB::table('arus_kas')->insert($row);
             }
         });
@@ -286,21 +304,39 @@ class OperasionalKantorController extends Controller
         ]);
 
         DB::transaction(function () use ($transaction) {
-            $akun = in_array((string) $transaction->akun_pembayaran, ['kas', 'bank'], true)
+            $akun = in_array((string) $transaction->akun_pembayaran, ['kas', 'bank', 'hutang'], true)
                 ? (string) $transaction->akun_pembayaran
                 : null;
 
             $totalBiaya = (float) ($transaction->total_biaya ?? $transaction->jumlah ?? 0);
 
             if ($totalBiaya > 0 && $akun !== null) {
-                $this->postArusKas(
-                    akun: $akun,
-                    tanggal: now()->toDateString(),
-                    kategori: 'Pembatalan Operasional Kantor - '.($transaction->kategori ?? $transaction->jenis_biaya ?? '-'),
-                    deskripsi: 'Pembatalan transaksi operasional kantor #'.$transaction->id_operasional_kantor,
-                    debit: $totalBiaya,
-                    kredit: 0
-                );
+                if ($akun === 'hutang') {
+                    $nominalTerbayarHutang = round((float) ($transaction->nominal_terbayar_hutang ?? 0), 2);
+                    if ($nominalTerbayarHutang > 0.009) {
+                        throw ValidationException::withMessages([
+                            'message' => 'Transaksi hutang yang sudah dibayar tidak bisa dihapus. Batalkan pembayaran hutang terlebih dahulu lewat koreksi keuangan.',
+                        ]);
+                    }
+
+                    $this->postArusKas(
+                        akun: 'hutang',
+                        tanggal: now()->toDateString(),
+                        kategori: 'Pembatalan Hutang Operasional Kantor - '.($transaction->kategori ?? $transaction->jenis_biaya ?? '-'),
+                        deskripsi: 'Pembatalan transaksi hutang operasional kantor #'.$transaction->id_operasional_kantor,
+                        debit: 0,
+                        kredit: $totalBiaya
+                    );
+                } else {
+                    $this->postArusKas(
+                        akun: $akun,
+                        tanggal: now()->toDateString(),
+                        kategori: 'Pembatalan Operasional Kantor - '.($transaction->kategori ?? $transaction->jenis_biaya ?? '-'),
+                        deskripsi: 'Pembatalan transaksi operasional kantor #'.$transaction->id_operasional_kantor,
+                        debit: $totalBiaya,
+                        kredit: 0
+                    );
+                }
             }
 
             $transaction->delete();
@@ -315,6 +351,85 @@ class OperasionalKantorController extends Controller
         return redirect()
             ->route('operasional-kantor.history', $params)
             ->with('success', 'Transaksi operasional kantor berhasil dihapus dan saldo akun dikembalikan.');
+    }
+
+    public function payDebt(Request $request, OperasionalKantor $transaction): RedirectResponse
+    {
+        $data = $request->validate([
+            'akun_pembayaran' => ['required', 'in:kas,bank'],
+            'nominal' => ['required', 'numeric', 'gt:0'],
+            'start_date' => ['nullable', 'date'],
+            'end_date' => ['nullable', 'date'],
+            'detail_date' => ['nullable', 'date'],
+        ]);
+
+        DB::transaction(function () use ($transaction, $data) {
+            /** @var OperasionalKantor|null $locked */
+            $locked = OperasionalKantor::query()
+                ->whereKey($transaction->getKey())
+                ->lockForUpdate()
+                ->first();
+
+            if (! $locked) {
+                throw ValidationException::withMessages([
+                    'message' => 'Data transaksi tidak ditemukan.',
+                ]);
+            }
+
+            $isDebtTransaction = (string) $locked->akun_pembayaran === 'hutang'
+                && (float) ($locked->total_biaya ?? $locked->jumlah ?? 0) > 0;
+
+            if (! $isDebtTransaction) {
+                throw ValidationException::withMessages([
+                    'message' => 'Transaksi ini bukan transaksi hutang yang bisa dibayar.',
+                ]);
+            }
+
+            $totalDebt = round((float) ($locked->total_biaya ?? $locked->jumlah ?? 0), 2);
+            $alreadyPaid = round((float) ($locked->nominal_terbayar_hutang ?? 0), 2);
+            $remainingDebt = round(max(0, $totalDebt - $alreadyPaid), 2);
+            $paymentAmount = round((float) $data['nominal'], 2);
+
+            if ($paymentAmount > $remainingDebt + 0.01) {
+                throw ValidationException::withMessages([
+                    'nominal' => 'Nominal melebihi sisa hutang transaksi ini.',
+                ]);
+            }
+
+            $newPaid = round($alreadyPaid + $paymentAmount, 2);
+            $newRemainingDebt = round(max(0, $totalDebt - $newPaid), 2);
+
+            $this->postArusKas(
+                akun: (string) $data['akun_pembayaran'],
+                tanggal: now()->toDateString(),
+                kategori: 'Pelunasan Hutang Operasional Kantor',
+                deskripsi: 'Bayar hutang operasional kantor #'.$locked->id_operasional_kantor.' sebesar Rp '.number_format($paymentAmount, 2, ',', '.').'. Sisa hutang Rp '.number_format($newRemainingDebt, 2, ',', '.').'.',
+                debit: 0,
+                kredit: $paymentAmount
+            );
+
+            $this->postArusKas(
+                akun: 'hutang',
+                tanggal: now()->toDateString(),
+                kategori: 'Pelunasan Hutang Operasional Kantor',
+                deskripsi: 'Pengurangan hutang operasional kantor #'.$locked->id_operasional_kantor.' sebesar Rp '.number_format($paymentAmount, 2, ',', '.').'.',
+                debit: 0,
+                kredit: $paymentAmount
+            );
+
+            $locked->nominal_terbayar_hutang = $newPaid;
+            $locked->save();
+        });
+
+        $params = array_filter([
+            'start_date' => $data['start_date'] ?? null,
+            'end_date' => $data['end_date'] ?? null,
+            'detail_date' => $data['detail_date'] ?? null,
+        ]);
+
+        return redirect()
+            ->route('operasional-kantor.history', $params)
+            ->with('success', 'Pembayaran hutang operasional kantor berhasil disimpan.');
     }
 
     private function getLastSaldoByAkun(string $akun): float

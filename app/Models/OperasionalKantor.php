@@ -28,6 +28,7 @@ class OperasionalKantor extends Model
         'tanggal',
         'keterangan',
         'akun_pembayaran',
+        'nominal_terbayar_hutang',
     ];
 
     protected $casts = [
@@ -35,6 +36,7 @@ class OperasionalKantor extends Model
         'qty' => 'decimal:2',
         'jumlah' => 'decimal:2',
         'total_biaya' => 'decimal:2',
+        'nominal_terbayar_hutang' => 'decimal:2',
         'tanggal' => 'date',
     ];
 

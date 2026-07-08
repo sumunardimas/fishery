@@ -167,7 +167,7 @@ class MasterPerbekalanController extends Controller
             'id_barang' => ['required', 'integer', 'exists:master_perbekalan,id_barang'],
             'jenis_transaksi' => ['required', 'in:in,out'],
             'mode_transaksi' => ['nullable', 'in:normal,import_awal'],
-            'akun_pembayaran' => ['nullable', 'in:kas,bank'],
+            'akun_pembayaran' => ['nullable', 'in:kas,bank,hutang'],
             'jumlah' => ['required', 'numeric', 'gt:0'],
             'harga_satuan' => ['nullable', 'numeric', 'min:0'],
             'sumber_tujuan' => ['nullable', 'string', 'max:255'],
@@ -235,7 +235,7 @@ class MasterPerbekalanController extends Controller
             $totalHarga = $hargaSatuan !== null ? $jumlah * (float) $hargaSatuan : 0;
             $akunPembayaran = $isImportAwal ? null : ($data['akun_pembayaran'] ?? null);
 
-            PerbekalanTransaction::create([
+            $transaction = PerbekalanTransaction::create([
                 'tanggal_transaksi' => $data['tanggal_transaksi'],
                 'id_barang' => $idBarang,
                 'id_pelayaran' => null,
@@ -244,6 +244,7 @@ class MasterPerbekalanController extends Controller
                 'jumlah' => $jumlah,
                 'harga_satuan' => $hargaSatuan,
                 'total_harga' => $totalHarga,
+                'nominal_terbayar_hutang' => 0,
                 'sumber_tujuan' => $data['sumber_tujuan'] ?? null,
                 'keterangan' => $this->buildPerbekalanKeterangan(
                     $data['keterangan'] ?? null,
@@ -256,14 +257,25 @@ class MasterPerbekalanController extends Controller
                 $namaBarang = $this->getPerbekalanName($idBarang);
                 $unit = $this->getPerbekalanUnit($idBarang);
 
-                $this->postArusKas(
-                    akun: $akunPembayaran,
-                    tanggal: $data['tanggal_transaksi'],
-                    kategori: 'Pembelian Perbekalan',
-                    deskripsi: 'Pembelian perbekalan '.$namaBarang.' ('.number_format($jumlah, 2, ',', '.').' '.$unit.')'.(!empty($data['sumber_tujuan']) ? ' dari '.$data['sumber_tujuan'] : ''),
-                    debit: 0,
-                    kredit: (float) $totalHarga
-                );
+                if ($akunPembayaran === 'hutang') {
+                    $this->postArusKas(
+                        akun: 'hutang',
+                        tanggal: $data['tanggal_transaksi'],
+                        kategori: 'Hutang Pembelian Perbekalan',
+                        deskripsi: 'Hutang pembelian perbekalan #'.$transaction->id_transaction.' '.$namaBarang.' sebesar Rp '.number_format((float) $totalHarga, 2, ',', '.').'.',
+                        debit: (float) $totalHarga,
+                        kredit: 0
+                    );
+                } else {
+                    $this->postArusKas(
+                        akun: $akunPembayaran,
+                        tanggal: $data['tanggal_transaksi'],
+                        kategori: 'Pembelian Perbekalan',
+                        deskripsi: 'Pembelian perbekalan '.$namaBarang.' ('.number_format($jumlah, 2, ',', '.').' '.$unit.')'.(!empty($data['sumber_tujuan']) ? ' dari '.$data['sumber_tujuan'] : ''),
+                        debit: 0,
+                        kredit: (float) $totalHarga
+                    );
+                }
             }
         });
 
@@ -274,6 +286,8 @@ class MasterPerbekalanController extends Controller
     public function destroyTransaction(Request $request, PerbekalanTransaction $transaction): RedirectResponse
     {
         $selectedItemId = $request->integer('show_item');
+        $startDate = $request->input('start_date');
+        $endDate = $request->input('end_date');
 
         if ($transaction->jenis_transaksi === 'out' && (int) ($transaction->id_pelayaran ?? 0) > 0) {
             return redirect()->route('master.perbekalan.history', array_filter([
@@ -315,16 +329,34 @@ class MasterPerbekalanController extends Controller
             if (
                 $transaction->jenis_transaksi === 'in'
                 && (float) $transaction->total_harga > 0
-                && in_array((string) $transaction->akun_pembayaran, ['kas', 'bank'], true)
+                && in_array((string) $transaction->akun_pembayaran, ['kas', 'bank', 'hutang'], true)
             ) {
-                $this->postArusKas(
-                    akun: (string) $transaction->akun_pembayaran,
-                    tanggal: now()->toDateString(),
-                    kategori: 'Pembatalan Pembelian Perbekalan',
-                    deskripsi: 'Pembatalan transaksi perbekalan #'.$transaction->id_transaction,
-                    debit: (float) $transaction->total_harga,
-                    kredit: 0
-                );
+                if ((string) $transaction->akun_pembayaran === 'hutang') {
+                    $nominalTerbayarHutang = round((float) ($transaction->nominal_terbayar_hutang ?? 0), 2);
+                    if ($nominalTerbayarHutang > 0.009) {
+                        throw ValidationException::withMessages([
+                            'message' => 'Transaksi hutang yang sudah dibayar tidak bisa dihapus. Batalkan pembayaran hutang terlebih dahulu lewat koreksi keuangan.',
+                        ]);
+                    }
+
+                    $this->postArusKas(
+                        akun: 'hutang',
+                        tanggal: now()->toDateString(),
+                        kategori: 'Pembatalan Hutang Pembelian Perbekalan',
+                        deskripsi: 'Pembatalan transaksi hutang perbekalan #'.$transaction->id_transaction,
+                        debit: 0,
+                        kredit: (float) $transaction->total_harga
+                    );
+                } else {
+                    $this->postArusKas(
+                        akun: (string) $transaction->akun_pembayaran,
+                        tanggal: now()->toDateString(),
+                        kategori: 'Pembatalan Pembelian Perbekalan',
+                        deskripsi: 'Pembatalan transaksi perbekalan #'.$transaction->id_transaction,
+                        debit: (float) $transaction->total_harga,
+                        kredit: 0
+                    );
+                }
             }
 
             $transaction->delete();
@@ -334,9 +366,93 @@ class MasterPerbekalanController extends Controller
         if ($selectedItemId > 0) {
             $redirectParams['show_item'] = $selectedItemId;
         }
+        if (! empty($startDate)) {
+            $redirectParams['start_date'] = $startDate;
+        }
+        if (! empty($endDate)) {
+            $redirectParams['end_date'] = $endDate;
+        }
 
         return redirect()->route('master.perbekalan.history', $redirectParams)
             ->with('success', 'Transaksi berhasil dihapus dan stok telah disesuaikan.');
+    }
+
+    public function payDebt(Request $request, PerbekalanTransaction $transaction): RedirectResponse
+    {
+        $data = $request->validate([
+            'akun_pembayaran' => ['required', 'in:kas,bank'],
+            'nominal' => ['required', 'numeric', 'gt:0'],
+            'show_item' => ['nullable', 'integer'],
+            'start_date' => ['nullable', 'date'],
+            'end_date' => ['nullable', 'date'],
+        ]);
+
+        DB::transaction(function () use ($transaction, $data) {
+            /** @var PerbekalanTransaction|null $locked */
+            $locked = PerbekalanTransaction::query()
+                ->whereKey($transaction->getKey())
+                ->lockForUpdate()
+                ->first();
+
+            if (! $locked) {
+                throw ValidationException::withMessages([
+                    'message' => 'Data transaksi tidak ditemukan.',
+                ]);
+            }
+
+            $isDebtTransaction = (string) $locked->jenis_transaksi === 'in'
+                && (string) $locked->akun_pembayaran === 'hutang'
+                && (float) $locked->total_harga > 0;
+
+            if (! $isDebtTransaction) {
+                throw ValidationException::withMessages([
+                    'message' => 'Transaksi ini bukan transaksi hutang yang bisa dibayar.',
+                ]);
+            }
+
+            $alreadyPaid = round((float) ($locked->nominal_terbayar_hutang ?? 0), 2);
+            $remainingDebt = round(max(0, (float) $locked->total_harga - $alreadyPaid), 2);
+            $paymentAmount = round((float) $data['nominal'], 2);
+
+            if ($paymentAmount > $remainingDebt + 0.01) {
+                throw ValidationException::withMessages([
+                    'nominal' => 'Nominal melebihi sisa hutang transaksi ini.',
+                ]);
+            }
+
+            $newPaid = round($alreadyPaid + $paymentAmount, 2);
+            $newRemainingDebt = round(max(0, (float) $locked->total_harga - $newPaid), 2);
+
+            $this->postArusKas(
+                akun: (string) $data['akun_pembayaran'],
+                tanggal: now()->toDateString(),
+                kategori: 'Pelunasan Hutang Pembelian Perbekalan',
+                deskripsi: 'Bayar hutang perbekalan #'.$locked->id_transaction.' sebesar Rp '.number_format($paymentAmount, 2, ',', '.').'. Sisa hutang Rp '.number_format($newRemainingDebt, 2, ',', '.').'.',
+                debit: 0,
+                kredit: $paymentAmount
+            );
+
+            $this->postArusKas(
+                akun: 'hutang',
+                tanggal: now()->toDateString(),
+                kategori: 'Pelunasan Hutang Pembelian Perbekalan',
+                deskripsi: 'Pengurangan hutang perbekalan #'.$locked->id_transaction.' sebesar Rp '.number_format($paymentAmount, 2, ',', '.').'.',
+                debit: 0,
+                kredit: $paymentAmount
+            );
+
+            $locked->nominal_terbayar_hutang = $newPaid;
+            $locked->save();
+        });
+
+        $redirectParams = array_filter([
+            'show_item' => ! empty($data['show_item']) ? (int) $data['show_item'] : null,
+            'start_date' => $data['start_date'] ?? null,
+            'end_date' => $data['end_date'] ?? null,
+        ]);
+
+        return redirect()->route('master.perbekalan.history', $redirectParams)
+            ->with('success', 'Pembayaran hutang perbekalan berhasil disimpan.');
     }
 
     private function getPerbekalanUnit(int $idBarang): string

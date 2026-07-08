@@ -35,7 +35,8 @@
                                 <label class="required-asterisk" for="mode_transaksi">Mode</label>
                                 <select class="form-control" id="mode_transaksi" name="mode_transaksi">
                                     <option value="normal" @selected(old('mode_transaksi', 'normal') === 'normal')>Normal (Potong Kas/Bank)</option>
-                                    <option value="import_awal" @selected(old('mode_transaksi') === 'import_awal')>Import Item Awal (Tanpa Kas)</option>
+                                    <option value="import_awal" @selected(old('mode_transaksi') === 'import_awal')>Import Item Awal (Tanpa Kas)
+                                    </option>
                                 </select>
                             </div>
                             <div class="form-group col-md-4">
@@ -44,12 +45,15 @@
                                     <option value="">Pilih akun</option>
                                     <option value="kas" @selected(old('akun_pembayaran', 'kas') === 'kas')>Kas</option>
                                     <option value="bank" @selected(old('akun_pembayaran') === 'bank')>Bank</option>
+                                    <option value="hutang" @selected(old('akun_pembayaran') === 'hutang')>Hutang</option>
                                 </select>
                             </div>
                         </div>
 
                         <small class="text-muted d-block mb-2">
-                            Mode <strong>Normal</strong> akan mengurangi saldo akun yang dipilih (Kas/Bank) di arus kas.
+                            Mode <strong>Normal</strong> akan mengurangi saldo akun yang dipilih (Kas/Bank).
+                            Jika pilih <strong>Hutang</strong>, transaksi akan menambah akun hutang di arus kas dan
+                            pelunasannya dilakukan dari halaman riwayat.
                             Mode <strong>Import Item Awal</strong> dipakai untuk input existing item tanpa pengurangan kas.
                         </small>
 

@@ -75,6 +75,7 @@
                                     <option value="">-</option>
                                     <option value="kas" @selected(old('akun_pembayaran', 'kas') === 'kas')>Kas</option>
                                     <option value="bank" @selected(old('akun_pembayaran') === 'bank')>Bank</option>
+                                    <option value="hutang" @selected(old('akun_pembayaran') === 'hutang')>Hutang</option>
                                 </select>
                             </div>
                             <div class="form-group col-md-2 d-flex align-items-end">
@@ -97,8 +98,10 @@
 
                         <small class="text-muted d-block mt-2">
                             Untuk transaksi <strong>IN</strong> mode <strong>Pembelian</strong>, saldo akun yang dipilih
-                            (Kas/Bank) akan terpotong. Pilih mode <strong>Import Stok Awal</strong> untuk input stok
-                            existing tanpa potong kas. Untuk <strong>OUT</strong>, akun pembayaran diabaikan.
+                            (Kas/Bank) akan terpotong. Jika pilih <strong>Hutang</strong>, transaksi dicatat sebagai
+                            hutang di arus kas dan bisa dibayar dari halaman riwayat. Pilih mode
+                            <strong>Import Stok Awal</strong> untuk input stok existing tanpa potong kas. Untuk
+                            <strong>OUT</strong>, akun pembayaran diabaikan.
                         </small>
                     </form>
                 </div>

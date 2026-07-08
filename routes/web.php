@@ -106,6 +106,7 @@ Route::middleware(['auth', 'staff.menu.access'])->group(function () {
         Route::put('/master-items/{masterItem}', [OperasionalKantorController::class, 'updateMaster'])->name('master.update');
         Route::delete('/master-items/{masterItem}', [OperasionalKantorController::class, 'destroyMaster'])->name('master.destroy');
         Route::post('/', [OperasionalKantorController::class, 'store'])->name('store');
+        Route::post('/transactions/{transaction}/pay-debt', [OperasionalKantorController::class, 'payDebt'])->name('transactions.pay-debt');
         Route::delete('/transactions/{transaction}', [OperasionalKantorController::class, 'destroyTransaction'])->name('transactions.destroy');
     });
 
@@ -140,6 +141,7 @@ Route::middleware(['auth', 'staff.menu.access'])->group(function () {
         Route::delete('/items/{item}', [PembelianController::class, 'destroyItem'])->name('items.destroy');
 
         Route::post('/transactions', [PembelianController::class, 'storeTransaction'])->name('transactions.store');
+        Route::post('/transactions/{transaction}/pay-debt', [PembelianController::class, 'payDebt'])->name('transactions.pay-debt');
         Route::delete('/transactions/{transaction}', [PembelianController::class, 'destroyTransaction'])->name('transactions.destroy');
     });
 
@@ -156,6 +158,7 @@ Route::middleware(['auth', 'staff.menu.access'])->group(function () {
         Route::put('/{perbekalan}', [MasterPerbekalanController::class, 'update'])->name('update');
         Route::delete('/{perbekalan}', [MasterPerbekalanController::class, 'destroy'])->name('destroy');
         Route::post('/transactions', [MasterPerbekalanController::class, 'storeTransaction'])->name('transactions.store');
+        Route::post('/transactions/{transaction}/pay-debt', [MasterPerbekalanController::class, 'payDebt'])->name('transactions.pay-debt');
         Route::delete('/transactions/{transaction}', [MasterPerbekalanController::class, 'destroyTransaction'])->name('transactions.destroy');
     });
 

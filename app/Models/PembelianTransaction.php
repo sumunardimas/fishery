@@ -22,6 +22,7 @@ class PembelianTransaction extends Model
         'jumlah',
         'harga_satuan',
         'total_harga',
+        'nominal_terbayar_hutang',
         'sumber_tujuan',
         'keterangan',
     ];
@@ -31,5 +32,6 @@ class PembelianTransaction extends Model
         'jumlah' => 'decimal:2',
         'harga_satuan' => 'decimal:2',
         'total_harga' => 'decimal:2',
+        'nominal_terbayar_hutang' => 'decimal:2',
     ];
 }
