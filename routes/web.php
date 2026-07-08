@@ -80,6 +80,10 @@ Route::middleware(['auth', 'staff.menu.access'])->group(function () {
         Route::post('/open-kas', [PenjualanController::class, 'openKas'])->name('open-kas');
         Route::post('/close-kas', [PenjualanController::class, 'closeKas'])->name('close-kas');
         Route::get('/riwayat', [PenjualanController::class, 'riwayat'])->name('riwayat');
+        Route::get('/selisih', [PenjualanController::class, 'discrepancies'])->name('selisih.index');
+        Route::post('/selisih/manual-adjustment', [PenjualanController::class, 'storeManualAdjustment'])->name('selisih.manual');
+        Route::get('/selisih/{id}', [PenjualanController::class, 'showDiscrepancy'])->name('selisih.show')->where('id', '[0-9]+');
+        Route::post('/selisih/{id}/resolve', [PenjualanController::class, 'resolveDiscrepancy'])->name('selisih.resolve')->where('id', '[0-9]+');
         Route::get('/report', [PenjualanController::class, 'report'])->name('report');
         Route::get('/{id}/invoice', [PenjualanController::class, 'downloadInvoice'])->name('invoice')->where('id', '[0-9]+');
         Route::get('/{id}/invoice/preview', [PenjualanController::class, 'previewInvoice'])->name('invoice.preview')->where('id', '[0-9]+');

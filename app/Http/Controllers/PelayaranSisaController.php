@@ -1211,8 +1211,29 @@ class PelayaranSisaController extends Controller
                 ->selectRaw('ihp.id_ikan as ikan_key, SUM(ihp.berat_hasil) as total_tangkapan')
                 ->pluck('total_tangkapan', 'ikan_key');
 
+        $adjustmentByRelation = $relationIds->isEmpty()
+            ? collect()
+            : DB::table('penyesuaian_stok_ikan_items as psii')
+                ->join('penyesuaian_stok_ikan as psi', 'psi.id_penyesuaian_stok', '=', 'psii.id_penyesuaian_stok')
+                ->join('master_ikan as mi', 'mi.id_ikan', '=', 'psii.id_ikan')
+                ->whereIn('mi.id_ikan_tangkapan', $relationIds->all())
+                ->whereBetween(DB::raw('DATE(psi.created_at)'), [$periodeStart, $periodeEnd])
+                ->groupBy('mi.id_ikan_tangkapan')
+                ->selectRaw('mi.id_ikan_tangkapan as group_key, SUM(psii.delta_berat) as total_penyesuaian')
+                ->pluck('total_penyesuaian', 'group_key');
+
+        $adjustmentByIkan = empty($directIkanIds)
+            ? collect()
+            : DB::table('penyesuaian_stok_ikan_items as psii')
+                ->join('penyesuaian_stok_ikan as psi', 'psi.id_penyesuaian_stok', '=', 'psii.id_penyesuaian_stok')
+                ->whereIn('psii.id_ikan', $directIkanIds)
+                ->whereBetween(DB::raw('DATE(psi.created_at)'), [$periodeStart, $periodeEnd])
+                ->groupBy('psii.id_ikan')
+                ->selectRaw('psii.id_ikan as ikan_key, SUM(psii.delta_berat) as total_penyesuaian')
+                ->pluck('total_penyesuaian', 'ikan_key');
+
         $now = now();
-        $rows = $targetIkan->map(function ($ikan) use ($catchByIkan, $catchByRelation, $salesByIkan, $salesByRelation, $periode, $now) {
+        $rows = $targetIkan->map(function ($ikan) use ($adjustmentByIkan, $adjustmentByRelation, $catchByIkan, $catchByRelation, $salesByIkan, $salesByRelation, $periode, $now) {
             $relationId = $ikan->id_ikan_tangkapan ? (int) $ikan->id_ikan_tangkapan : null;
             $totalTangkapan = $relationId
                 ? (float) ($catchByRelation[$relationId] ?? 0)
@@ -1220,13 +1241,16 @@ class PelayaranSisaController extends Controller
             $totalPenjualan = $relationId
                 ? (float) ($salesByRelation[$relationId] ?? 0)
                 : (float) ($salesByIkan[$ikan->id_ikan] ?? 0);
+            $totalPenyesuaian = $relationId
+                ? (float) ($adjustmentByRelation[$relationId] ?? 0)
+                : (float) ($adjustmentByIkan[$ikan->id_ikan] ?? 0);
 
             return [
                 'id_ikan' => (int) $ikan->id_ikan,
                 'periode' => $periode,
                 'total_tangkapan' => $totalTangkapan,
                 'total_penjualan' => $totalPenjualan,
-                'stok_akhir' => $totalTangkapan - $totalPenjualan,
+                'stok_akhir' => $totalTangkapan + $totalPenyesuaian - $totalPenjualan,
                 'created_at' => $now,
                 'updated_at' => $now,
             ];

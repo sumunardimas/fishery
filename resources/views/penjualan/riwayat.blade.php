@@ -32,11 +32,17 @@
                     <div class="card-body d-flex justify-content-between align-items-center">
                         <div>
                             <h4 class="card-title mb-1">Riwayat Transaksi Penjualan</h4>
-                            <p class="card-description mb-0">Daftar transaksi penjualan dengan filter rentang tanggal. Default menampilkan 7 hari terakhir.</p>
+                            <p class="card-description mb-0">Daftar transaksi penjualan dengan filter rentang tanggal.
+                                Default menampilkan 7 hari terakhir.</p>
                         </div>
-                        <a href="{{ route('penjualan.index') }}" class="btn btn-primary">
-                            <i class="ti-write mr-1"></i> POS Transaksi Baru
-                        </a>
+                        <div class="d-flex align-items-center">
+                            <a href="{{ route('penjualan.selisih.index') }}" class="btn btn-outline-warning mr-2">
+                                Selisih Stok
+                            </a>
+                            <a href="{{ route('penjualan.index') }}" class="btn btn-primary">
+                                <i class="ti-write mr-1"></i> POS Transaksi Baru
+                            </a>
+                        </div>
                     </div>
                 </div>
 
@@ -104,10 +110,12 @@
                 <div class="card">
                     <div class="card-body">
                         @php
-                            $rangeLabel = $startDate === $endDate
-                                ? \Carbon\Carbon::parse($startDate)->translatedFormat('d F Y')
-                                : \Carbon\Carbon::parse($startDate)->translatedFormat('d F Y') . ' - ' .
-                                    \Carbon\Carbon::parse($endDate)->translatedFormat('d F Y');
+                            $rangeLabel =
+                                $startDate === $endDate
+                                    ? \Carbon\Carbon::parse($startDate)->translatedFormat('d F Y')
+                                    : \Carbon\Carbon::parse($startDate)->translatedFormat('d F Y') .
+                                        ' - ' .
+                                        \Carbon\Carbon::parse($endDate)->translatedFormat('d F Y');
                         @endphp
                         <h5 class="card-title">
                             Transaksi — {{ $rangeLabel }}
@@ -162,6 +170,9 @@
                                                     <span class="badge badge-success">Lunas</span>
                                                 @else
                                                     <span class="badge badge-warning">Piutang</span>
+                                                @endif
+                                                @if ((int) ($trx->has_pending_discrepancy ?? 0) === 1)
+                                                    <span class="badge badge-danger ml-1">Selisih Pending</span>
                                                 @endif
                                             </td>
                                             <td style="min-width: 160px;">
@@ -223,7 +234,8 @@
                 </div>
                 <div class="p-3">
                     <p class="text-muted small mb-2">Salin pesan berikut lalu kirim ke pelanggan melalui WhatsApp:</p>
-                    <textarea class="form-control mb-3" rows="8" readonly :value="waMsg" style="font-size:13px;resize:none;"></textarea>
+                    <textarea class="form-control mb-3" rows="8" readonly :value="waMsg"
+                        style="font-size:13px;resize:none;"></textarea>
                     <div class="d-flex">
                         <button type="button" class="btn btn-outline-secondary mr-2" @click="copyMsg()">
                             <span x-show="!copied"><i class="ti-files mr-1"></i> Salin Pesan</span>

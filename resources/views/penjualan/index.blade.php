@@ -33,8 +33,10 @@
         piutang() { return Math.max(0, this.totalHarga() - this.parseNominal(this.bayarTunai) - this.parseNominal(this.bayarTransfer)); },
         statusPembayaran() { return this.piutang() <= 0 ? 'Lunas' : 'Piutang'; },
         stokByItem(item) { return !item.id_ikan ? 0 : (this.ikanMap[item.id_ikan]?.stok_tersedia ?? 0); },
-    }" x-init="window.requestAnimationFrame(() => { window.initFishSearchableSelect && window.initFishSearchableSelect();
-        window.rupiahInput && window.rupiahInput.init(); })">
+    }" x-init="window.requestAnimationFrame(() => {
+        window.initFishSearchableSelect && window.initFishSearchableSelect();
+        window.rupiahInput && window.rupiahInput.init();
+    })">
         <div class="col-12">
             @if ($errors->has('message'))
                 <x-alert type="danger" :message="$errors->first('message') ?? null" />
@@ -48,9 +50,18 @@
                 <div class="card-body d-flex justify-content-between align-items-center">
                     <div>
                         <h4 class="card-title mb-1">POS Penjualan Ikan</h4>
-                        <p class="card-description mb-0">Penjualan berdasarkan stok hasil tangkapan yang tersedia.</p>
+                        <p class="card-description mb-0">Penjualan tetap cepat. Jika stok kurang saat transaksi harus jalan,
+                            simpan sebagai selisih sementara lalu rekonsiliasi belakangan.</p>
                     </div>
-                    <a href="{{ route('penjualan.riwayat') }}" class="btn btn-outline-primary">Riwayat Transaksi</a>
+                    <div class="d-flex align-items-center">
+                        <a href="{{ route('penjualan.selisih.index') }}" class="btn btn-outline-warning mr-2">
+                            Selisih Stok
+                            @if (($pendingDiscrepancyCount ?? 0) > 0)
+                                <span class="badge badge-warning ml-1">{{ $pendingDiscrepancyCount }}</span>
+                            @endif
+                        </a>
+                        <a href="{{ route('penjualan.riwayat') }}" class="btn btn-outline-primary">Riwayat Transaksi</a>
+                    </div>
                 </div>
             </div>
 
@@ -155,8 +166,9 @@
                                     </div>
                                     <div class="col-md-3 form-group mb-2">
                                         <label class="required-asterisk">Harga / kg</label>
-                                        <input type="text" data-rupiah-input :name="'items[' + index + '][harga_per_kg]'"
-                                            x-model="item.harga_per_kg" class="form-control" placeholder="0,00" required>
+                                        <input type="text" data-rupiah-input
+                                            :name="'items[' + index + '][harga_per_kg]'" x-model="item.harga_per_kg"
+                                            class="form-control" placeholder="0,00" required>
                                     </div>
                                     <div class="col-md-1 d-flex align-items-end form-group mb-2">
                                         <button type="button" class="btn btn-sm btn-outline-danger w-100"
@@ -194,6 +206,27 @@
                                             x-text="statusPembayaran()"></span>
                                     </div>
                                 </div>
+                            </div>
+                        </div>
+
+                        <div class="border rounded p-3 mb-3 bg-light">
+                            <div class="form-group form-check mb-2" style="padding-left: 1.5rem;">
+                                <input type="checkbox" class="form-check-input" id="allow_pending_discrepancy"
+                                    name="allow_pending_discrepancy" value="1"
+                                    {{ old('allow_pending_discrepancy') ? 'checked' : '' }}>
+                                <label class="form-check-label" for="allow_pending_discrepancy">
+                                    Simpan sebagai selisih sementara bila stok kurang
+                                </label>
+                            </div>
+                            <div class="form-group mb-0">
+                                <label for="catatan_selisih">Catatan selisih sementara</label>
+                                <input type="text" name="catatan_selisih" id="catatan_selisih" class="form-control"
+                                    value="{{ old('catatan_selisih') }}"
+                                    placeholder="Contoh: timbang aktual lebih besar / campur jenis ikan">
+                                <small class="text-muted d-block mt-1">
+                                    Gunakan opsi ini jika transaksi harus tetap diproses cepat. Rekonsiliasi detail bisa
+                                    dikerjakan di menu Selisih Stok.
+                                </small>
                             </div>
                         </div>
 
