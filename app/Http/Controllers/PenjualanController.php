@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\KasHarian;
 use App\Models\MasterCustomer;
 use App\Models\Penjualan;
+use App\Models\PenjualanCartDraft;
 use App\Models\PenjualanItem;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\CarbonPeriod;
@@ -12,23 +13,111 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
+use Throwable;
 
 class PenjualanController extends Controller
 {
     public function index(Request $request): View
     {
-        $today = now()->toDateString();
-
         $ikanStock = $this->getIkanStockMap();
         $customers = MasterCustomer::query()->orderBy('nama_customer')->get();
         $pendingDiscrepancyCount = (int) DB::table('penjualan_selisih_stok')
             ->where('status', 'pending')
             ->count();
 
-        return view('penjualan.index', compact('ikanStock', 'customers', 'pendingDiscrepancyCount'));
+        $cartDrafts = collect();
+        $activeDraftPayload = null;
+        $activeDraftCustomerId = (int) $request->query('draft_customer_id', 0);
+        $activeDraftCustomerName = null;
+        $userId = Auth::id();
+
+        if ($userId !== null) {
+            $cartDrafts = PenjualanCartDraft::query()
+                ->join('master_customer as mc', 'mc.id_customer', '=', 'penjualan_cart_drafts.id_customer')
+                ->where('penjualan_cart_drafts.id_user', $userId)
+                ->orderBy('mc.nama_customer')
+                ->get([
+                    'penjualan_cart_drafts.id_customer',
+                    'mc.nama_customer',
+                    'penjualan_cart_drafts.updated_at',
+                ]);
+
+            if ($activeDraftCustomerId > 0) {
+                $activeDraft = PenjualanCartDraft::query()
+                    ->where('id_user', $userId)
+                    ->where('id_customer', $activeDraftCustomerId)
+                    ->first();
+
+                if ($activeDraft === null) {
+                    return redirect()->route('penjualan.index')->withErrors([
+                        'message' => 'Keranjang customer yang dipilih tidak ditemukan.',
+                    ]);
+                }
+
+                $activeDraftPayload = $activeDraft->payload;
+                $activeDraftCustomerName = (string) ($customers->firstWhere('id_customer', $activeDraftCustomerId)?->nama_customer ?? 'Customer');
+            }
+        }
+
+        return view('penjualan.index', compact(
+            'ikanStock',
+            'customers',
+            'pendingDiscrepancyCount',
+            'cartDrafts',
+            'activeDraftPayload',
+            'activeDraftCustomerId',
+            'activeDraftCustomerName'
+        ));
+    }
+
+    public function saveCartDraft(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'id_customer' => ['required', 'integer', 'exists:master_customer,id_customer'],
+            'items' => ['required', 'array', 'min:1'],
+            'items.*.id_ikan' => ['required', 'integer', 'exists:master_ikan,id_ikan'],
+            'items.*.berat' => ['required', 'numeric', 'gt:0'],
+            'items.*.harga_per_kg' => ['required', 'numeric', 'gt:0'],
+            'bayar_tunai' => ['nullable', 'numeric', 'min:0'],
+            'bayar_transfer' => ['nullable', 'numeric', 'min:0'],
+            'keterangan' => ['nullable', 'string'],
+            'allow_pending_discrepancy' => ['nullable', 'boolean'],
+            'catatan_selisih' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        $userId = Auth::id();
+        if ($userId === null) {
+            return back()->withInput()->withErrors([
+                'message' => 'Sesi pengguna tidak ditemukan. Silakan login ulang lalu simpan keranjang lagi.',
+            ]);
+        }
+
+        PenjualanCartDraft::query()->updateOrCreate(
+            [
+                'id_user' => $userId,
+                'id_customer' => (int) $validated['id_customer'],
+            ],
+            [
+                'payload' => [
+                    'create_new_customer' => false,
+                    'id_customer' => (int) $validated['id_customer'],
+                    'items' => $validated['items'],
+                    'bayar_tunai' => $validated['bayar_tunai'] ?? 0,
+                    'bayar_transfer' => $validated['bayar_transfer'] ?? 0,
+                    'allow_pending_discrepancy' => (bool) ($validated['allow_pending_discrepancy'] ?? false),
+                    'catatan_selisih' => $validated['catatan_selisih'] ?? null,
+                    'keterangan' => $validated['keterangan'] ?? null,
+                ],
+            ]
+        );
+
+        return redirect()->route('penjualan.index', [
+            'draft_customer_id' => (int) $validated['id_customer'],
+        ])->with('success', 'Keranjang customer berhasil disimpan. Anda bisa lanjut lagi kapan saja.');
     }
 
     public function store(Request $request): RedirectResponse
@@ -97,89 +186,105 @@ class PenjualanController extends Controller
         $statusPembayaran = $piutang <= 0 ? 'lunas' : 'piutang';
         $hasPendingDiscrepancy = false;
 
-        DB::transaction(function () use ($today, $customer, $totalHarga, $bayarTunai, $bayarTransfer, $totalPenerimaan, $piutang, $statusPembayaran, $validated, $requestedByIkan, $allowPendingDiscrepancy, &$hasPendingDiscrepancy) {
-            $penjualan = Penjualan::create([
-                'tanggal_penjualan' => $today,
-                'id_customer' => $customer?->id_customer,
-                'total_harga' => $totalHarga,
-                'bayar_tunai' => $bayarTunai,
-                'bayar_transfer' => $bayarTransfer,
-                'piutang' => $piutang,
-                'status_pembayaran' => $statusPembayaran,
-                'pembeli' => $customer?->nama_customer ?? '-',
-                'keterangan' => $validated['keterangan'] ?? 'Transaksi POS penjualan ikan',
-            ]);
-
-            $saleItems = [];
-            foreach ($validated['items'] as $item) {
-                $createdItem = PenjualanItem::create([
-                    'id_penjualan' => $penjualan->id_penjualan,
-                    'id_ikan' => (int) $item['id_ikan'],
-                    'berat' => (float) $item['berat'],
-                    'harga_per_kg' => (float) $item['harga_per_kg'],
-                    'subtotal' => (float) $item['berat'] * (float) $item['harga_per_kg'],
+        try {
+            DB::transaction(function () use ($today, $customer, $totalHarga, $bayarTunai, $bayarTransfer, $totalPenerimaan, $piutang, $statusPembayaran, $validated, $requestedByIkan, $allowPendingDiscrepancy, &$hasPendingDiscrepancy) {
+                $penjualan = Penjualan::create([
+                    'tanggal_penjualan' => $today,
+                    'id_customer' => $customer?->id_customer,
+                    'total_harga' => $totalHarga,
+                    'bayar_tunai' => $bayarTunai,
+                    'bayar_transfer' => $bayarTransfer,
+                    'piutang' => $piutang,
+                    'status_pembayaran' => $statusPembayaran,
+                    'pembeli' => $customer?->nama_customer ?? '-',
+                    'keterangan' => $validated['keterangan'] ?? 'Transaksi POS penjualan ikan',
                 ]);
 
-                $saleItems[] = [
-                    'id_item' => (int) $createdItem->id_item,
-                    'id_ikan' => (int) $item['id_ikan'],
-                    'berat' => (float) $item['berat'],
-                ];
-            }
-
-            $pendingShortages = $this->deductAndAllocateFromFishStorages($saleItems, $allowPendingDiscrepancy);
-
-            if ($allowPendingDiscrepancy && $pendingShortages !== []) {
-                $hasPendingDiscrepancy = true;
-                $this->createStockDiscrepancy(
-                    (int) $penjualan->id_penjualan,
-                    $pendingShortages,
-                    (string) ($validated['catatan_selisih'] ?? '')
-                );
-            }
-
-            if ($totalPenerimaan > 0) {
-                $namaCustomer = $customer?->nama_customer ?? '-';
-
-                if ($bayarTunai > 0) {
-                    $lastSaldoKas = (float) (DB::table('arus_kas')->where('akun', 'kas')->orderByDesc('id_kas')->value('saldo') ?? 0);
-                    DB::table('arus_kas')->insert([
-                        'akun' => 'kas',
-                        'tanggal' => $today,
-                        'jenis_transaksi' => 'Masuk',
-                        'kategori' => 'Penjualan Ikan',
-                        'deskripsi' => 'Penjualan kepada '.$namaCustomer.'. Diterima kas Rp '.number_format($bayarTunai, 2, ',', '.').'; Piutang Rp '.number_format($piutang, 2, ',', '.'),
-                        'uang_masuk' => $bayarTunai,
-                        'uang_keluar' => 0,
-                        'saldo' => $lastSaldoKas + $bayarTunai,
-                        'created_at' => now(),
-                        'updated_at' => now(),
+                $saleItems = [];
+                foreach ($validated['items'] as $item) {
+                    $createdItem = PenjualanItem::create([
+                        'id_penjualan' => $penjualan->id_penjualan,
+                        'id_ikan' => (int) $item['id_ikan'],
+                        'berat' => (float) $item['berat'],
+                        'harga_per_kg' => (float) $item['harga_per_kg'],
+                        'subtotal' => (float) $item['berat'] * (float) $item['harga_per_kg'],
                     ]);
+
+                    $saleItems[] = [
+                        'id_item' => (int) $createdItem->id_item,
+                        'id_ikan' => (int) $item['id_ikan'],
+                        'berat' => (float) $item['berat'],
+                    ];
                 }
 
-                if ($bayarTransfer > 0) {
-                    $lastSaldoBank = (float) (DB::table('arus_kas')->where('akun', 'bank')->orderByDesc('id_kas')->value('saldo') ?? 0);
-                    DB::table('arus_kas')->insert([
-                        'akun' => 'bank',
-                        'tanggal' => $today,
-                        'jenis_transaksi' => 'Masuk',
-                        'kategori' => 'Penjualan Ikan',
-                        'deskripsi' => 'Penjualan kepada '.$namaCustomer.'. Diterima transfer Rp '.number_format($bayarTransfer, 2, ',', '.').'; Piutang Rp '.number_format($piutang, 2, ',', '.'),
-                        'uang_masuk' => $bayarTransfer,
-                        'uang_keluar' => 0,
-                        'saldo' => $lastSaldoBank + $bayarTransfer,
-                        'created_at' => now(),
-                        'updated_at' => now(),
-                    ]);
-                }
-            }
+                $pendingShortages = $this->deductAndAllocateFromFishStorages($saleItems, $allowPendingDiscrepancy);
 
-            $this->recalculateStokIkan(now()->format('Y-m'), array_keys($requestedByIkan));
-        });
+                if ($allowPendingDiscrepancy && $pendingShortages !== []) {
+                    $hasPendingDiscrepancy = true;
+                    $this->createStockDiscrepancy(
+                        (int) $penjualan->id_penjualan,
+                        $pendingShortages,
+                        (string) ($validated['catatan_selisih'] ?? '')
+                    );
+                }
+
+                if ($totalPenerimaan > 0) {
+                    $namaCustomer = $customer?->nama_customer ?? '-';
+
+                    if ($bayarTunai > 0) {
+                        $lastSaldoKas = (float) (DB::table('arus_kas')->where('akun', 'kas')->orderByDesc('id_kas')->value('saldo') ?? 0);
+                        DB::table('arus_kas')->insert([
+                            'akun' => 'kas',
+                            'tanggal' => $today,
+                            'jenis_transaksi' => 'Masuk',
+                            'kategori' => 'Penjualan Ikan',
+                            'deskripsi' => 'Penjualan kepada '.$namaCustomer.'. Diterima kas Rp '.number_format($bayarTunai, 2, ',', '.').'; Piutang Rp '.number_format($piutang, 2, ',', '.'),
+                            'uang_masuk' => $bayarTunai,
+                            'uang_keluar' => 0,
+                            'saldo' => $lastSaldoKas + $bayarTunai,
+                            'created_at' => now(),
+                            'updated_at' => now(),
+                        ]);
+                    }
+
+                    if ($bayarTransfer > 0) {
+                        $lastSaldoBank = (float) (DB::table('arus_kas')->where('akun', 'bank')->orderByDesc('id_kas')->value('saldo') ?? 0);
+                        DB::table('arus_kas')->insert([
+                            'akun' => 'bank',
+                            'tanggal' => $today,
+                            'jenis_transaksi' => 'Masuk',
+                            'kategori' => 'Penjualan Ikan',
+                            'deskripsi' => 'Penjualan kepada '.$namaCustomer.'. Diterima transfer Rp '.number_format($bayarTransfer, 2, ',', '.').'; Piutang Rp '.number_format($piutang, 2, ',', '.'),
+                            'uang_masuk' => $bayarTransfer,
+                            'uang_keluar' => 0,
+                            'saldo' => $lastSaldoBank + $bayarTransfer,
+                            'created_at' => now(),
+                            'updated_at' => now(),
+                        ]);
+                    }
+                }
+
+                $this->recalculateStokIkan(now()->format('Y-m'), array_keys($requestedByIkan));
+            });
+        } catch (Throwable $e) {
+            report($e);
+
+            return back()->withInput()->withErrors([
+                'message' => 'Transaksi gagal disimpan. Data form tetap dipertahankan, silakan cek lalu coba simpan kembali.',
+            ]);
+        }
 
         $successMessage = $hasPendingDiscrepancy
             ? 'Transaksi penjualan berhasil disimpan sebagai selisih sementara dan menunggu rekonsiliasi stok.'
             : 'Transaksi penjualan berhasil disimpan.';
+
+        $userId = Auth::id();
+        if ($userId !== null && $customer?->id_customer !== null) {
+            PenjualanCartDraft::query()
+                ->where('id_user', $userId)
+                ->where('id_customer', (int) $customer->id_customer)
+                ->delete();
+        }
 
         return redirect()->route('penjualan.index')->with('success', $successMessage);
     }

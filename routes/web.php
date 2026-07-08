@@ -78,6 +78,7 @@ Route::middleware(['auth', 'staff.menu.access'])->group(function () {
     Route::prefix('penjualan')->name('penjualan.')->group(function () {
         Route::get('/', [PenjualanController::class, 'index'])->name('index');
         Route::post('/', [PenjualanController::class, 'store'])->name('store');
+        Route::post('/cart-draft/save', [PenjualanController::class, 'saveCartDraft'])->name('cart-draft.save');
         Route::post('/open-kas', [PenjualanController::class, 'openKas'])->name('open-kas');
         Route::post('/close-kas', [PenjualanController::class, 'closeKas'])->name('close-kas');
         Route::get('/riwayat', [PenjualanController::class, 'riwayat'])->name('riwayat');

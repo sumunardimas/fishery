@@ -9,11 +9,11 @@
 
 @section('content')
     <div class="row" x-data="{
-        createNewCustomer: false,
+        createNewCustomer: {{ Js::from((bool) old('create_new_customer', data_get($activeDraftPayload ?? [], 'create_new_customer', false))) }},
         ikanMap: {{ Js::from($ikanStock->keyBy('id_ikan')->map(fn($i) => ['nama_ikan' => $i->nama_ikan, 'stok_tersedia' => $i->stok_tersedia])) }},
-        items: [{ id_ikan: '', berat: 0, harga_per_kg: '' }],
-        bayarTunai: '{{ old('bayar_tunai', 0) }}',
-        bayarTransfer: '{{ old('bayar_transfer', 0) }}',
+        items: {{ Js::from(old('items', data_get($activeDraftPayload ?? [], 'items', [['id_ikan' => '', 'berat' => 0, 'harga_per_kg' => '']]))) }},
+        bayarTunai: '{{ old('bayar_tunai', data_get($activeDraftPayload ?? [], 'bayar_tunai', 0)) }}',
+        bayarTransfer: '{{ old('bayar_transfer', data_get($activeDraftPayload ?? [], 'bayar_transfer', 0)) }}',
         addItem() {
             this.items.push({ id_ikan: '', berat: 0, harga_per_kg: '' });
             window.requestAnimationFrame(() => {
@@ -65,9 +65,44 @@
                 </div>
             </div>
 
+            @if (($cartDrafts ?? collect())->isNotEmpty())
+                <div class="card mb-4">
+                    <div class="card-body">
+                        <div class="border rounded p-3 bg-light">
+                            <form action="{{ route('penjualan.index') }}" method="GET" class="row align-items-end">
+                                <div class="col-md-8 form-group mb-md-0">
+                                    <label for="draft_customer_id" class="mb-1">Muat Keranjang Tersimpan</label>
+                                    <select name="draft_customer_id" id="draft_customer_id" class="form-control">
+                                        <option value="">Pilih customer</option>
+                                        @foreach ($cartDrafts as $draft)
+                                            <option value="{{ $draft->id_customer }}"
+                                                {{ (int) ($activeDraftCustomerId ?? 0) === (int) $draft->id_customer ? 'selected' : '' }}>
+                                                {{ $draft->nama_customer }} (terakhir disimpan:
+                                                {{ optional($draft->updated_at)->format('d/m/Y H:i') }})
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                                <div class="col-md-4">
+                                    <button type="submit" class="btn btn-outline-primary w-100">Muat Keranjang</button>
+                                </div>
+                            </form>
+
+                            @if (($activeDraftCustomerId ?? 0) > 0)
+                                <small class="text-muted d-block mt-2">
+                                    Keranjang aktif: <strong>{{ $activeDraftCustomerName }}</strong>. Anda bisa tambah item
+                                    lagi lalu simpan keranjang ulang atau langsung simpan transaksi.
+                                </small>
+                            @endif
+                        </div>
+                    </div>
+                </div>
+            @endif
+
             <div class="card mb-4">
                 <div class="card-body">
                     <h5 class="mb-3">Transaksi Penjualan Baru</h5>
+
                     <form action="{{ route('penjualan.store') }}" method="POST">
                         @csrf
 
@@ -86,7 +121,7 @@
                                 <option value="">Pilih customer</option>
                                 @foreach ($customers as $customer)
                                     <option value="{{ $customer->id_customer }}"
-                                        {{ (string) old('id_customer') === (string) $customer->id_customer ? 'selected' : '' }}>
+                                        {{ (string) old('id_customer', data_get($activeDraftPayload ?? [], 'id_customer')) === (string) $customer->id_customer ? 'selected' : '' }}>
                                         {{ $customer->nama_customer }}
                                     </option>
                                 @endforeach
@@ -133,7 +168,7 @@
                         {{-- ── Fish line items ── --}}
                         <div class="mb-2 d-flex justify-content-between align-items-center">
                             <label class="required-asterisk mb-0">Daftar Ikan</label>
-                            <button type="button" class="btn btn-sm btn-outline-secondary" @click="addItem()">
+                            <button type="button" class="btn btn-sm btn-warning" @click="addItem()">
                                 <i class="ti-plus mr-1"></i> Tambah Ikan
                             </button>
                         </div>
@@ -155,7 +190,8 @@
                                             @endforeach
                                         </select>
                                         <small class="text-muted" x-show="item.id_ikan">
-                                            Stok tersedia: <strong x-text="Number(stokByItem(item)).toFixed(2)"></strong> kg
+                                            Stok tersedia: <strong x-text="Number(stokByItem(item)).toFixed(2)"></strong>
+                                            kg
                                         </small>
                                     </div>
                                     <div class="col-md-3 form-group mb-2">
@@ -186,6 +222,13 @@
                             </div>
                         </template>
 
+                        <div class="mb-2 d-flex justify-content-between align-items-center">
+                            <label class="required-asterisk mb-0">Daftar Ikan</label>
+                            <button type="button" class="btn btn-sm btn-warning" @click="addItem()">
+                                <i class="ti-plus mr-1"></i> Tambah Ikan
+                            </button>
+                        </div>
+
                         {{-- ── Payment summary ── --}}
                         <div class="card bg-light mb-3 mt-3">
                             <div class="card-body py-2">
@@ -213,7 +256,7 @@
                             <div class="form-group form-check mb-2" style="padding-left: 1.5rem;">
                                 <input type="checkbox" class="form-check-input" id="allow_pending_discrepancy"
                                     name="allow_pending_discrepancy" value="1"
-                                    {{ old('allow_pending_discrepancy') ? 'checked' : '' }}>
+                                    {{ old('allow_pending_discrepancy', data_get($activeDraftPayload ?? [], 'allow_pending_discrepancy')) ? 'checked' : '' }}>
                                 <label class="form-check-label" for="allow_pending_discrepancy">
                                     Simpan sebagai selisih sementara bila stok kurang
                                 </label>
@@ -221,7 +264,7 @@
                             <div class="form-group mb-0">
                                 <label for="catatan_selisih">Catatan selisih sementara</label>
                                 <input type="text" name="catatan_selisih" id="catatan_selisih" class="form-control"
-                                    value="{{ old('catatan_selisih') }}"
+                                    value="{{ old('catatan_selisih', data_get($activeDraftPayload ?? [], 'catatan_selisih')) }}"
                                     placeholder="Contoh: timbang aktual lebih besar / campur jenis ikan">
                                 <small class="text-muted d-block mt-1">
                                     Gunakan opsi ini jika transaksi harus tetap diproses cepat. Rekonsiliasi detail bisa
@@ -254,12 +297,18 @@
 
                         <div class="form-group">
                             <label for="keterangan">Catatan Penjualan</label>
-                            <textarea name="keterangan" id="keterangan" rows="2" class="form-control">{{ old('keterangan') }}</textarea>
+                            <textarea name="keterangan" id="keterangan" rows="2" class="form-control">{{ old('keterangan', data_get($activeDraftPayload ?? [], 'keterangan')) }}</textarea>
                         </div>
 
-                        <button type="submit" class="btn btn-primary">
-                            Simpan Transaksi
-                        </button>
+                        <div class="d-flex flex-wrap">
+                            <button type="submit" formaction="{{ route('penjualan.cart-draft.save') }}"
+                                formmethod="POST" class="btn btn-outline-secondary mr-2 mb-2">
+                                Simpan Keranjang
+                            </button>
+                            <button type="submit" class="btn btn-primary mb-2">
+                                Simpan Transaksi
+                            </button>
+                        </div>
                     </form>
                 </div>
             </div>
