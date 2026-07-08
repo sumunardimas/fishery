@@ -49,10 +49,16 @@
                                         </td>
                                         <td>{{ $item->keterangan ?: '-' }}</td>
                                         <td>
-                                            <a href="{{ route('pelayaran.sisa.history.show', ['pelayaran' => $item->id_pelayaran]) }}"
-                                                class="btn btn-sm btn-primary">
-                                                Lihat Detail
-                                            </a>
+                                            <div class="d-flex flex-wrap gap-2">
+                                                <a href="{{ route('pelayaran.sisa.history.show', ['pelayaran' => $item->id_pelayaran]) }}"
+                                                    class="btn btn-sm btn-primary mr-2 mb-1">
+                                                    Lihat Detail
+                                                </a>
+                                                <a href="{{ route('pelayaran.report.show', ['pelayaran' => $item->id_pelayaran]) }}"
+                                                    class="btn btn-sm btn-outline-warning mb-1">
+                                                    Laporan
+                                                </a>
+                                            </div>
                                         </td>
                                     </tr>
                                 @empty

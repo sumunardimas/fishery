@@ -84,7 +84,7 @@ class PenjualanController extends Controller
                 $namaIkan = DB::table('master_ikan')->where('id_ikan', $idIkan)->value('nama_ikan');
 
                 return back()->withInput()->withErrors([
-                    'items' => "Berat {$namaIkan} melebihi stok tersisa. Stok: ".number_format($available, 2)." kg. Centang simpan sebagai selisih sementara jika transaksi harus tetap diproses.",
+                    'items' => "Berat {$namaIkan} melebihi stok tersisa. Stok: ".number_format($available, 2).' kg. Centang simpan sebagai selisih sementara jika transaksi harus tetap diproses.',
                 ]);
             }
         }
@@ -110,17 +110,24 @@ class PenjualanController extends Controller
                 'keterangan' => $validated['keterangan'] ?? 'Transaksi POS penjualan ikan',
             ]);
 
+            $saleItems = [];
             foreach ($validated['items'] as $item) {
-                PenjualanItem::create([
+                $createdItem = PenjualanItem::create([
                     'id_penjualan' => $penjualan->id_penjualan,
                     'id_ikan' => (int) $item['id_ikan'],
                     'berat' => (float) $item['berat'],
                     'harga_per_kg' => (float) $item['harga_per_kg'],
                     'subtotal' => (float) $item['berat'] * (float) $item['harga_per_kg'],
                 ]);
+
+                $saleItems[] = [
+                    'id_item' => (int) $createdItem->id_item,
+                    'id_ikan' => (int) $item['id_ikan'],
+                    'berat' => (float) $item['berat'],
+                ];
             }
 
-            $pendingShortages = $this->deductFromFishStorages($requestedByIkan, $allowPendingDiscrepancy);
+            $pendingShortages = $this->deductAndAllocateFromFishStorages($saleItems, $allowPendingDiscrepancy);
 
             if ($allowPendingDiscrepancy && $pendingShortages !== []) {
                 $hasPendingDiscrepancy = true;
@@ -658,7 +665,7 @@ class PenjualanController extends Controller
             ->get();
 
         $stockByRelation = $storageStocks
-            ->filter(fn ($row) => !empty($row->id_ikan_tangkapan))
+            ->filter(fn ($row) => ! empty($row->id_ikan_tangkapan))
             ->groupBy('id_ikan_tangkapan')
             ->map(fn ($rows) => (float) $rows->sum('stok_aktual'));
 
@@ -698,12 +705,16 @@ class PenjualanController extends Controller
         return max(0, (float) $query->sum('sis.stok_aktual'));
     }
 
-    private function deductFromFishStorages(array $requestedByIkan, bool $allowPendingDiscrepancy = false): array
+    private function deductAndAllocateFromFishStorages(array $saleItems, bool $allowPendingDiscrepancy = false): array
     {
         $pendingShortages = [];
+        $allocationRows = [];
+        $now = now();
 
-        foreach ($requestedByIkan as $idIkan => $requestedBerat) {
-            $remaining = (float) $requestedBerat;
+        foreach ($saleItems as $saleItem) {
+            $idIkan = (int) $saleItem['id_ikan'];
+            $requestedBerat = (float) $saleItem['berat'];
+            $remaining = $requestedBerat;
             $stockRows = $this->getStorageRowsForIkan((int) $idIkan);
 
             foreach ($stockRows as $stockRow) {
@@ -723,148 +734,277 @@ class PenjualanController extends Controller
                     ->where('id_stok_storage', (int) $stockRow->id_stok_storage)
                     ->update([
                         'stok_aktual' => max(0, $stokSaatIni - $stokTerpakai),
-                        'updated_at' => now(),
+                        'updated_at' => $now,
                     ]);
+
+                $allocationRows[] = [
+                    'id_item' => (int) $saleItem['id_item'],
+                    'id_storage' => (int) $stockRow->id_storage,
+                    'id_ikan' => (int) $stockRow->id_ikan,
+                    'berat_alokasi' => (float) $stokTerpakai,
+                    'created_at' => $now,
+                    'updated_at' => $now,
+                ];
+
+                $this->allocateFromTripLots(
+                    idItem: (int) $saleItem['id_item'],
+                    idStorage: (int) $stockRow->id_storage,
+                    idIkan: (int) $stockRow->id_ikan,
+                    beratAlokasi: (float) $stokTerpakai,
+                    nowTs: $now
+                );
             }
 
-                if ($remaining > 0.00001) {
-                    if ($allowPendingDiscrepancy) {
-                        $pendingShortages[(int) $idIkan] = [
-                            'stok_tersedia' => max(0, (float) $requestedBerat - $remaining),
-                            'berat_diminta' => (float) $requestedBerat,
-                            'berat_selisih' => $remaining,
+            if ($remaining > 0.00001) {
+                if ($allowPendingDiscrepancy) {
+                    if (! isset($pendingShortages[$idIkan])) {
+                        $pendingShortages[$idIkan] = [
+                            'stok_tersedia' => 0.0,
+                            'berat_diminta' => 0.0,
+                            'berat_selisih' => 0.0,
                         ];
-
-                        continue;
                     }
+
+                    $pendingShortages[$idIkan]['stok_tersedia'] += max(0, (float) $requestedBerat - $remaining);
+                    $pendingShortages[$idIkan]['berat_diminta'] += (float) $requestedBerat;
+                    $pendingShortages[$idIkan]['berat_selisih'] += (float) $remaining;
+
+                    continue;
+                }
 
                 $namaIkan = DB::table('master_ikan')->where('id_ikan', (int) $idIkan)->value('nama_ikan');
 
                 throw ValidationException::withMessages([
-                    'items' => 'Stok storage untuk ' . $namaIkan . ' tidak mencukupi.',
+                    'items' => 'Stok storage untuk '.$namaIkan.' tidak mencukupi.',
                 ]);
             }
         }
 
-            return $pendingShortages;
-    }
-
-        private function createStockDiscrepancy(int $idPenjualan, array $pendingShortages, string $catatanKasir = ''): void
-        {
-            $catatanKasir = trim($catatanKasir);
-
-            $idDiscrepancy = DB::table('penjualan_selisih_stok')->insertGetId([
-                'id_penjualan' => $idPenjualan,
-                'status' => 'pending',
-                'catatan_kasir' => $catatanKasir !== '' ? $catatanKasir : null,
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
-
-            $rows = collect($pendingShortages)
-                ->map(function (array $row, int $idIkan) use ($idDiscrepancy) {
-                    return [
-                        'id_penjualan_selisih' => $idDiscrepancy,
-                        'id_ikan' => $idIkan,
-                        'stok_tersedia' => (float) ($row['stok_tersedia'] ?? 0),
-                        'berat_diminta' => (float) ($row['berat_diminta'] ?? 0),
-                        'berat_selisih' => (float) ($row['berat_selisih'] ?? 0),
-                        'created_at' => now(),
-                        'updated_at' => now(),
-                    ];
-                })
-                ->values()
-                ->all();
-
-            if ($rows !== []) {
-                DB::table('penjualan_selisih_stok_items')->insert($rows);
-            }
+        if ($allocationRows !== []) {
+            DB::table('penjualan_item_storage_allocations')->insert($allocationRows);
         }
 
-        private function applyStockAdjustmentLines(int $idPenyesuaian, array $adjustments): array
-        {
-            $now = now();
-            $rows = [];
-            $affectedIkanIds = [];
+        return $pendingShortages;
+    }
 
-            foreach ($adjustments as $line) {
-                $idStorage = (int) $line['id_storage'];
-                $idIkan = (int) $line['id_ikan'];
-                $deltaBerat = (float) $line['delta_berat'];
-                $keterangan = trim((string) ($line['keterangan'] ?? ''));
+    private function allocateFromTripLots(int $idItem, int $idStorage, int $idIkan, float $beratAlokasi, $nowTs): void
+    {
+        if ($beratAlokasi <= 0) {
+            return;
+        }
 
-                $stockRow = DB::table('stok_ikan_storage')
-                    ->where('id_storage', $idStorage)
-                    ->where('id_ikan', $idIkan)
-                    ->lockForUpdate()
-                    ->first();
+        $this->ensureLegacyOpeningLotCoverage($idStorage, $idIkan, $nowTs);
 
-                $stokSaatIni = (float) ($stockRow->stok_aktual ?? 0);
-                $stokBaru = $stokSaatIni + $deltaBerat;
+        $remaining = $beratAlokasi;
+        $lotRows = DB::table('stok_ikan_lots')
+            ->where('id_storage', $idStorage)
+            ->where('id_ikan', $idIkan)
+            ->where('berat_sisa', '>', 0)
+            ->orderBy('tanggal_lot')
+            ->orderBy('id_stok_ikan_lot')
+            ->lockForUpdate()
+            ->get([
+                'id_stok_ikan_lot',
+                'id_pelayaran',
+                'berat_sisa',
+                'harga_per_kg',
+            ]);
 
-                if ($stokBaru < -0.00001) {
+        foreach ($lotRows as $lotRow) {
+            if ($remaining <= 0) {
+                break;
+            }
+
+            $lotSisa = (float) $lotRow->berat_sisa;
+            if ($lotSisa <= 0) {
+                continue;
+            }
+
+            $consumed = min($remaining, $lotSisa);
+            $remaining -= $consumed;
+
+            DB::table('stok_ikan_lots')
+                ->where('id_stok_ikan_lot', (int) $lotRow->id_stok_ikan_lot)
+                ->update([
+                    'berat_sisa' => max(0, $lotSisa - $consumed),
+                    'updated_at' => $nowTs,
+                ]);
+
+            DB::table('penjualan_item_lot_allocations')->insert([
+                'id_item' => $idItem,
+                'id_stok_ikan_lot' => (int) $lotRow->id_stok_ikan_lot,
+                'id_storage' => $idStorage,
+                'id_ikan' => $idIkan,
+                'id_pelayaran' => $lotRow->id_pelayaran ? (int) $lotRow->id_pelayaran : null,
+                'berat_alokasi' => $consumed,
+                'harga_per_kg_lot' => (float) ($lotRow->harga_per_kg ?? 0),
+                'created_at' => $nowTs,
+                'updated_at' => $nowTs,
+            ]);
+        }
+
+        if ($remaining > 0.00001) {
+            $namaIkan = DB::table('master_ikan')->where('id_ikan', $idIkan)->value('nama_ikan');
+
+            throw ValidationException::withMessages([
+                'items' => 'Lot stok tidak mencukupi untuk alokasi penjualan '.$namaIkan.'.',
+            ]);
+        }
+    }
+
+    private function ensureLegacyOpeningLotCoverage(int $idStorage, int $idIkan, $nowTs): void
+    {
+        $stokAktual = (float) (DB::table('stok_ikan_storage')
+            ->where('id_storage', $idStorage)
+            ->where('id_ikan', $idIkan)
+            ->lockForUpdate()
+            ->value('stok_aktual') ?? 0);
+
+        if ($stokAktual <= 0) {
+            return;
+        }
+
+        $lotCoverage = (float) (DB::table('stok_ikan_lots')
+            ->where('id_storage', $idStorage)
+            ->where('id_ikan', $idIkan)
+            ->lockForUpdate()
+            ->sum('berat_sisa') ?? 0);
+
+        if ($lotCoverage + 0.00001 >= $stokAktual) {
+            return;
+        }
+
+        $delta = $stokAktual - $lotCoverage;
+        DB::table('stok_ikan_lots')->insert([
+            'id_storage' => $idStorage,
+            'id_ikan' => $idIkan,
+            'id_pelayaran' => null,
+            'source_type' => 'legacy_opening',
+            'tanggal_lot' => '2000-01-01',
+            'berat_awal' => $delta,
+            'berat_sisa' => $delta,
+            'harga_per_kg' => 0,
+            'created_at' => $nowTs,
+            'updated_at' => $nowTs,
+        ]);
+    }
+
+    private function createStockDiscrepancy(int $idPenjualan, array $pendingShortages, string $catatanKasir = ''): void
+    {
+        $catatanKasir = trim($catatanKasir);
+
+        $idDiscrepancy = DB::table('penjualan_selisih_stok')->insertGetId([
+            'id_penjualan' => $idPenjualan,
+            'status' => 'pending',
+            'catatan_kasir' => $catatanKasir !== '' ? $catatanKasir : null,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $rows = collect($pendingShortages)
+            ->map(function (array $row, int $idIkan) use ($idDiscrepancy) {
+                return [
+                    'id_penjualan_selisih' => $idDiscrepancy,
+                    'id_ikan' => $idIkan,
+                    'stok_tersedia' => (float) ($row['stok_tersedia'] ?? 0),
+                    'berat_diminta' => (float) ($row['berat_diminta'] ?? 0),
+                    'berat_selisih' => (float) ($row['berat_selisih'] ?? 0),
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ];
+            })
+            ->values()
+            ->all();
+
+        if ($rows !== []) {
+            DB::table('penjualan_selisih_stok_items')->insert($rows);
+        }
+    }
+
+    private function applyStockAdjustmentLines(int $idPenyesuaian, array $adjustments): array
+    {
+        $now = now();
+        $rows = [];
+        $affectedIkanIds = [];
+
+        foreach ($adjustments as $line) {
+            $idStorage = (int) $line['id_storage'];
+            $idIkan = (int) $line['id_ikan'];
+            $deltaBerat = (float) $line['delta_berat'];
+            $keterangan = trim((string) ($line['keterangan'] ?? ''));
+
+            $stockRow = DB::table('stok_ikan_storage')
+                ->where('id_storage', $idStorage)
+                ->where('id_ikan', $idIkan)
+                ->lockForUpdate()
+                ->first();
+
+            $stokSaatIni = (float) ($stockRow->stok_aktual ?? 0);
+            $stokBaru = $stokSaatIni + $deltaBerat;
+
+            if ($stokBaru < -0.00001) {
+                $namaIkan = DB::table('master_ikan')->where('id_ikan', $idIkan)->value('nama_ikan');
+
+                throw ValidationException::withMessages([
+                    'adjustments' => 'Penyesuaian membuat stok '.$namaIkan.' di storage terpilih menjadi negatif.',
+                ]);
+            }
+
+            if ($stockRow) {
+                DB::table('stok_ikan_storage')
+                    ->where('id_stok_storage', (int) $stockRow->id_stok_storage)
+                    ->update([
+                        'stok_aktual' => max(0, $stokBaru),
+                        'updated_at' => $now,
+                    ]);
+            } else {
+                if ($deltaBerat < 0) {
                     $namaIkan = DB::table('master_ikan')->where('id_ikan', $idIkan)->value('nama_ikan');
 
                     throw ValidationException::withMessages([
-                        'adjustments' => 'Penyesuaian membuat stok ' . $namaIkan . ' di storage terpilih menjadi negatif.',
+                        'adjustments' => 'Tidak bisa mengurangi stok '.$namaIkan.' pada storage yang belum memiliki saldo.',
                     ]);
                 }
 
-                if ($stockRow) {
-                    DB::table('stok_ikan_storage')
-                        ->where('id_stok_storage', (int) $stockRow->id_stok_storage)
-                        ->update([
-                            'stok_aktual' => max(0, $stokBaru),
-                            'updated_at' => $now,
-                        ]);
-                } else {
-                    if ($deltaBerat < 0) {
-                        $namaIkan = DB::table('master_ikan')->where('id_ikan', $idIkan)->value('nama_ikan');
-
-                        throw ValidationException::withMessages([
-                            'adjustments' => 'Tidak bisa mengurangi stok ' . $namaIkan . ' pada storage yang belum memiliki saldo.',
-                        ]);
-                    }
-
-                    DB::table('stok_ikan_storage')->insert([
-                        'id_storage' => $idStorage,
-                        'id_ikan' => $idIkan,
-                        'stok_aktual' => $deltaBerat,
-                        'created_at' => $now,
-                        'updated_at' => $now,
-                    ]);
-                }
-
-                $rows[] = [
-                    'id_penyesuaian_stok' => $idPenyesuaian,
+                DB::table('stok_ikan_storage')->insert([
                     'id_storage' => $idStorage,
                     'id_ikan' => $idIkan,
-                    'delta_berat' => $deltaBerat,
-                    'keterangan' => $keterangan !== '' ? $keterangan : null,
+                    'stok_aktual' => $deltaBerat,
                     'created_at' => $now,
                     'updated_at' => $now,
-                ];
-                $affectedIkanIds[] = $idIkan;
-            }
-
-            if ($rows !== []) {
-                DB::table('penyesuaian_stok_ikan_items')->insert($rows);
-            }
-
-            return array_values(array_unique($affectedIkanIds));
-        }
-
-        private function getFishStorages()
-        {
-            return DB::table('storage_ikan as si')
-                ->join('kapal as k', 'k.id_kapal', '=', 'si.id_kapal')
-                ->orderBy('k.nama_kapal')
-                ->get([
-                    'si.id_storage',
-                    'si.nama_storage',
-                    'k.nama_kapal',
                 ]);
+            }
+
+            $rows[] = [
+                'id_penyesuaian_stok' => $idPenyesuaian,
+                'id_storage' => $idStorage,
+                'id_ikan' => $idIkan,
+                'delta_berat' => $deltaBerat,
+                'keterangan' => $keterangan !== '' ? $keterangan : null,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ];
+            $affectedIkanIds[] = $idIkan;
         }
+
+        if ($rows !== []) {
+            DB::table('penyesuaian_stok_ikan_items')->insert($rows);
+        }
+
+        return array_values(array_unique($affectedIkanIds));
+    }
+
+    private function getFishStorages()
+    {
+        return DB::table('storage_ikan as si')
+            ->join('kapal as k', 'k.id_kapal', '=', 'si.id_kapal')
+            ->orderBy('k.nama_kapal')
+            ->get([
+                'si.id_storage',
+                'si.nama_storage',
+                'k.nama_kapal',
+            ]);
+    }
 
     private function getStorageRowsForIkan(int $idIkan)
     {
@@ -886,7 +1026,7 @@ class PenjualanController extends Controller
         return $query
             ->orderBy('sis.id_stok_storage')
             ->lockForUpdate()
-            ->get(['sis.id_stok_storage', 'sis.stok_aktual']);
+            ->get(['sis.id_stok_storage', 'sis.id_storage', 'sis.id_ikan', 'sis.stok_aktual']);
     }
 
     private function recalculateStokIkan(string $periode, array $affectedIkanIds): void

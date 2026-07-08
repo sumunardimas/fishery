@@ -150,8 +150,12 @@
                                 <p class="text-muted mb-0">Trip ini sudah ditutup dan hanya ditampilkan dalam mode baca
                                     saja.</p>
                             </div>
-                            <a href="{{ route('pelayaran.sisa.history') }}" class="btn btn-outline-primary">Kembali ke
-                                Riwayat</a>
+                            <div class="d-flex flex-wrap gap-2">
+                                <a href="{{ route('pelayaran.report.show', ['pelayaran' => $selectedPelayaran->id_pelayaran]) }}"
+                                    class="btn btn-outline-warning mr-2">Laporan Trip</a>
+                                <a href="{{ route('pelayaran.sisa.history') }}" class="btn btn-outline-primary">Kembali ke
+                                    Riwayat</a>
+                            </div>
                         </div>
                     @endif
                 </div>

@@ -7,6 +7,7 @@ use App\Models\Pelayaran;
 use App\Services\PerbekalanFifoService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -93,6 +94,76 @@ class PelayaranSisaController extends Controller
             $activeTab,
             true
         ));
+    }
+
+    public function report(Pelayaran $pelayaran): View
+    {
+        abort_unless($pelayaran->status_pelayaran === 'selesai', 404);
+
+        $pelayaran->load('kapal');
+        $viewData = $this->buildIndexViewData(collect(), $pelayaran, self::TAB_REKAP, true);
+
+        $salesWindow = $this->buildVoyageSalesWindow($pelayaran);
+        $catchBreakdown = $this->buildVoyageCatchBreakdown((int) $pelayaran->id_pelayaran);
+        $hasTripLots = DB::table('stok_ikan_lots')
+            ->where('id_pelayaran', (int) $pelayaran->id_pelayaran)
+            ->exists();
+        $salesBreakdown = $this->buildVoyageSalesActualBreakdown((int) $pelayaran->id_pelayaran);
+        $salesAttributionMode = 'exact';
+
+        // Fallback to estimate only for historical trips that do not yet have lot data.
+        if (! $hasTripLots && $salesBreakdown->isEmpty()) {
+            $salesBreakdown = $this->buildVoyageSalesEstimateBreakdown($catchBreakdown, $salesWindow);
+            $salesAttributionMode = 'estimate';
+        }
+
+        $storageSnapshot = $this->buildVesselStorageSnapshot((int) $pelayaran->id_kapal);
+
+        $salesByKey = $salesBreakdown->keyBy('commodity_key');
+        $storageByKey = $storageSnapshot->keyBy('commodity_key');
+
+        $reportRows = $catchBreakdown->map(function ($row) use ($salesByKey, $storageByKey) {
+            $saleRow = $salesByKey->get($row->commodity_key);
+            $storageRow = $storageByKey->get($row->commodity_key);
+            $catchWeight = (float) $row->catch_weight;
+            $catchValue = (float) $row->catch_value;
+            $salesWeight = (float) ($saleRow->sales_weight ?? 0);
+            $salesValue = (float) ($saleRow->sales_value ?? 0);
+            $currentStorageWeight = (float) ($storageRow->current_storage_weight ?? 0);
+
+            return (object) [
+                'commodity_key' => $row->commodity_key,
+                'commodity_name' => $row->commodity_name,
+                'catch_weight' => $catchWeight,
+                'catch_value' => $catchValue,
+                'sales_weight' => $salesWeight,
+                'sales_value' => $salesValue,
+                'weight_gap' => $catchWeight - $salesWeight,
+                'value_gap' => $catchValue - $salesValue,
+                'current_storage_weight' => $currentStorageWeight,
+            ];
+        })->values();
+
+        $tripCostTotal = (float) ($viewData['rekapGrandTotals']['total_perbekalan_terpakai'] ?? 0)
+            + (float) ($viewData['rekapGrandTotals']['total_operasional'] ?? 0);
+        $salesTotal = (float) $reportRows->sum('sales_value');
+        $tripCatchTotal = (float) $reportRows->sum('catch_value');
+
+        $reportSummary = [
+            'trip_catch_total' => $tripCatchTotal,
+            'trip_cost_total' => $tripCostTotal,
+            'sales_total' => $salesTotal,
+            'sales_net' => $salesTotal - $tripCostTotal,
+            'current_storage_total_weight' => (float) $reportRows->sum('current_storage_weight'),
+        ];
+
+        return view('pelayaran.laporan.show', array_merge($viewData, compact(
+            'pelayaran',
+            'salesWindow',
+            'salesAttributionMode',
+            'reportRows',
+            'reportSummary'
+        )));
     }
 
     /**
@@ -949,6 +1020,162 @@ class PelayaranSisaController extends Controller
         return $pelayaran;
     }
 
+    private function buildVoyageSalesWindow(Pelayaran $pelayaran): array
+    {
+        $startDate = ($pelayaran->tanggal_selesai ?? $pelayaran->tanggal_tiba ?? $pelayaran->tanggal_berangkat ?? now())->toDateString();
+
+        $nextPelayaran = Pelayaran::query()
+            ->where('id_kapal', (int) $pelayaran->id_kapal)
+            ->where('status_pelayaran', 'selesai')
+            ->where('id_pelayaran', '!=', (int) $pelayaran->id_pelayaran)
+            ->get(['id_pelayaran', 'tanggal_tiba', 'tanggal_selesai'])
+            ->map(function (Pelayaran $item) {
+                $closeDate = ($item->tanggal_selesai ?? $item->tanggal_tiba)?->toDateString();
+
+                return $closeDate ? (object) ['trip' => $item, 'close_date' => $closeDate] : null;
+            })
+            ->filter()
+            ->filter(fn ($item) => $item->close_date > $startDate)
+            ->sortBy('close_date')
+            ->first();
+
+        $endExclusive = $nextPelayaran?->close_date;
+        $displayEnd = $endExclusive
+            ? Carbon::parse($endExclusive)->subDay()->toDateString()
+            : now()->toDateString();
+
+        return [
+            'start_date' => $startDate,
+            'end_date' => $displayEnd,
+            'end_exclusive' => $endExclusive,
+            'next_pelayaran' => $nextPelayaran?->trip,
+        ];
+    }
+
+    private function buildVoyageCatchBreakdown(int $idPelayaran): Collection
+    {
+        return DB::table('ikan_hasil_pelayaran as ihp')
+            ->join('master_ikan as mi', 'mi.id_ikan', '=', 'ihp.id_ikan')
+            ->leftJoin('master_ikan_tangkapan as mit', 'mit.id_ikan_tangkapan', '=', 'mi.id_ikan_tangkapan')
+            ->where('ihp.id_pelayaran', $idPelayaran)
+            ->selectRaw(
+                "CASE WHEN mi.id_ikan_tangkapan IS NULL THEN 'single' ELSE 'group' END as commodity_type,
+                COALESCE(mi.id_ikan_tangkapan, mi.id_ikan) as commodity_ref_id,
+                CASE
+                    WHEN mi.id_ikan_tangkapan IS NULL THEN CONCAT('single:', mi.id_ikan)
+                    ELSE CONCAT('group:', mi.id_ikan_tangkapan)
+                END as commodity_key,
+                COALESCE(mit.nama_ikan_tangkapan, mi.nama_ikan) as commodity_name,
+                SUM(ihp.berat_hasil) as catch_weight,
+                SUM(ihp.berat_hasil * COALESCE(ihp.harga_per_kg, 0)) as catch_value"
+            )
+            ->groupBy(
+                DB::raw("CASE WHEN mi.id_ikan_tangkapan IS NULL THEN 'single' ELSE 'group' END"),
+                DB::raw('COALESCE(mi.id_ikan_tangkapan, mi.id_ikan)'),
+                DB::raw("CASE WHEN mi.id_ikan_tangkapan IS NULL THEN CONCAT('single:', mi.id_ikan) ELSE CONCAT('group:', mi.id_ikan_tangkapan) END"),
+                DB::raw('COALESCE(mit.nama_ikan_tangkapan, mi.nama_ikan)')
+            )
+            ->orderBy('commodity_name')
+            ->get();
+    }
+
+    private function buildVoyageSalesEstimateBreakdown(Collection $catchBreakdown, array $salesWindow): Collection
+    {
+        $groupIds = $catchBreakdown
+            ->where('commodity_type', 'group')
+            ->pluck('commodity_ref_id')
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->values()
+            ->all();
+
+        $directIds = $catchBreakdown
+            ->where('commodity_type', 'single')
+            ->pluck('commodity_ref_id')
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->values()
+            ->all();
+
+        if ($groupIds === [] && $directIds === []) {
+            return collect();
+        }
+
+        return DB::table('penjualan_items as pi')
+            ->join('penjualan as p', 'p.id_penjualan', '=', 'pi.id_penjualan')
+            ->join('master_ikan as mi', 'mi.id_ikan', '=', 'pi.id_ikan')
+            ->leftJoin('master_ikan_tangkapan as mit', 'mit.id_ikan_tangkapan', '=', 'mi.id_ikan_tangkapan')
+            ->whereDate('p.tanggal_penjualan', '>=', $salesWindow['start_date'])
+            ->when($salesWindow['end_exclusive'], function ($query, $endExclusive) {
+                $query->whereDate('p.tanggal_penjualan', '<', $endExclusive);
+            })
+            ->where(function ($query) use ($groupIds, $directIds) {
+                if ($groupIds !== []) {
+                    $query->whereIn('mi.id_ikan_tangkapan', $groupIds);
+                }
+
+                if ($directIds !== []) {
+                    if ($groupIds !== []) {
+                        $query->orWhereIn('pi.id_ikan', $directIds);
+                    } else {
+                        $query->whereIn('pi.id_ikan', $directIds);
+                    }
+                }
+            })
+            ->selectRaw(
+                "CASE WHEN mi.id_ikan_tangkapan IS NULL THEN CONCAT('single:', mi.id_ikan) ELSE CONCAT('group:', mi.id_ikan_tangkapan) END as commodity_key,
+                COALESCE(mit.nama_ikan_tangkapan, mi.nama_ikan) as commodity_name,
+                SUM(pi.berat) as sales_weight,
+                SUM(pi.subtotal) as sales_value"
+            )
+            ->groupBy(
+                DB::raw("CASE WHEN mi.id_ikan_tangkapan IS NULL THEN CONCAT('single:', mi.id_ikan) ELSE CONCAT('group:', mi.id_ikan_tangkapan) END"),
+                DB::raw('COALESCE(mit.nama_ikan_tangkapan, mi.nama_ikan)')
+            )
+            ->orderBy('commodity_name')
+            ->get();
+    }
+
+    private function buildVoyageSalesActualBreakdown(int $idPelayaran): Collection
+    {
+        return DB::table('penjualan_item_lot_allocations as pila')
+            ->join('master_ikan as mi', 'mi.id_ikan', '=', 'pila.id_ikan')
+            ->leftJoin('master_ikan_tangkapan as mit', 'mit.id_ikan_tangkapan', '=', 'mi.id_ikan_tangkapan')
+            ->where('pila.id_pelayaran', $idPelayaran)
+            ->selectRaw(
+                "CASE WHEN mi.id_ikan_tangkapan IS NULL THEN CONCAT('single:', mi.id_ikan) ELSE CONCAT('group:', mi.id_ikan_tangkapan) END as commodity_key,
+                COALESCE(mit.nama_ikan_tangkapan, mi.nama_ikan) as commodity_name,
+                SUM(pila.berat_alokasi) as sales_weight,
+                SUM(pila.berat_alokasi * pila.harga_per_kg_lot) as sales_value"
+            )
+            ->groupBy(
+                DB::raw("CASE WHEN mi.id_ikan_tangkapan IS NULL THEN CONCAT('single:', mi.id_ikan) ELSE CONCAT('group:', mi.id_ikan_tangkapan) END"),
+                DB::raw('COALESCE(mit.nama_ikan_tangkapan, mi.nama_ikan)')
+            )
+            ->orderBy('commodity_name')
+            ->get();
+    }
+
+    private function buildVesselStorageSnapshot(int $idKapal): Collection
+    {
+        return DB::table('storage_ikan as si')
+            ->join('stok_ikan_storage as sis', 'sis.id_storage', '=', 'si.id_storage')
+            ->join('master_ikan as mi', 'mi.id_ikan', '=', 'sis.id_ikan')
+            ->leftJoin('master_ikan_tangkapan as mit', 'mit.id_ikan_tangkapan', '=', 'mi.id_ikan_tangkapan')
+            ->where('si.id_kapal', $idKapal)
+            ->selectRaw(
+                "CASE WHEN mi.id_ikan_tangkapan IS NULL THEN CONCAT('single:', mi.id_ikan) ELSE CONCAT('group:', mi.id_ikan_tangkapan) END as commodity_key,
+                COALESCE(mit.nama_ikan_tangkapan, mi.nama_ikan) as commodity_name,
+                SUM(sis.stok_aktual) as current_storage_weight"
+            )
+            ->groupBy(
+                DB::raw("CASE WHEN mi.id_ikan_tangkapan IS NULL THEN CONCAT('single:', mi.id_ikan) ELSE CONCAT('group:', mi.id_ikan_tangkapan) END"),
+                DB::raw('COALESCE(mit.nama_ikan_tangkapan, mi.nama_ikan)')
+            )
+            ->orderBy('commodity_name')
+            ->get();
+    }
+
     private function storeCatchToKapalStorage(Pelayaran $pelayaran): void
     {
         $pelayaran->loadMissing('kapal');
@@ -994,6 +1221,27 @@ class PelayaranSisaController extends Controller
             ['id_storage', 'id_ikan'],
             ['stok_aktual', 'updated_at']
         );
+
+        $lotRows = $catchRows->map(function ($row) use ($idStorage, $pelayaran, $now) {
+            return [
+                'id_storage' => $idStorage,
+                'id_ikan' => (int) $row->id_ikan,
+                'id_pelayaran' => (int) $pelayaran->id_pelayaran,
+                'source_type' => 'trip',
+                'tanggal_lot' => ($pelayaran->tanggal_selesai ?? $pelayaran->tanggal_tiba ?? now())->toDateString(),
+                'berat_awal' => (float) $row->total_berat,
+                'berat_sisa' => (float) $row->total_berat,
+                'harga_per_kg' => (float) (DB::table('ikan_hasil_pelayaran')
+                    ->where('id_pelayaran', (int) $pelayaran->id_pelayaran)
+                    ->where('id_ikan', (int) $row->id_ikan)
+                    ->selectRaw('CASE WHEN SUM(berat_hasil) = 0 THEN 0 ELSE SUM(berat_hasil * COALESCE(harga_per_kg, 0)) / SUM(berat_hasil) END as avg_harga')
+                    ->value('avg_harga') ?? 0),
+                'created_at' => $now,
+                'updated_at' => $now,
+            ];
+        })->values()->all();
+
+        DB::table('stok_ikan_lots')->insert($lotRows);
 
         $this->recalculateStokIkan(now()->format('Y-m'), $catchRows->pluck('id_ikan')->map(fn ($id) => (int) $id)->all());
     }
