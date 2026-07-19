@@ -15,49 +15,42 @@
                 <a class="nav-link count-indicator dropdown-toggle" id="notificationDropdown" href="#"
                     data-toggle="dropdown">
                     <i class="icon-bell mx-0"></i>
-                    <span class="count"></span>
+                    @if ($navbarNotificationCount > 0)
+                        <span class="count"></span>
+                    @endif
                 </a>
                 <div class="dropdown-menu dropdown-menu-right navbar-dropdown preview-list"
                     aria-labelledby="notificationDropdown">
-                    <p class="mb-0 font-weight-normal float-left dropdown-header">Pemberitahuan</p>
-                    <a class="dropdown-item preview-item">
-                        <div class="preview-thumbnail">
-                            <div class="preview-icon bg-success">
-                                <i class="ti-info-alt mx-0"></i>
-                            </div>
-                        </div>
-                        <div class="preview-item-content">
-                            <h6 class="preview-subject font-weight-normal"></h6>
-                            <p class="font-weight-light small-text mb-0 text-muted">
+                    <div class="d-flex justify-content-between align-items-center dropdown-header">
+                        <span class="mb-0 font-weight-normal">Pemberitahuan</span>
+                        <span class="badge badge-danger">{{ $navbarNotificationCount }}</span>
+                    </div>
 
-                            </p>
-                        </div>
-                    </a>
-                    <a class="dropdown-item preview-item">
-                        <div class="preview-thumbnail">
-                            <div class="preview-icon bg-warning">
-                                <i class="ti-settings mx-0"></i>
+                    @forelse ($navbarNotifications as $notification)
+                        <a class="dropdown-item preview-item" href="{{ route('pemberitahuan.index') }}">
+                            <div class="preview-thumbnail">
+                                <div class="preview-icon bg-{{ $notification->severity }}">
+                                    <i class="ti-alert mx-0"></i>
+                                </div>
                             </div>
-                        </div>
-                        <div class="preview-item-content">
-                            <h6 class="preview-subject font-weight-normal"></h6>
-                            <p class="font-weight-light small-text mb-0 text-muted">
-
-                            </p>
-                        </div>
-                    </a>
-                    <a class="dropdown-item preview-item">
-                        <div class="preview-thumbnail">
-                            <div class="preview-icon bg-info">
-                                <i class="ti-user mx-0"></i>
+                            <div class="preview-item-content">
+                                <h6 class="preview-subject font-weight-normal">{{ $notification->title }}</h6>
+                                <p class="font-weight-light small-text mb-0 text-muted">
+                                    {{ $notification->item_name }} — Stok
+                                    {{ number_format($notification->current_stock, 2, ',', '.') }}
+                                    {{ $notification->satuan }}
+                                </p>
                             </div>
+                        </a>
+                    @empty
+                        <div class="dropdown-item text-center text-muted py-3">
+                            Tidak ada pemberitahuan stok.
                         </div>
-                        <div class="preview-item-content">
-                            <h6 class="preview-subject font-weight-normal"></h6>
-                            <p class="font-weight-light small-text mb-0 text-muted">
+                    @endforelse
 
-                            </p>
-                        </div>
+                    <a class="dropdown-item text-center font-weight-medium py-3 border-top"
+                        href="{{ route('pemberitahuan.index') }}">
+                        Lihat Semua Pemberitahuan
                     </a>
                 </div>
             </li>

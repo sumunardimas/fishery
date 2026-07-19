@@ -16,6 +16,7 @@ use App\Http\Controllers\OperasionalKantorController;
 use App\Http\Controllers\PelayaranController;
 use App\Http\Controllers\PelayaranSisa2Controller;
 use App\Http\Controllers\PelayaranSisaController;
+use App\Http\Controllers\PemberitahuanController;
 use App\Http\Controllers\PembelianController;
 use App\Http\Controllers\PengaturanController;
 use App\Http\Controllers\PenjualanController;
@@ -28,6 +29,8 @@ use Illuminate\Support\Facades\Route;
 
 Route::middleware(['auth', 'staff.menu.access'])->group(function () {
     Route::get('/', [HomeController::class, 'index']);
+
+    Route::get('/pemberitahuan', [PemberitahuanController::class, 'index'])->name('pemberitahuan.index');
 
     Route::view('/button', 'pages.ui-features.buttons');
     Route::view('/forms', 'pages.forms.basic_elements');

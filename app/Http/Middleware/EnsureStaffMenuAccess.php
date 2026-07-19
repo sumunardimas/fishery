@@ -29,6 +29,7 @@ class EnsureStaffMenuAccess
             'pembelian.*',
             'barang-masuk.*',
             'barang-keluar.*',
+            'pemberitahuan.*',
             'master.item-pembelian.*',
             'master.perbekalan.*',
             'operasional-kantor.*',
