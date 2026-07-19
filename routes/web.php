@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\HomeController;
+use App\Http\Controllers\BarangMasukController;
 use App\Http\Controllers\KapalController;
 use App\Http\Controllers\PengaturanController;
 use App\Http\Controllers\KeuanganController;
@@ -143,6 +144,11 @@ Route::middleware(['auth', 'staff.menu.access'])->group(function () {
         Route::post('/transactions', [PembelianController::class, 'storeTransaction'])->name('transactions.store');
         Route::post('/transactions/{transaction}/pay-debt', [PembelianController::class, 'payDebt'])->name('transactions.pay-debt');
         Route::delete('/transactions/{transaction}', [PembelianController::class, 'destroyTransaction'])->name('transactions.destroy');
+    });
+
+    Route::prefix('barang-masuk')->name('barang-masuk.')->group(function () {
+        Route::get('/', [BarangMasukController::class, 'index'])->name('index');
+        Route::post('/', [BarangMasukController::class, 'store'])->name('store');
     });
 
     Route::prefix('stok')->name('stok.')->group(function () {

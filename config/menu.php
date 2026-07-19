@@ -81,6 +81,13 @@ return [
             ],
         ],
         [
+            'title' => 'Barang Masuk',
+            'icon' => 'ti-import',
+            'route' => 'barang-masuk.index',
+            'type' => 'route',
+            'roles' => ['admin', 'staff'],
+        ],
+        [
             'title' => 'Pembelian Barang',
             'icon' => 'ti-package',
             'route' => '#',
