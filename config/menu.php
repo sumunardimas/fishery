@@ -88,19 +88,26 @@ return [
             'roles' => ['admin', 'staff'],
         ],
         [
+            'title' => 'Barang Keluar',
+            'icon' => 'ti-export',
+            'route' => 'barang-keluar.index',
+            'type' => 'route',
+            'roles' => ['admin', 'staff'],
+        ],
+        [
             'title' => 'Pembelian Barang',
             'icon' => 'ti-package',
             'route' => '#',
             'roles' => ['admin', 'staff'],
             'children' => [
 
-                [
-                    'title' => 'Transaksi',
-                    'icon' => 'ti-write',
-                    'route' => 'pembelian.transaksi',
-                    'type' => 'route',
-                    'roles' => ['admin', 'staff'],
-                ],
+                // [
+                //     'title' => 'Transaksi',
+                //     'icon' => 'ti-write',
+                //     'route' => 'pembelian.transaksi',
+                //     'type' => 'route',
+                //     'roles' => ['admin', 'staff'],
+                // ],
                 [
                     'title' => 'Riwayat',
                     'icon' => 'ti-exchange-vertical',
@@ -123,13 +130,13 @@ return [
             'route' => '#',
             'roles' => ['admin', 'staff'],
             'children' => [
-                [
-                    'title' => 'Transaksi',
-                    'icon' => 'ti-write',
-                    'route' => 'master.perbekalan.transaksi',
-                    'type' => 'route',
-                    'roles' => ['admin', 'staff'],
-                ],
+                // [
+                //     'title' => 'Transaksi',
+                //     'icon' => 'ti-write',
+                //     'route' => 'master.perbekalan.transaksi',
+                //     'type' => 'route',
+                //     'roles' => ['admin', 'staff'],
+                // ],
                 [
                     'title' => 'Riwayat In Out',
                     'icon' => 'ti-exchange-vertical',

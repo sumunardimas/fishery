@@ -1,9 +1,9 @@
 <?php
 
-use App\Http\Controllers\HomeController;
+use App\Http\Controllers\BarangKeluarController;
 use App\Http\Controllers\BarangMasukController;
+use App\Http\Controllers\HomeController;
 use App\Http\Controllers\KapalController;
-use App\Http\Controllers\PengaturanController;
 use App\Http\Controllers\KeuanganController;
 use App\Http\Controllers\MasterCustomerController;
 use App\Http\Controllers\MasterIkanController;
@@ -14,12 +14,13 @@ use App\Http\Controllers\MasterPerbekalanController;
 use App\Http\Controllers\OperasionalController;
 use App\Http\Controllers\OperasionalKantorController;
 use App\Http\Controllers\PelayaranController;
-use App\Http\Controllers\PelayaranSisaController;
 use App\Http\Controllers\PelayaranSisa2Controller;
+use App\Http\Controllers\PelayaranSisaController;
 use App\Http\Controllers\PembelianController;
+use App\Http\Controllers\PengaturanController;
 use App\Http\Controllers\PenjualanController;
-use App\Http\Controllers\ProfileDocumentController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\ProfileDocumentController;
 use App\Http\Controllers\StokController;
 use App\Http\Controllers\UpdateProfileController;
 use App\Http\Controllers\UserController;
@@ -149,6 +150,11 @@ Route::middleware(['auth', 'staff.menu.access'])->group(function () {
     Route::prefix('barang-masuk')->name('barang-masuk.')->group(function () {
         Route::get('/', [BarangMasukController::class, 'index'])->name('index');
         Route::post('/', [BarangMasukController::class, 'store'])->name('store');
+    });
+
+    Route::prefix('barang-keluar')->name('barang-keluar.')->group(function () {
+        Route::get('/', [BarangKeluarController::class, 'index'])->name('index');
+        Route::post('/', [BarangKeluarController::class, 'store'])->name('store');
     });
 
     Route::prefix('stok')->name('stok.')->group(function () {
