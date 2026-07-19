@@ -28,27 +28,32 @@ class BarangMasukTest extends TestCase
             ->assertSee('value="perbekalan:'.$perbekalanId.'"', false);
     }
 
-    public function test_import_stock_can_be_received_for_both_item_sources(): void
+    public function test_multiple_items_from_both_sources_are_saved_in_one_submission(): void
     {
         $user = User::factory()->create();
         $itemPembelianId = $this->createItemPembelian();
         $perbekalanId = $this->createPerbekalan();
 
-        foreach ([
-            ['item' => 'pembelian:'.$itemPembelianId, 'quantity' => 4.5],
-            ['item' => 'perbekalan:'.$perbekalanId, 'quantity' => 12],
-        ] as $input) {
-            $this->actingAs($user)
-                ->post(route('barang-masuk.store'), [
-                    'tanggal_transaksi' => '2026-07-19',
-                    'item' => $input['item'],
-                    'jenis_transaksi' => 'in',
-                    'mode_transaksi' => 'import_awal',
-                    'jumlah' => $input['quantity'],
-                ])
-                ->assertRedirect(route('barang-masuk.index'))
-                ->assertSessionHasNoErrors();
-        }
+        $this->actingAs($user)
+            ->post(route('barang-masuk.store'), [
+                'tanggal_transaksi' => '2026-07-19',
+                'mode_transaksi' => 'import_awal',
+                'items' => [
+                    [
+                        'item' => 'pembelian:'.$itemPembelianId,
+                        'jumlah' => 4.5,
+                        'harga_satuan' => null,
+                    ],
+                    [
+                        'item' => 'perbekalan:'.$perbekalanId,
+                        'jumlah' => 12,
+                        'harga_satuan' => null,
+                    ],
+                ],
+            ])
+            ->assertRedirect(route('barang-masuk.index'))
+            ->assertSessionHasNoErrors()
+            ->assertSessionHas('success', '2 item barang masuk berhasil dicatat.');
 
         $this->assertDatabaseHas('item_pembelian_stock', [
             'id_item_pembelian' => $itemPembelianId,
