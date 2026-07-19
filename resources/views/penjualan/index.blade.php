@@ -9,6 +9,7 @@
 
 @section('content')
     <div class="row" x-data="{
+        jenisTransaksi: {{ Js::from(old('jenis_transaksi', 'penjualan')) }},
         createNewCustomer: {{ Js::from((bool) old('create_new_customer', data_get($activeDraftPayload ?? [], 'create_new_customer', false))) }},
         ikanMap: {{ Js::from($ikanStock->keyBy('id_ikan')->map(fn($i) => ['nama_ikan' => $i->nama_ikan, 'stok_tersedia' => $i->stok_tersedia])) }},
         items: {{ Js::from(old('items', data_get($activeDraftPayload ?? [], 'items', [['id_ikan' => '', 'berat' => 0, 'harga_per_kg' => '']]))) }},
@@ -28,7 +29,7 @@
         parseNominal(value) {
             return window.rupiahInput ? (window.rupiahInput.parse(value) || 0) : (parseFloat(value) || 0);
         },
-        subtotal(item) { return item.berat * this.parseNominal(item.harga_per_kg); },
+        subtotal(item) { return this.jenisTransaksi === 'lawuhan' ? 0 : item.berat * this.parseNominal(item.harga_per_kg); },
         totalHarga() { return this.items.reduce((sum, it) => sum + this.subtotal(it), 0); },
         piutang() { return Math.max(0, this.totalHarga() - this.parseNominal(this.bayarTunai) - this.parseNominal(this.bayarTransfer)); },
         statusPembayaran() { return this.piutang() <= 0 ? 'Lunas' : 'Piutang'; },
@@ -106,18 +107,64 @@
                     <form action="{{ route('penjualan.store') }}" method="POST">
                         @csrf
 
+                        <div class="row">
+                            <div class="col-md-6 form-group">
+                                <label class="required-asterisk" for="tanggal_penjualan">Tanggal Transaksi</label>
+                                <input type="date" class="form-control @error('tanggal_penjualan') is-invalid @enderror"
+                                    id="tanggal_penjualan" name="tanggal_penjualan"
+                                    value="{{ old('tanggal_penjualan', now()->toDateString()) }}"
+                                    max="{{ now()->toDateString() }}" required>
+                                @error('tanggal_penjualan')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                            </div>
+                            <div class="col-md-6 form-group">
+                                <label class="required-asterisk d-block">Jenis Transaksi</label>
+                                <div class="d-flex flex-wrap pt-2">
+                                    <div class="custom-control custom-radio mr-4">
+                                        <input type="radio" class="custom-control-input" id="jenis_penjualan"
+                                            name="jenis_transaksi" value="penjualan" x-model="jenisTransaksi"
+                                            {{ old('jenis_transaksi', 'penjualan') === 'penjualan' ? 'checked' : '' }}>
+                                        <label class="custom-control-label" for="jenis_penjualan">Penjualan Biasa</label>
+                                    </div>
+                                    <div class="custom-control custom-radio">
+                                        <input type="radio" class="custom-control-input" id="jenis_lawuhan"
+                                            name="jenis_transaksi" value="lawuhan" x-model="jenisTransaksi"
+                                            {{ old('jenis_transaksi') === 'lawuhan' ? 'checked' : '' }}>
+                                        <label class="custom-control-label" for="jenis_lawuhan">Lawuhan</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <small class="text-muted">Lawuhan mengurangi stok dan tercatat per pelayaran, tetapi tidak
+                                menjadi pendapatan atau piutang.</small>
+                        </div>
+
+                        <div x-show="jenisTransaksi === 'lawuhan'" class="form-group">
+                            <label class="required-asterisk" for="tujuan_lawuhan">Tujuan Lawuhan</label>
+                            <input type="text" class="form-control @error('tujuan_lawuhan') is-invalid @enderror"
+                                id="tujuan_lawuhan" name="tujuan_lawuhan" value="{{ old('tujuan_lawuhan') }}"
+                                placeholder="Contoh: makan staf atau upacara adat"
+                                :required="jenisTransaksi === 'lawuhan'">
+                            @error('tujuan_lawuhan')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                        </div>
+
                         {{-- Customer section --}}
-                        <div class="form-group form-check mb-3" style="padding-left: 1.5rem;">
+                        <div x-show="jenisTransaksi === 'penjualan'" class="form-group form-check mb-3"
+                            style="padding-left: 1.5rem;">
                             <input type="checkbox" class="form-check-input" id="create_new_customer"
                                 name="create_new_customer" value="1" x-model="createNewCustomer"
                                 {{ old('create_new_customer') ? 'checked' : '' }}>
                             <label class="form-check-label" for="create_new_customer">Tambah customer baru</label>
                         </div>
 
-                        <div x-show="!createNewCustomer" class="form-group">
+                        <div x-show="jenisTransaksi === 'penjualan' && !createNewCustomer" class="form-group">
                             <label class="required-asterisk" for="id_customer">Customer</label>
                             <select class="form-control @error('id_customer') is-invalid @enderror" name="id_customer"
-                                id="id_customer" :required="!createNewCustomer">
+                                id="id_customer" :required="jenisTransaksi === 'penjualan' && !createNewCustomer">
                                 <option value="">Pilih customer</option>
                                 @foreach ($customers as $customer)
                                     <option value="{{ $customer->id_customer }}"
@@ -131,12 +178,14 @@
                             @enderror
                         </div>
 
-                        <div x-show="createNewCustomer" class="border rounded p-3 mb-3">
+                        <div x-show="jenisTransaksi === 'penjualan' && createNewCustomer" class="border rounded p-3 mb-3">
                             <div class="form-group">
                                 <label class="required-asterisk" for="nama_customer_baru">Nama Customer</label>
-                                <input type="text" class="form-control @error('nama_customer_baru') is-invalid @enderror"
+                                <input type="text"
+                                    class="form-control @error('nama_customer_baru') is-invalid @enderror"
                                     name="nama_customer_baru" id="nama_customer_baru"
-                                    value="{{ old('nama_customer_baru') }}" :required="createNewCustomer">
+                                    value="{{ old('nama_customer_baru') }}"
+                                    :required="jenisTransaksi === 'penjualan' && createNewCustomer">
                                 @error('nama_customer_baru')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
@@ -204,7 +253,10 @@
                                         <label class="required-asterisk">Harga / kg</label>
                                         <input type="text" data-rupiah-input
                                             :name="'items[' + index + '][harga_per_kg]'" x-model="item.harga_per_kg"
-                                            class="form-control" placeholder="0,00" required>
+                                            class="form-control" placeholder="0,00"
+                                            :disabled="jenisTransaksi === 'lawuhan'" required>
+                                        <input x-show="jenisTransaksi === 'lawuhan'" type="hidden"
+                                            :name="'items[' + index + '][harga_per_kg]'" value="0">
                                     </div>
                                     <div class="col-md-1 d-flex align-items-end form-group mb-2">
                                         <button type="button" class="btn btn-sm btn-outline-danger w-100"
@@ -222,8 +274,7 @@
                             </div>
                         </template>
 
-                        <div class="mb-2 d-flex justify-content-between align-items-center">
-                            <label class="required-asterisk mb-0">Daftar Ikan</label>
+                        <div class="mb-2 d-flex justify-content-end">
                             <button type="button" class="btn btn-sm btn-warning" @click="addItem()">
                                 <i class="ti-plus mr-1"></i> Tambah Ikan
                             </button>
@@ -274,7 +325,7 @@
                         </div>
 
                         {{-- ── Payment inputs ── --}}
-                        <div class="row">
+                        <div class="row" x-show="jenisTransaksi === 'penjualan'">
                             <div class="col-md-6 form-group">
                                 <label for="bayar_tunai">Bayar Tunai (Rp)</label>
                                 <input type="text" data-rupiah-input x-model="bayarTunai"
@@ -301,8 +352,9 @@
                         </div>
 
                         <div class="d-flex flex-wrap">
-                            <button type="submit" formaction="{{ route('penjualan.cart-draft.save') }}"
-                                formmethod="POST" class="btn btn-outline-secondary mr-2 mb-2">
+                            <button x-show="jenisTransaksi === 'penjualan'" type="submit"
+                                formaction="{{ route('penjualan.cart-draft.save') }}" formmethod="POST"
+                                class="btn btn-outline-secondary mr-2 mb-2">
                                 Simpan Keranjang
                             </button>
                             <button type="submit" class="btn btn-primary mb-2">

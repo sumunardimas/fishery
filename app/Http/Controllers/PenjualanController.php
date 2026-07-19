@@ -123,10 +123,13 @@ class PenjualanController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $validated = $request->validate([
+            'tanggal_penjualan' => ['required', 'date', 'before_or_equal:today'],
+            'jenis_transaksi' => ['required', 'in:penjualan,lawuhan'],
+            'tujuan_lawuhan' => ['nullable', 'string', 'max:255', 'required_if:jenis_transaksi,lawuhan'],
             'items' => ['required', 'array', 'min:1'],
             'items.*.id_ikan' => ['required', 'integer', 'exists:master_ikan,id_ikan'],
             'items.*.berat' => ['required', 'numeric', 'gt:0'],
-            'items.*.harga_per_kg' => ['required', 'numeric', 'gt:0'],
+            'items.*.harga_per_kg' => ['required', 'numeric', 'min:0'],
             'bayar_tunai' => ['nullable', 'numeric', 'min:0'],
             'bayar_transfer' => ['nullable', 'numeric', 'min:0'],
             'keterangan' => ['nullable', 'string'],
@@ -139,11 +142,25 @@ class PenjualanController extends Controller
             'telepon_customer_baru' => ['nullable', 'string', 'max:30'],
         ]);
 
-        $today = now()->toDateString();
+        $tanggalPenjualan = $validated['tanggal_penjualan'];
+        $isLawuhan = $validated['jenis_transaksi'] === 'lawuhan';
 
-        [$customer, $customerError] = $this->resolveCustomer($validated);
+        [$customer, $customerError] = $isLawuhan ? [null, null] : $this->resolveCustomer($validated);
         if ($customerError !== null) {
             return back()->withInput()->withErrors(['message' => $customerError]);
+        }
+
+        if (! $isLawuhan && collect($validated['items'])->contains(fn ($item) => (float) $item['harga_per_kg'] <= 0)) {
+            return back()->withInput()->withErrors(['items' => 'Harga per kg penjualan biasa harus lebih dari 0.']);
+        }
+
+        if ($isLawuhan) {
+            foreach ($validated['items'] as &$item) {
+                $item['harga_per_kg'] = 0;
+            }
+            unset($item);
+            $validated['bayar_tunai'] = 0;
+            $validated['bayar_transfer'] = 0;
         }
 
         // Aggregate requested berat per ikan (same fish may appear in multiple rows)
@@ -187,17 +204,19 @@ class PenjualanController extends Controller
         $hasPendingDiscrepancy = false;
 
         try {
-            DB::transaction(function () use ($today, $customer, $totalHarga, $bayarTunai, $bayarTransfer, $totalPenerimaan, $piutang, $statusPembayaran, $validated, $requestedByIkan, $allowPendingDiscrepancy, &$hasPendingDiscrepancy) {
+            DB::transaction(function () use ($tanggalPenjualan, $customer, $totalHarga, $bayarTunai, $bayarTransfer, $totalPenerimaan, $piutang, $statusPembayaran, $validated, $requestedByIkan, $allowPendingDiscrepancy, $isLawuhan, &$hasPendingDiscrepancy) {
                 $penjualan = Penjualan::create([
-                    'tanggal_penjualan' => $today,
+                    'tanggal_penjualan' => $tanggalPenjualan,
+                    'jenis_transaksi' => $validated['jenis_transaksi'],
+                    'tujuan_lawuhan' => $isLawuhan ? trim($validated['tujuan_lawuhan']) : null,
                     'id_customer' => $customer?->id_customer,
                     'total_harga' => $totalHarga,
                     'bayar_tunai' => $bayarTunai,
                     'bayar_transfer' => $bayarTransfer,
                     'piutang' => $piutang,
                     'status_pembayaran' => $statusPembayaran,
-                    'pembeli' => $customer?->nama_customer ?? '-',
-                    'keterangan' => $validated['keterangan'] ?? 'Transaksi POS penjualan ikan',
+                    'pembeli' => $isLawuhan ? 'Lawuhan' : ($customer?->nama_customer ?? '-'),
+                    'keterangan' => $validated['keterangan'] ?? ($isLawuhan ? 'Pengambilan stok untuk Lawuhan' : 'Transaksi POS penjualan ikan'),
                 ]);
 
                 $saleItems = [];
@@ -235,7 +254,7 @@ class PenjualanController extends Controller
                         $lastSaldoKas = (float) (DB::table('arus_kas')->where('akun', 'kas')->orderByDesc('id_kas')->value('saldo') ?? 0);
                         DB::table('arus_kas')->insert([
                             'akun' => 'kas',
-                            'tanggal' => $today,
+                            'tanggal' => $tanggalPenjualan,
                             'jenis_transaksi' => 'Masuk',
                             'kategori' => 'Penjualan Ikan',
                             'deskripsi' => 'Penjualan kepada '.$namaCustomer.'. Diterima kas Rp '.number_format($bayarTunai, 2, ',', '.').'; Piutang Rp '.number_format($piutang, 2, ',', '.'),
@@ -251,7 +270,7 @@ class PenjualanController extends Controller
                         $lastSaldoBank = (float) (DB::table('arus_kas')->where('akun', 'bank')->orderByDesc('id_kas')->value('saldo') ?? 0);
                         DB::table('arus_kas')->insert([
                             'akun' => 'bank',
-                            'tanggal' => $today,
+                            'tanggal' => $tanggalPenjualan,
                             'jenis_transaksi' => 'Masuk',
                             'kategori' => 'Penjualan Ikan',
                             'deskripsi' => 'Penjualan kepada '.$namaCustomer.'. Diterima transfer Rp '.number_format($bayarTransfer, 2, ',', '.').'; Piutang Rp '.number_format($piutang, 2, ',', '.'),
@@ -264,7 +283,7 @@ class PenjualanController extends Controller
                     }
                 }
 
-                $this->recalculateStokIkan(now()->format('Y-m'), array_keys($requestedByIkan));
+                $this->recalculateStokIkan(Carbon::parse($tanggalPenjualan)->format('Y-m'), array_keys($requestedByIkan));
             });
         } catch (Throwable $e) {
             report($e);
@@ -276,7 +295,7 @@ class PenjualanController extends Controller
 
         $successMessage = $hasPendingDiscrepancy
             ? 'Transaksi penjualan berhasil disimpan sebagai selisih sementara dan menunggu rekonsiliasi stok.'
-            : 'Transaksi penjualan berhasil disimpan.';
+            : ($isLawuhan ? 'Pengambilan Lawuhan berhasil dicatat dan stok telah dikurangi.' : 'Transaksi penjualan berhasil disimpan.');
 
         $userId = Auth::id();
         if ($userId !== null && $customer?->id_customer !== null) {

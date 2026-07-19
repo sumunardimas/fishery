@@ -4,6 +4,18 @@
 
 @section('content')
 	<div class="row">
+		<div class="col-md-4 grid-margin stretch-card">
+			<div class="card">
+				<div class="card-body">
+					<p class="card-title mb-1">Total Konsumsi Lawuhan</p>
+					<h3 class="mb-0">{{ number_format($totalLawuhan, 2, ',', '.') }} Kg</h3>
+					<small class="text-muted">Dari stok lot pelayaran yang tercatat</small>
+				</div>
+			</div>
+		</div>
+	</div>
+
+	<div class="row">
 		<div class="col-12">
 			@if ($errors->has('message'))
 				<x-alert type="danger" :message="$errors->first('message') ?? null" />
@@ -42,6 +54,7 @@
 									<th>Tanggal Selesai</th>
 									<th>Berat Tangkapan (Kg)</th>
 									<th>Berat TPI (Kg)</th>
+									<th>Lawuhan (Kg)</th>
 									<th>Selisih (Kg)</th>
 									<th>Action</th>
 								</tr>
@@ -60,6 +73,7 @@
 												<span class="badge badge-warning">Belum diisi</span>
 											@endif
 										</td>
+										<td>{{ number_format((float) $row->total_lawuhan, 2, ',', '.') }}</td>
 										<td>
 											@if ($row->berat_catatan > 0)
 												<span class="badge {{ (float)$row->selisih > 0 ? 'badge-danger' : 'badge-success' }}">
@@ -82,7 +96,7 @@
 									</tr>
 								@empty
 									<tr>
-										<td colspan="7" class="text-center text-muted py-4">
+										<td colspan="8" class="text-center text-muted py-4">
 											Tidak ada pelayaran yang selesai
 										</td>
 									</tr>
