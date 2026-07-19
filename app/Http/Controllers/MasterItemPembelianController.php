@@ -20,6 +20,7 @@ class MasterItemPembelianController extends Controller
                 'mip.nama_item',
                 'mip.kategori',
                 'mip.satuan',
+                'mip.limit_minimal',
                 'mip.keterangan',
                 DB::raw('COALESCE(ips.stok_aktual, 0) as stok_aktual')
             )
@@ -35,6 +36,7 @@ class MasterItemPembelianController extends Controller
             'nama_item' => ['required', 'string', 'max:255', 'unique:master_item_pembelian,nama_item'],
             'kategori' => ['required', 'string', 'max:255'],
             'satuan' => ['required', 'string', 'max:100'],
+            'limit_minimal' => ['nullable', 'numeric', 'min:0'],
             'keterangan' => ['nullable', 'string'],
         ]);
 
@@ -54,6 +56,7 @@ class MasterItemPembelianController extends Controller
             ],
             'kategori' => ['required', 'string', 'max:255'],
             'satuan' => ['required', 'string', 'max:100'],
+            'limit_minimal' => ['nullable', 'numeric', 'min:0'],
             'keterangan' => ['nullable', 'string'],
         ]);
 

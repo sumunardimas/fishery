@@ -18,6 +18,11 @@ class MasterItemPembelian extends Model
         'nama_item',
         'kategori',
         'satuan',
+        'limit_minimal',
         'keterangan',
+    ];
+
+    protected $casts = [
+        'limit_minimal' => 'decimal:2',
     ];
 }

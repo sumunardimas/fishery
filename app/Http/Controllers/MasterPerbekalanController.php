@@ -44,10 +44,10 @@ class MasterPerbekalanController extends Controller
         $selectedItemId = $request->integer('show_item');
 
         $defaultStart = Carbon::today()->subDays(29)->toDateString();
-        $defaultEnd   = Carbon::today()->toDateString();
+        $defaultEnd = Carbon::today()->toDateString();
 
         $startDate = $request->input('start_date', $defaultStart);
-        $endDate   = $request->input('end_date', $defaultEnd);
+        $endDate = $request->input('end_date', $defaultEnd);
 
         $items = $this->getPerbekalanItems();
 
@@ -91,6 +91,7 @@ class MasterPerbekalanController extends Controller
                 'mp.id_barang',
                 'mp.nama_barang',
                 'mp.satuan',
+                'mp.limit_minimal',
                 DB::raw('COALESCE(ps.stok_aktual, 0) as stok_aktual')
             )
             ->orderBy('mp.nama_barang')
@@ -102,6 +103,7 @@ class MasterPerbekalanController extends Controller
         $data = $request->validate([
             'nama_barang' => ['required', 'string', 'max:255', 'unique:master_perbekalan,nama_barang'],
             'satuan' => ['required', 'string', 'max:100'],
+            'limit_minimal' => ['nullable', 'numeric', 'min:0'],
         ]);
 
         MasterPerbekalan::create($data);
@@ -119,6 +121,7 @@ class MasterPerbekalanController extends Controller
                 Rule::unique('master_perbekalan', 'nama_barang')->ignore($perbekalan->id_barang, 'id_barang'),
             ],
             'satuan' => ['required', 'string', 'max:100'],
+            'limit_minimal' => ['nullable', 'numeric', 'min:0'],
         ]);
 
         $perbekalan->update($data);
@@ -271,7 +274,7 @@ class MasterPerbekalanController extends Controller
                         akun: $akunPembayaran,
                         tanggal: $data['tanggal_transaksi'],
                         kategori: 'Pembelian Perbekalan',
-                        deskripsi: 'Pembelian perbekalan '.$namaBarang.' ('.number_format($jumlah, 2, ',', '.').' '.$unit.')'.(!empty($data['sumber_tujuan']) ? ' dari '.$data['sumber_tujuan'] : ''),
+                        deskripsi: 'Pembelian perbekalan '.$namaBarang.' ('.number_format($jumlah, 2, ',', '.').' '.$unit.')'.(! empty($data['sumber_tujuan']) ? ' dari '.$data['sumber_tujuan'] : ''),
                         debit: 0,
                         kredit: (float) $totalHarga
                     );

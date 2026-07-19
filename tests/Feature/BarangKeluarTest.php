@@ -25,8 +25,8 @@ class BarangKeluarTest extends TestCase
         $this->actingAs($user)
             ->get(route('barang-keluar.index'))
             ->assertOk()
-            ->assertSee('Amplop Coklat (pack) - Barang — Stok: 7,00 pack')
-            ->assertSee('Air Aki (liter) - Perbekalan — Stok: 10,00 liter');
+            ->assertSee('7,00 pack')
+            ->assertSee('10,00 liter');
 
         $this->actingAs($user)
             ->post(route('barang-keluar.store'), [

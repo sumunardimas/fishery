@@ -17,5 +17,10 @@ class MasterPerbekalan extends Model
     protected $fillable = [
         'nama_barang',
         'satuan',
+        'limit_minimal',
+    ];
+
+    protected $casts = [
+        'limit_minimal' => 'decimal:2',
     ];
 }

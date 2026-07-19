@@ -19,7 +19,7 @@
                     <form action="{{ route('master.item-pembelian.store') }}" method="POST">
                         @csrf
                         <div class="form-row">
-                            <div class="form-group col-md-4">
+                            <div class="form-group col-md-3">
                                 <label for="nama_item">Nama Item</label>
                                 <input type="text" id="nama_item" name="nama_item" class="form-control"
                                     value="{{ old('nama_item') }}" required>
@@ -34,7 +34,12 @@
                                 <input type="text" id="satuan" name="satuan" class="form-control"
                                     value="{{ old('satuan') }}" required>
                             </div>
-                            <div class="form-group col-md-3 d-flex align-items-end">
+                            <div class="form-group col-md-2">
+                                <label for="limit_minimal">Limit Minimal</label>
+                                <input type="number" id="limit_minimal" name="limit_minimal" class="form-control"
+                                    step="0.01" min="0" value="{{ old('limit_minimal', 0) }}" required>
+                            </div>
+                            <div class="form-group col-md-2 d-flex align-items-end">
                                 <button type="submit" class="btn btn-success w-100">Tambah</button>
                             </div>
                         </div>
@@ -59,6 +64,7 @@
                                     <th>Satuan</th>
                                     <th>Keterangan</th>
                                     <th>Stok Aktual</th>
+                                    <th>Limit Minimal</th>
                                     <th class="text-right">Aksi</th>
                                 </tr>
                             </thead>
@@ -71,6 +77,7 @@
                                         <td>{{ $item->satuan }}</td>
                                         <td>{{ $item->keterangan ?: '-' }}</td>
                                         <td>{{ number_format((float) $item->stok_aktual, 2, ',', '.') }}</td>
+                                        <td>{{ number_format((float) $item->limit_minimal, 2, ',', '.') }}</td>
                                         <td class="text-right">
                                             <button type="button" class="btn btn-outline-primary btn-sm"
                                                 data-toggle="modal"
@@ -104,20 +111,26 @@
                                                     @method('PUT')
                                                     <div class="modal-body">
                                                         <div class="form-row">
-                                                            <div class="form-group col-md-5">
+                                                            <div class="form-group col-md-4">
                                                                 <label>Nama Item</label>
                                                                 <input type="text" name="nama_item" class="form-control"
                                                                     value="{{ $item->nama_item }}" required>
                                                             </div>
-                                                            <div class="form-group col-md-4">
+                                                            <div class="form-group col-md-3">
                                                                 <label>Kategori</label>
                                                                 <input type="text" name="kategori" class="form-control"
                                                                     value="{{ $item->kategori }}" required>
                                                             </div>
-                                                            <div class="form-group col-md-3">
+                                                            <div class="form-group col-md-2">
                                                                 <label>Satuan</label>
                                                                 <input type="text" name="satuan" class="form-control"
                                                                     value="{{ $item->satuan }}" required>
+                                                            </div>
+                                                            <div class="form-group col-md-3">
+                                                                <label>Limit Minimal</label>
+                                                                <input type="number" name="limit_minimal"
+                                                                    class="form-control" step="0.01" min="0"
+                                                                    value="{{ $item->limit_minimal }}" required>
                                                             </div>
                                                         </div>
                                                         <div class="form-group mb-0">
@@ -137,7 +150,7 @@
                                     </div>
                                 @empty
                                     <tr>
-                                        <td colspan="7" class="text-center text-muted">Belum ada data item pembelian.
+                                        <td colspan="8" class="text-center text-muted">Belum ada data item pembelian.
                                         </td>
                                     </tr>
                                 @endforelse
