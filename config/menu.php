@@ -95,9 +95,10 @@ return [
             'roles' => ['admin', 'staff'],
         ],
         [
-            'title' => 'Pembelian Barang',
+            'title' => 'Barang Kantor',
             'icon' => 'ti-package',
-            'route' => '#',
+            'route' => 'pembelian.riwayat',
+            'type' => 'route',
             'roles' => ['admin', 'staff'],
             'children' => [
 
@@ -127,7 +128,8 @@ return [
         [
             'title' => 'Perbekalan',
             'icon' => 'ti-package',
-            'route' => '#',
+            'route' => 'master.perbekalan.history',
+            'type' => 'route',
             'roles' => ['admin', 'staff'],
             'children' => [
                 // [

@@ -17,7 +17,7 @@
 
             <div class="card mb-4">
                 <div class="card-body">
-                    <h4 class="card-title mb-1">Goods Purchase and Receive</h4>
+                    <h4 class="card-title mb-1">Barang Masuk</h4>
                     <p class="card-description mb-4">
                         Catat pembelian atau penerimaan stok dari item Pembelian Barang dan Perbekalan.
                     </p>
@@ -62,7 +62,8 @@
                         <div class="d-flex justify-content-between align-items-center mt-2 mb-2">
                             <div>
                                 <h5 class="mb-0">Daftar Barang</h5>
-                                <small class="text-muted">Tentukan item, jumlah, dan harga satuan untuk setiap barang.</small>
+                                <small class="text-muted">Tentukan item, jumlah, dan harga satuan untuk setiap
+                                    barang.</small>
                             </div>
                             <button type="button" id="tambah-barang" class="btn btn-outline-primary btn-sm">
                                 <i class="ti-plus mr-1"></i>Tambah Barang
@@ -78,14 +79,16 @@
                                             <option value="">Pilih item</option>
                                             <optgroup label="Pembelian Barang">
                                                 @foreach ($itemPembelian as $item)
-                                                    <option value="pembelian:{{ $item->id }}" @selected(($row['item'] ?? '') === 'pembelian:'.$item->id)>
+                                                    <option value="pembelian:{{ $item->id }}"
+                                                        @selected(($row['item'] ?? '') === 'pembelian:' . $item->id)>
                                                         {{ $item->nama }} ({{ $item->satuan }}) - Barang
                                                     </option>
                                                 @endforeach
                                             </optgroup>
                                             <optgroup label="Perbekalan">
                                                 @foreach ($perbekalan as $item)
-                                                    <option value="perbekalan:{{ $item->id }}" @selected(($row['item'] ?? '') === 'perbekalan:'.$item->id)>
+                                                    <option value="perbekalan:{{ $item->id }}"
+                                                        @selected(($row['item'] ?? '') === 'perbekalan:' . $item->id)>
                                                         {{ $item->nama }} ({{ $item->satuan }}) - Perbekalan
                                                     </option>
                                                 @endforeach
@@ -94,16 +97,19 @@
                                     </div>
                                     <div class="form-group col-md-2 mb-0">
                                         <label class="required-asterisk">Qty</label>
-                                        <input type="number" name="items[{{ $index }}][jumlah]" class="form-control"
-                                            step="0.01" min="0.01" value="{{ $row['jumlah'] ?? '' }}" required>
+                                        <input type="number" name="items[{{ $index }}][jumlah]"
+                                            class="form-control" step="0.01" min="0.01"
+                                            value="{{ $row['jumlah'] ?? '' }}" required>
                                     </div>
                                     <div class="form-group col-md-3 mb-0">
                                         <label class="required-asterisk">Harga Satuan</label>
-                                        <input type="text" name="items[{{ $index }}][harga_satuan]" class="form-control"
-                                            data-rupiah-input value="{{ $row['harga_satuan'] ?? '' }}" placeholder="0,00">
+                                        <input type="text" name="items[{{ $index }}][harga_satuan]"
+                                            class="form-control" data-rupiah-input value="{{ $row['harga_satuan'] ?? '' }}"
+                                            placeholder="0,00">
                                     </div>
                                     <div class="form-group col-md-1 mb-0">
-                                        <button type="button" class="btn btn-outline-danger btn-block hapus-barang" title="Hapus barang">
+                                        <button type="button" class="btn btn-outline-danger btn-block hapus-barang"
+                                            title="Hapus barang">
                                             <i class="ti-trash"></i>
                                         </button>
                                     </div>
@@ -129,26 +135,31 @@
                                     <option value="">Pilih item</option>
                                     <optgroup label="Pembelian Barang">
                                         @foreach ($itemPembelian as $item)
-                                            <option value="pembelian:{{ $item->id }}">{{ $item->nama }} ({{ $item->satuan }}) - Barang</option>
+                                            <option value="pembelian:{{ $item->id }}">{{ $item->nama }}
+                                                ({{ $item->satuan }}) - Barang</option>
                                         @endforeach
                                     </optgroup>
                                     <optgroup label="Perbekalan">
                                         @foreach ($perbekalan as $item)
-                                            <option value="perbekalan:{{ $item->id }}">{{ $item->nama }} ({{ $item->satuan }}) - Perbekalan</option>
+                                            <option value="perbekalan:{{ $item->id }}">{{ $item->nama }}
+                                                ({{ $item->satuan }}) - Perbekalan</option>
                                         @endforeach
                                     </optgroup>
                                 </select>
                             </div>
                             <div class="form-group col-md-2 mb-0">
                                 <label class="required-asterisk">Qty</label>
-                                <input type="number" name="items[__INDEX__][jumlah]" class="form-control" step="0.01" min="0.01" required>
+                                <input type="number" name="items[__INDEX__][jumlah]" class="form-control"
+                                    step="0.01" min="0.01" required>
                             </div>
                             <div class="form-group col-md-3 mb-0">
                                 <label class="required-asterisk">Harga Satuan</label>
-                                <input type="text" name="items[__INDEX__][harga_satuan]" class="form-control" data-rupiah-input placeholder="0,00">
+                                <input type="text" name="items[__INDEX__][harga_satuan]" class="form-control"
+                                    data-rupiah-input placeholder="0,00">
                             </div>
                             <div class="form-group col-md-1 mb-0">
-                                <button type="button" class="btn btn-outline-danger btn-block hapus-barang" title="Hapus barang">
+                                <button type="button" class="btn btn-outline-danger btn-block hapus-barang"
+                                    title="Hapus barang">
                                     <i class="ti-trash"></i>
                                 </button>
                             </div>

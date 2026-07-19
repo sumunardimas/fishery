@@ -17,7 +17,7 @@
 
             <div class="card mb-4">
                 <div class="card-body">
-                    <h4 class="card-title mb-1">Items Out</h4>
+                    <h4 class="card-title mb-1">Barang Keluar</h4>
                     <p class="card-description mb-4">
                         Catat beberapa barang keluar sekaligus. Nilai barang otomatis mengikuti lapisan pembelian
                         paling lama yang masih tersedia (FIFO).
@@ -65,8 +65,10 @@
                                                 @foreach ($itemPembelian as $item)
                                                     <option value="pembelian:{{ $item->id }}"
                                                         style="color: {{ (float) $item->stok > 0 ? '#198754' : '#dc3545' }}"
-                                                        @selected(($row['item'] ?? '') === 'pembelian:'.$item->id)>
-                                                        {{ $item->nama }} ({{ $item->satuan }}) - Barang — Stok: {{ number_format((float) $item->stok, 2, ',', '.') }} {{ $item->satuan }}
+                                                        @selected(($row['item'] ?? '') === 'pembelian:' . $item->id)>
+                                                        {{ $item->nama }} ({{ $item->satuan }}) - Barang — Stok:
+                                                        {{ number_format((float) $item->stok, 2, ',', '.') }}
+                                                        {{ $item->satuan }}
                                                     </option>
                                                 @endforeach
                                             </optgroup>
@@ -74,8 +76,10 @@
                                                 @foreach ($perbekalan as $item)
                                                     <option value="perbekalan:{{ $item->id }}"
                                                         style="color: {{ (float) $item->stok > 0 ? '#198754' : '#dc3545' }}"
-                                                        @selected(($row['item'] ?? '') === 'perbekalan:'.$item->id)>
-                                                        {{ $item->nama }} ({{ $item->satuan }}) - Perbekalan — Stok: {{ number_format((float) $item->stok, 2, ',', '.') }} {{ $item->satuan }}
+                                                        @selected(($row['item'] ?? '') === 'perbekalan:' . $item->id)>
+                                                        {{ $item->nama }} ({{ $item->satuan }}) - Perbekalan — Stok:
+                                                        {{ number_format((float) $item->stok, 2, ',', '.') }}
+                                                        {{ $item->satuan }}
                                                     </option>
                                                 @endforeach
                                             </optgroup>
@@ -83,11 +87,13 @@
                                     </div>
                                     <div class="form-group col-md-3 mb-0">
                                         <label class="required-asterisk">Qty</label>
-                                        <input type="number" name="items[{{ $index }}][jumlah]" class="form-control"
-                                            step="0.01" min="0.01" value="{{ $row['jumlah'] ?? '' }}" required>
+                                        <input type="number" name="items[{{ $index }}][jumlah]"
+                                            class="form-control" step="0.01" min="0.01"
+                                            value="{{ $row['jumlah'] ?? '' }}" required>
                                     </div>
                                     <div class="form-group col-md-1 mb-0">
-                                        <button type="button" class="btn btn-outline-danger btn-block hapus-barang" title="Hapus barang">
+                                        <button type="button" class="btn btn-outline-danger btn-block hapus-barang"
+                                            title="Hapus barang">
                                             <i class="ti-trash"></i>
                                         </button>
                                     </div>
@@ -115,7 +121,8 @@
                                         @foreach ($itemPembelian as $item)
                                             <option value="pembelian:{{ $item->id }}"
                                                 style="color: {{ (float) $item->stok > 0 ? '#198754' : '#dc3545' }}">
-                                                {{ $item->nama }} ({{ $item->satuan }}) - Barang — Stok: {{ number_format((float) $item->stok, 2, ',', '.') }} {{ $item->satuan }}
+                                                {{ $item->nama }} ({{ $item->satuan }}) - Barang — Stok:
+                                                {{ number_format((float) $item->stok, 2, ',', '.') }} {{ $item->satuan }}
                                             </option>
                                         @endforeach
                                     </optgroup>
@@ -123,7 +130,8 @@
                                         @foreach ($perbekalan as $item)
                                             <option value="perbekalan:{{ $item->id }}"
                                                 style="color: {{ (float) $item->stok > 0 ? '#198754' : '#dc3545' }}">
-                                                {{ $item->nama }} ({{ $item->satuan }}) - Perbekalan — Stok: {{ number_format((float) $item->stok, 2, ',', '.') }} {{ $item->satuan }}
+                                                {{ $item->nama }} ({{ $item->satuan }}) - Perbekalan — Stok:
+                                                {{ number_format((float) $item->stok, 2, ',', '.') }} {{ $item->satuan }}
                                             </option>
                                         @endforeach
                                     </optgroup>
@@ -131,10 +139,12 @@
                             </div>
                             <div class="form-group col-md-3 mb-0">
                                 <label class="required-asterisk">Qty</label>
-                                <input type="number" name="items[__INDEX__][jumlah]" class="form-control" step="0.01" min="0.01" required>
+                                <input type="number" name="items[__INDEX__][jumlah]" class="form-control" step="0.01"
+                                    min="0.01" required>
                             </div>
                             <div class="form-group col-md-1 mb-0">
-                                <button type="button" class="btn btn-outline-danger btn-block hapus-barang" title="Hapus barang">
+                                <button type="button" class="btn btn-outline-danger btn-block hapus-barang"
+                                    title="Hapus barang">
                                     <i class="ti-trash"></i>
                                 </button>
                             </div>

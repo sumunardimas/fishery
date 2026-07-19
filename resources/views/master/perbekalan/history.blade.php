@@ -23,8 +23,7 @@
                             <p class="card-description mb-0">Lihat histori transaksi masuk dan keluar per item perbekalan.
                             </p>
                         </div>
-                        <a href="{{ route('master.perbekalan.index') }}" class="btn btn-outline-primary">Kembali ke
-                            Master</a>
+                        <a href="{{ route('master.perbekalan.index') }}" class="btn btn-outline-primary">Master Data</a>
                     </div>
 
                     <form method="GET" action="{{ route('master.perbekalan.history') }}" class="form-row align-items-end">

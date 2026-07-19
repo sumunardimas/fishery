@@ -19,11 +19,11 @@
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-center mb-3">
                         <div>
-                            <h4 class="card-title mb-1">Riwayat IN/OUT Pembelian</h4>
-                            <p class="card-description mb-0">Lihat histori transaksi masuk dan keluar per item pembelian.</p>
+                            <h4 class="card-title mb-1">Riwayat IN/OUT Barang</h4>
+                            <p class="card-description mb-0">Lihat histori transaksi masuk dan keluar per item barang kantor.
+                            </p>
                         </div>
-                        <a href="{{ route('master.item-pembelian.index') }}" class="btn btn-outline-primary">Kembali ke
-                            Master</a>
+                        <a href="{{ route('master.item-pembelian.index') }}" class="btn btn-outline-primary">Master Data</a>
                     </div>
 
                     <form method="GET" action="{{ route('pembelian.riwayat') }}" class="mb-0">

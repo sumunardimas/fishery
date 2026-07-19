@@ -91,10 +91,17 @@
             @if ($showItem($item))
                 @if (isset($item['children']) && is_array($item['children']))
                     <li class="nav-item {{ $hasActiveChild($item) ? 'active' : '' }}">
-                        <span class="nav-link" style="cursor: default;">
-                            <i class="{{ $item['icon'] ?? '' }} menu-icon"></i>
-                            <span class="menu-title">{{ $item['title'] }}</span>
-                        </span>
+                        @if (($item['route'] ?? '#') !== '#')
+                            <a class="nav-link" href="{{ $itemUrl($item) }}">
+                                <i class="{{ $item['icon'] ?? '' }} menu-icon"></i>
+                                <span class="menu-title">{{ $item['title'] }}</span>
+                            </a>
+                        @else
+                            <span class="nav-link" style="cursor: default;">
+                                <i class="{{ $item['icon'] ?? '' }} menu-icon"></i>
+                                <span class="menu-title">{{ $item['title'] }}</span>
+                            </span>
+                        @endif
                     </li>
 
                     @foreach ($item['children'] as $child)
