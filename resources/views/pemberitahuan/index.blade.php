@@ -29,12 +29,8 @@
                         <table class="table table-striped">
                             <thead>
                                 <tr>
-                                    <th>Status</th>
-                                    <th>Item</th>
-                                    <th>Kategori</th>
-                                    <th>Stok Saat Ini</th>
-                                    <th>Limit Minimal</th>
-                                    <th>Keterangan</th>
+                                    <th>Isi Notifikasi</th>
+                                    <th>Menu Terkait</th>
                                     <th class="text-right">Aksi</th>
                                 </tr>
                             </thead>
@@ -42,29 +38,31 @@
                                 @forelse ($notifications as $notification)
                                     <tr>
                                         <td>
-                                            <span class="badge badge-{{ $notification->severity }}">
-                                                {{ $notification->severity === 'danger' ? 'Di Bawah Limit' : 'Mendekati Limit' }}
-                                            </span>
+                                            <div class="d-flex align-items-start">
+                                                <span class="badge badge-{{ $notification->severity }} mr-3 mt-1">
+                                                    {{ $notification->severity === 'danger' ? 'Penting' : 'Peringatan' }}
+                                                </span>
+                                                <div>
+                                                    <h6 class="mb-1">{{ $notification->title }}</h6>
+                                                    <p class="text-muted mb-1">{{ $notification->message }}</p>
+                                                    <small class="text-{{ $notification->severity }}">
+                                                        Stok saat ini:
+                                                        <strong>{{ number_format($notification->current_stock, 2, ',', '.') }} {{ $notification->satuan }}</strong>
+                                                        · Limit minimal:
+                                                        <strong>{{ number_format($notification->limit_minimal, 2, ',', '.') }} {{ $notification->satuan }}</strong>
+                                                    </small>
+                                                </div>
+                                            </div>
                                         </td>
-                                        <td>{{ $notification->item_name }}</td>
-                                        <td>{{ $notification->category }}</td>
-                                        <td class="text-{{ $notification->severity }} font-weight-bold">
-                                            {{ number_format($notification->current_stock, 2, ',', '.') }}
-                                            {{ $notification->satuan }}
-                                        </td>
-                                        <td>
-                                            {{ number_format($notification->limit_minimal, 2, ',', '.') }}
-                                            {{ $notification->satuan }}
-                                        </td>
-                                        <td>{{ $notification->message }}</td>
+                                        <td>{{ $notification->related_menu }}</td>
                                         <td class="text-right">
                                             <a href="{{ route($notification->route_name) }}"
-                                                class="btn btn-outline-primary btn-sm">Buka Master</a>
+                                                class="btn btn-outline-primary btn-sm">{{ $notification->action_label }}</a>
                                         </td>
                                     </tr>
                                 @empty
                                     <tr>
-                                        <td colspan="7" class="text-center text-muted py-4">
+                                        <td colspan="3" class="text-center text-muted py-4">
                                             Semua stok masih berada di atas batas peringatan.
                                         </td>
                                     </tr>

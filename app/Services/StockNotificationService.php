@@ -91,6 +91,8 @@ class StockNotificationService
             'limit_minimal' => $limit,
             'stock_ratio' => $limit > 0 ? $stock / $limit : 0,
             'route_name' => $routeName,
+            'related_menu' => $category === 'Barang' ? 'Master Item Pembelian' : 'Master Perbekalan',
+            'action_label' => 'Buka Master',
         ];
     }
 }
