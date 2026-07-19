@@ -70,7 +70,17 @@
                             </thead>
                             <tbody>
                                 @forelse ($items as $item)
-                                    <tr>
+                                    @php
+                                        $stockRowClass = '';
+                                        if ((float) $item->limit_minimal > 0) {
+                                            $stockRowClass = (float) $item->stok_aktual <= (float) $item->limit_minimal
+                                                ? 'table-danger'
+                                                : ((float) $item->stok_aktual <= (float) $item->limit_minimal * 1.2
+                                                    ? 'table-warning'
+                                                    : '');
+                                        }
+                                    @endphp
+                                    <tr class="{{ $stockRowClass }}">
                                         <td>#{{ $item->id_item_pembelian }}</td>
                                         <td>{{ $item->nama_item }}</td>
                                         <td>{{ $item->kategori }}</td>

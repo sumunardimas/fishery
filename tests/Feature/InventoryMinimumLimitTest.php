@@ -44,12 +44,34 @@ class InventoryMinimumLimitTest extends TestCase
         $this->get(route('master.item-pembelian.index'))
             ->assertOk()
             ->assertSee('Limit Minimal')
-            ->assertSee('12,50');
+            ->assertSee('12,50')
+            ->assertSee('class="table-danger"', false);
 
         $this->get(route('master.perbekalan.index'))
             ->assertOk()
             ->assertSee('Limit Minimal')
-            ->assertSee('20,00');
+            ->assertSee('20,00')
+            ->assertSee('class="table-danger"', false);
+
+        DB::table('item_pembelian_stock')->insert([
+            'id_item_pembelian' => $itemId,
+            'stok_aktual' => 13.75,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        DB::table('perbekalan_stock')->insert([
+            'id_barang' => $perbekalanId,
+            'stok_aktual' => 22,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $this->get(route('master.item-pembelian.index'))
+            ->assertOk()
+            ->assertSee('class="table-warning"', false);
+        $this->get(route('master.perbekalan.index'))
+            ->assertOk()
+            ->assertSee('class="table-warning"', false);
 
         $this->put(route('master.item-pembelian.update', $itemId), [
             'nama_item' => 'Amplop Limit',
