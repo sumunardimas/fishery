@@ -165,6 +165,9 @@ Route::middleware(['auth', 'staff.menu.access'])->group(function () {
         Route::get('/barang', [StokController::class, 'barang'])->name('barang.index');
     });
 
+    Route::get('/lap-stok-barang-gudang', [StokController::class, 'laporanBarangGudang'])
+        ->name('lap-stok-barang-gudang.index');
+
     Route::prefix('master/perbekalan')->name('master.perbekalan.')->group(function () {
         Route::get('/', [MasterPerbekalanController::class, 'index'])->name('index');
         Route::get('/transaksi', [MasterPerbekalanController::class, 'transaksi'])->name('transaksi');

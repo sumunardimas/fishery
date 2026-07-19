@@ -97,4 +97,54 @@ class StokController extends Controller
 
         return view('stok.barang.index', compact('items'));
     }
+
+    public function laporanBarangGudang(): View
+    {
+        $barang = DB::table('master_item_pembelian as item')
+            ->leftJoin('item_pembelian_stock as stock', 'stock.id_item_pembelian', '=', 'item.id_item_pembelian')
+            ->select([
+                DB::raw("'Barang' as jenis"),
+                'item.nama_item as nama',
+                'item.kategori',
+                'item.satuan',
+                'item.limit_minimal',
+                DB::raw('COALESCE(SUM(stock.stok_aktual), 0) as stok_aktual'),
+            ])
+            ->groupBy('item.id_item_pembelian', 'item.nama_item', 'item.kategori', 'item.satuan', 'item.limit_minimal');
+
+        $items = DB::table('master_perbekalan as item')
+            ->leftJoin('perbekalan_stock as stock', 'stock.id_barang', '=', 'item.id_barang')
+            ->select([
+                DB::raw("'Perbekalan' as jenis"),
+                'item.nama_barang as nama',
+                DB::raw("'-' as kategori"),
+                'item.satuan',
+                'item.limit_minimal',
+                DB::raw('COALESCE(SUM(stock.stok_aktual), 0) as stok_aktual'),
+            ])
+            ->groupBy('item.id_barang', 'item.nama_barang', 'item.satuan', 'item.limit_minimal')
+            ->unionAll($barang)
+            ->get()
+            ->sortBy('nama', SORT_NATURAL | SORT_FLAG_CASE)
+            ->values()
+            ->map(function ($item) {
+                $stok = (float) $item->stok_aktual;
+                $limit = (float) $item->limit_minimal;
+
+                $item->status = $limit <= 0
+                    ? 'Belum diatur'
+                    : ($stok <= $limit ? 'Stok rendah' : 'Aman');
+
+                return $item;
+            });
+
+        $summary = [
+            'total_item' => $items->count(),
+            'barang' => $items->where('jenis', 'Barang')->count(),
+            'perbekalan' => $items->where('jenis', 'Perbekalan')->count(),
+            'stok_rendah' => $items->where('status', 'Stok rendah')->count(),
+        ];
+
+        return view('stok.laporan-barang-gudang', compact('items', 'summary'));
+    }
 }

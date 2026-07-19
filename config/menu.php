@@ -276,6 +276,12 @@ return [
                     'route' => '/keuangan/lap-selisih-bongkaran',
                     'type' => 'url',
                 ],
+                [
+                    'title' => 'Lap Stok Barang Gudang',
+                    'icon' => 'ti-warehouse',
+                    'route' => '/lap-stok-barang-gudang',
+                    'type' => 'url',
+                ],
             ],
         ],
         [
