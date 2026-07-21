@@ -54,6 +54,7 @@
 									<th>Tanggal Selesai</th>
 									<th>Berat Tangkapan (Kg)</th>
 									<th>Berat TPI (Kg)</th>
+									<th>Total Berat Penjualan (Kg)</th>
 									<th>Lawuhan (Kg)</th>
 									<th>Selisih (Kg)</th>
 									<th>Action</th>
@@ -73,6 +74,7 @@
 												<span class="badge badge-warning">Belum diisi</span>
 											@endif
 										</td>
+										<td>{{ number_format((float) $row->total_berat_penjualan, 2, ',', '.') }}</td>
 										<td>{{ number_format((float) $row->total_lawuhan, 2, ',', '.') }}</td>
 										<td>
 											@if ($row->berat_catatan > 0)
@@ -96,7 +98,7 @@
 									</tr>
 								@empty
 									<tr>
-										<td colspan="8" class="text-center text-muted py-4">
+										<td colspan="9" class="text-center text-muted py-4">
 											Tidak ada pelayaran yang selesai
 										</td>
 									</tr>

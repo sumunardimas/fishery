@@ -16,11 +16,11 @@
             <div class="card">
                 <div class="card-body">
                     <div class="d-flex align-items-center mb-3">
-                        <i class="ti-package text-primary mr-2"></i>
+                        <i class="ti-bell text-primary mr-2"></i>
                         <div>
-                            <h5 class="card-title mb-0">Status Stok Barang</h5>
+                            <h5 class="card-title mb-0">Daftar Notifikasi</h5>
                             <small class="text-muted">
-                                Peringatan muncul saat stok mencapai limit atau berada maksimal 20% di atas limit.
+                                Informasi stok, pembayaran, pelayaran, dan pengingat lainnya ditampilkan di sini.
                             </small>
                         </div>
                     </div>
@@ -40,17 +40,16 @@
                                         <td>
                                             <div class="d-flex align-items-start">
                                                 <span class="badge badge-{{ $notification->severity }} mr-3 mt-1">
-                                                    {{ $notification->severity === 'danger' ? 'Penting' : 'Peringatan' }}
+                                                    {{ $notification->badge_label }}
                                                 </span>
                                                 <div>
                                                     <h6 class="mb-1">{{ $notification->title }}</h6>
                                                     <p class="text-muted mb-1">{{ $notification->message }}</p>
-                                                    <small class="text-{{ $notification->severity }}">
-                                                        Stok saat ini:
-                                                        <strong>{{ number_format($notification->current_stock, 2, ',', '.') }} {{ $notification->satuan }}</strong>
-                                                        · Limit minimal:
-                                                        <strong>{{ number_format($notification->limit_minimal, 2, ',', '.') }} {{ $notification->satuan }}</strong>
-                                                    </small>
+                                                    @if (!empty($notification->details))
+                                                        <small class="text-{{ $notification->severity }}">
+                                                            {{ $notification->details }}
+                                                        </small>
+                                                    @endif
                                                 </div>
                                             </div>
                                         </td>
@@ -63,7 +62,7 @@
                                 @empty
                                     <tr>
                                         <td colspan="3" class="text-center text-muted py-4">
-                                            Semua stok masih berada di atas batas peringatan.
+                                            Tidak ada pemberitahuan yang memerlukan perhatian.
                                         </td>
                                     </tr>
                                 @endforelse

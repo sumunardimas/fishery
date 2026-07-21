@@ -81,8 +81,12 @@ class StockNotificationService
             'type' => 'stock',
             'severity' => $severity,
             'severity_order' => $severityOrder,
+            'badge_label' => $severity === 'danger' ? 'Penting' : 'Peringatan',
             'title' => $title,
             'message' => $message,
+            'summary' => $item->item_name.' — Stok '.number_format($stock, 2, ',', '.').' '.$item->satuan,
+            'details' => 'Stok saat ini: '.number_format($stock, 2, ',', '.').' '.$item->satuan
+                .' · Limit minimal: '.number_format($limit, 2, ',', '.').' '.$item->satuan,
             'category' => $category,
             'item_id' => (int) $item->item_id,
             'item_name' => (string) $item->item_name,

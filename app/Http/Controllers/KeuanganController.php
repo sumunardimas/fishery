@@ -180,6 +180,15 @@ class KeuanganController extends Controller
             ->groupBy('pila.id_pelayaran')
             ->pluck('total_lawuhan', 'id_pelayaran');
 
+        $salesWeightByVoyage = DB::table('penjualan_item_lot_allocations as pila')
+            ->join('penjualan_items as pi', 'pi.id_item', '=', 'pila.id_item')
+            ->join('penjualan as pj', 'pj.id_penjualan', '=', 'pi.id_penjualan')
+            ->where('pj.jenis_transaksi', 'penjualan')
+            ->whereNotNull('pila.id_pelayaran')
+            ->selectRaw('pila.id_pelayaran, SUM(pila.berat_alokasi) as total_berat_penjualan')
+            ->groupBy('pila.id_pelayaran')
+            ->pluck('total_berat_penjualan', 'id_pelayaran');
+
         // Calculate total captured weight for each voyage
         $rows = collect();
         foreach ($completedVoyages as $voyage) {
@@ -203,6 +212,7 @@ class KeuanganController extends Controller
                 'tanggal_tiba' => $voyage->tanggal_tiba,
                 'berat_timbangan' => $capturedWeight,
                 'berat_catatan' => $recordedWeight,
+                'total_berat_penjualan' => (float) ($salesWeightByVoyage[$idPelayaran] ?? 0),
                 'total_lawuhan' => (float) ($lawuhanByVoyage[$idPelayaran] ?? 0),
                 'selisih' => $difference,
             ]);

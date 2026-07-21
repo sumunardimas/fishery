@@ -36,9 +36,7 @@
                             <div class="preview-item-content">
                                 <h6 class="preview-subject font-weight-normal">{{ $notification->title }}</h6>
                                 <p class="font-weight-light small-text mb-0 text-muted">
-                                    {{ $notification->item_name }} — Stok
-                                    {{ number_format($notification->current_stock, 2, ',', '.') }}
-                                    {{ $notification->satuan }}
+                                    {{ $notification->summary }}
                                 </p>
                             </div>
                         </a>
